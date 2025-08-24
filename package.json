@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "description": "BeamNG fuel economy mod",
   "scripts": {
-    "test": "node tests/app.test.js"
+    "test": "node --test"
   }
 }
