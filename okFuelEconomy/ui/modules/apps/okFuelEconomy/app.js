@@ -214,7 +214,7 @@ angular.module('beamng.apps')
                          ? UiUnits.buildString('distance', (currentFuel_l / avg_l_per_100km_ok), 0)
                          : (speed_mps > EPS_SPEED ? 'Infinity' : UiUnits.buildString('distance', 0));
 
-          var rangeOverallMedianStr = (avg_l_per_100km_ok > 0)
+          var rangeOverallMedianStr = (overall_median > 0)
                          ? UiUnits.buildString('distance', (currentFuel_l / overall_median), 0)
                          : (speed_mps > EPS_SPEED ? 'Infinity' : UiUnits.buildString('distance', 0));
 
