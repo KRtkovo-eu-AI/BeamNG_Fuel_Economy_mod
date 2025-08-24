@@ -1,3 +1,35 @@
+function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
+  if (dtSeconds <= 0 || previousFuel === null) return 0;
+  return (previousFuel - currentFuel) / dtSeconds; // L/s
+}
+
+function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
+  if (speed_mps === 0) return Infinity;
+  return (fuelFlow_lps / speed_mps) * 100000;
+}
+
+function trimQueue(queue, maxEntries) {
+  while (queue.length > maxEntries) {
+    queue.shift();
+  }
+}
+
+function calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED) {
+  if (avg_l_per_100km_ok > 0) {
+    return currentFuel_l / avg_l_per_100km_ok;
+  }
+  return speed_mps > EPS_SPEED ? Infinity : 0;
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = {
+    calculateFuelFlow,
+    calculateInstantConsumption,
+    trimQueue,
+    calculateRange
+  };
+}
+
 angular.module('beamng.apps')
 .directive('okFuelEconomy', [function () {
   return {
@@ -54,11 +86,6 @@ angular.module('beamng.apps')
         previousFuel_l = null;
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
-      }
-
-      function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
-        if (dtSeconds <= 0 || previousFuel === null) return 0;
-        return (previousFuel - currentFuel) / dtSeconds; // L/s
       }
 
       $scope.reset = function () {
@@ -127,7 +154,7 @@ angular.module('beamng.apps')
           previousFuel_l = currentFuel_l;
 
           var inst_l_per_h = fuelFlow_lps * 3600;
-          var inst_l_per_100km = (fuelFlow_lps / speed_mps) * 100000;
+          var inst_l_per_100km = calculateInstantConsumption(fuelFlow_lps, speed_mps);
           var instantStr = inst_l_per_h.toFixed(1) + ' L/h (' + inst_l_per_100km.toFixed(1) + ' L/100km)';
 
           // ---------- Overall update (NEW) ----------
@@ -152,10 +179,7 @@ angular.module('beamng.apps')
 
           if (shouldPush && avg_l_per_100km_ok > 0) {
               overall.queue.push(avg_l_per_100km_ok);
-
-              while (overall.queue.length > MAX_ENTRIES) {
-                  overall.queue.shift();
-              }
+              trimQueue(overall.queue, MAX_ENTRIES);
 
               if (speed_mps > EPS_SPEED) {
                   overall.distance = (overall.distance || 0) + deltaDistance;
@@ -210,13 +234,15 @@ angular.module('beamng.apps')
           }
 
 
-          var rangeStr = (avg_l_per_100km_ok > 0)
-                         ? UiUnits.buildString('distance', (currentFuel_l / avg_l_per_100km_ok), 0)
-                         : (speed_mps > EPS_SPEED ? 'Infinity' : UiUnits.buildString('distance', 0));
+          var rangeVal = calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED);
+          var rangeStr = Number.isFinite(rangeVal)
+                         ? UiUnits.buildString('distance', rangeVal, 0)
+                         : 'Infinity';
 
-          var rangeOverallMedianStr = (overall_median > 0)
-                         ? UiUnits.buildString('distance', (currentFuel_l / overall_median), 0)
-                         : (speed_mps > EPS_SPEED ? 'Infinity' : UiUnits.buildString('distance', 0));
+          var rangeOverallMedianVal = calculateRange(currentFuel_l, overall_median, speed_mps, EPS_SPEED);
+          var rangeOverallMedianStr = Number.isFinite(rangeOverallMedianVal)
+                         ? UiUnits.buildString('distance', rangeOverallMedianVal, 0)
+                         : 'Infinity';
 
           $scope.data1 = UiUnits.buildString('distance', distance_m, 1);
           $scope.data2 = fuel_used_l.toFixed(2) + ' L used / ' +
