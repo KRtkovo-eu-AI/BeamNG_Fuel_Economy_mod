@@ -1,0 +1,52 @@
+<div class="bngApp" style="width:100%; height:100%; overflow: auto;" layout="column">
+  <strong style="margin: 3px;">Fuel Economy: {{ vehicleNameStr }}</strong>
+  <table style="width:100%">
+    <tr>
+      <td>Traveled distance:</td>
+      <td>Measured: {{ data1 }} | From ECU: {{ data6 }}</td>
+    </tr>
+    <tr>
+      <td>Fuel (used / left / capacity):</td>
+      <td>{{ data2 }}</td>
+    </tr>
+    <tr>
+      <td>Average consumption:</td>
+      <td>{{ data3 }}</td>
+    </tr>
+    <tr>
+      <td>Instant consumption:</td>
+      <td>{{ data5 }}</td>
+    </tr>
+    <tr>
+      <td>Range:</td>
+      <td>{{ data4 }}</td>
+    </tr>
+    <tr>
+      <td>Trip average consumption:</td>
+      <td>{{ data7 }}</td>
+    </tr>
+	<tr>
+	  <td>Trip distance:</td>
+	  <td>{{ data8 }}</td>
+	</tr>
+	<tr>
+	  <td>Trip range:</td>
+	  <td>{{ data9 }}</td>
+	</tr>
+	<tr>
+	  <td>
+		Trip reset:
+	  </td>
+	  <td>
+        <span style="cursor:pointer; color:#888; margin-left:10px; margin-top: 3px;" 
+              class="material-icons" 
+              ng-click="resetOverall($event)">delete</span>
+      </td>
+	</tr>
+  </table>
+
+  <!-- Reset ikona -->
+  <span style="position:absolute; top:2px; right: 2px; cursor: pointer;" 
+        class="material-icons" 
+        ng-click="reset($event)">autorenew</span>
+</div>
