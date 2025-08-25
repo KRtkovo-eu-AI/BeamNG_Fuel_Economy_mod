@@ -54,7 +54,8 @@ describe('UI template styling', () => {
     assert.ok(base.includes('position:relative;'));
     assert.ok(!base.includes('background-color'));
     assert.ok(styleTrue.includes('background-color:rgba(10,15,20,0.75);'));
-    assert.ok(styleTrue.includes("url('app.png')"));
+    assert.ok(styleTrue.includes('background-image:linear-gradient'));
+    assert.ok(!styleTrue.includes("url('app.png')"));
   });
 
   it('positions reset and style toggle icons consistently', () => {
@@ -78,7 +79,8 @@ describe('UI template styling', () => {
     assert.ok(html.includes('background-image:linear-gradient'));
     assert.ok(html.includes('border-radius:10px;'));
     assert.ok(html.includes('color:#aeeaff;'));
-    assert.ok(html.includes('font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif;'));
+    assert.ok(html.includes('font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;'));
+    assert.ok(!html.includes('font-family:"'));
     assert.ok(html.includes('box-shadow: inset 0 0 10px rgba(0,200,255,0.25);'));
   });
 
