@@ -5,7 +5,7 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
   checks: write
   pull-requests: write
 
@@ -52,3 +52,9 @@ jobs:
           path: reports/**/junit.xml
           reporter: java-junit
           token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate test badge
+        run: node scripts/generate-badge.js reports/**/junit.xml
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: update test badge"
+          file_pattern: tests-badge.json
