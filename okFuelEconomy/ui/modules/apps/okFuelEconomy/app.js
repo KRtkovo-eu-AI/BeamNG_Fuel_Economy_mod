@@ -54,6 +54,19 @@ function calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED)
   return speed_mps > EPS_SPEED ? Infinity : 0;
 }
 
+// Decide which speed value should be used for distance accumulation.
+// Prefer the airspeed when available as it represents the vehicle's
+// movement relative to the environment. If the airspeed is below the
+// epsilon threshold, treat the vehicle as stationary even if the wheels
+// are spinning. When no airspeed reading is provided fall back to the
+// wheel speed.
+function resolveSpeed(wheelSpeed_mps, airSpeed_mps, EPS_SPEED) {
+  if (Number.isFinite(airSpeed_mps)) {
+    return Math.abs(airSpeed_mps) > EPS_SPEED ? airSpeed_mps : 0;
+  }
+  return Math.abs(wheelSpeed_mps || 0) > EPS_SPEED ? wheelSpeed_mps : 0;
+}
+
 function buildQueueGraphPoints(queue, width, height) {
   if (!Array.isArray(queue) || queue.length < 2) return '';
   var max = Math.max.apply(null, queue);
@@ -74,7 +87,8 @@ if (typeof module !== 'undefined') {
     smoothFuelFlow,
     trimQueue,
     calculateRange,
-    buildQueueGraphPoints
+    buildQueueGraphPoints,
+    resolveSpeed
   };
 }
 
@@ -232,9 +246,12 @@ angular.module('beamng.apps')
           var dt = Math.max(0, (now_ms - lastTime_ms) / 1000);
           lastTime_ms = now_ms;
 
-          var speed_mps = streams.electrics.wheelspeed || 0;
+          var speed_mps = resolveSpeed(
+            streams.electrics.wheelspeed,
+            streams.electrics.airspeed,
+            EPS_SPEED
+          );
           var trip_m = streams.electrics.trip || 0;
-          if (Math.abs(speed_mps) < EPS_SPEED) speed_mps = 0;
 
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
