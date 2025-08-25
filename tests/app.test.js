@@ -9,7 +9,8 @@ const {
   calculateInstantConsumption,
   smoothFuelFlow,
   trimQueue,
-  calculateRange
+  calculateRange,
+  calculateCostPerKm
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('app.js utility functions', () => {
@@ -120,6 +121,17 @@ describe('app.js utility functions', () => {
     });
     it('treats negative avg as no consumption while stopped', () => {
       assert.strictEqual(calculateRange(10, -5, 0, EPS_SPEED), 0);
+    });
+  });
+
+  describe('calculateCostPerKm', () => {
+    it('computes cost per km from average and price', () => {
+      assert.ok(Math.abs(calculateCostPerKm(5, 1.5) - 0.075) < 1e-9);
+    });
+    it('handles non-positive inputs', () => {
+      assert.strictEqual(calculateCostPerKm(0, 1.5), 0);
+      assert.strictEqual(calculateCostPerKm(5, 0), 0);
+      assert.strictEqual(calculateCostPerKm(-5, 1.5), 0);
     });
   });
 });

@@ -86,7 +86,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9','costPerKm'];
     placeholders.forEach(p => {
       assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
     });
@@ -100,13 +100,14 @@ describe('UI template styling', () => {
     assert.ok(html.includes('settings'));
     assert.ok(html.includes('<span class="material-icons"')); 
     assert.ok(html.includes('save</span>'));
+    assert.ok(html.includes('ng-model="fuelPrice"'));
   });
 
   it('allows toggling visibility of heading and subfields', () => {
     assert.ok(html.includes('ng-if="visible.distanceMeasured || visible.distanceEcu"'));
     assert.ok(html.includes('ng-if="visible.fuelUsed || visible.fuelLeft || visible.fuelCap"'));
     assert.ok(html.includes('ng-if="visible.instantLph || visible.instantL100km"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.instantLph','visible.instantL100km'];
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.instantLph','visible.instantL100km','visible.costPerKm'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -120,7 +121,7 @@ describe('controller integration', () => {
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
     global.bngApi = { engineLua: () => '' };
-    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.localStorage = { getItem: k => (k === 'okFuelEconomyPrice' ? '1.5' : null), setItem: () => {} };
     global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -141,7 +142,7 @@ describe('controller integration', () => {
 
     $scope.on_streamsUpdate(null, streams);
 
-    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9'];
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9','costPerKm'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
@@ -204,11 +205,13 @@ describe('visibility settings persistence', () => {
     $scope.visible.heading = false;
     $scope.visible.fuelLeft = false;
     $scope.visible.instantLph = false;
+    $scope.visible.costPerKm = false;
     $scope.saveSettings();
 
     assert.ok(store.okFuelEconomyVisible.includes('"heading":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"fuelLeft":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"instantLph":false'));
+    assert.ok(store.okFuelEconomyVisible.includes('"costPerKm":false'));
 
     const $scope2 = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope2);
@@ -216,5 +219,37 @@ describe('visibility settings persistence', () => {
     assert.equal($scope2.visible.fuelLeft, false);
     assert.equal($scope2.visible.instantLph, false);
     assert.equal($scope2.visible.fuelUsed, true);
+    assert.equal($scope2.visible.costPerKm, false);
+  });
+});
+
+describe('fuel price persistence', () => {
+  it('saves and restores fuel price and computes cost per km', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {};
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+    $scope.fuelPrice = 2.5;
+    $scope.saveSettings();
+
+    const $scope2 = { $on: (name, cb) => { $scope2['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope2);
+    assert.equal($scope2.fuelPrice, 2.5);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 5, throttle_input: 0 } };
+    streams.engineInfo[11] = 50; streams.engineInfo[12] = 60;
+    $scope2.on_streamsUpdate(null, streams);
+    assert.ok($scope2.costPerKm !== '');
   });
 });

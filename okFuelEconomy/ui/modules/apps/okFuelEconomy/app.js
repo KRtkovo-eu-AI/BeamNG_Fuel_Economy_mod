@@ -54,13 +54,19 @@ function calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED)
   return speed_mps > EPS_SPEED ? Infinity : 0;
 }
 
+function calculateCostPerKm(avg_l_per_100km, pricePerL) {
+  if (avg_l_per_100km <= 0 || pricePerL <= 0) return 0;
+  return (avg_l_per_100km / 100) * pricePerL;
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     calculateFuelFlow,
     calculateInstantConsumption,
     smoothFuelFlow,
     trimQueue,
-    calculateRange
+    calculateRange,
+    calculateCostPerKm
   };
 }
 
@@ -81,6 +87,7 @@ angular.module('beamng.apps')
 
       // Settings for visible fields
       var SETTINGS_KEY = 'okFuelEconomyVisible';
+      var PRICE_KEY = 'okFuelEconomyPrice';
       $scope.settingsOpen = false;
       $scope.visible = {
         heading: true,
@@ -93,6 +100,7 @@ angular.module('beamng.apps')
         instantLph: true,
         instantL100km: true,
         range: true,
+        costPerKm: true,
         tripAvg: true,
         tripDistance: true,
         tripRange: true,
@@ -110,8 +118,15 @@ angular.module('beamng.apps')
         }
       } catch (e) { /* ignore */ }
 
+      $scope.fuelPrice = 0;
+      try {
+        var p = parseFloat(localStorage.getItem(PRICE_KEY));
+        if (!isNaN(p)) $scope.fuelPrice = p;
+      } catch (e) { /* ignore */ }
+
       $scope.saveSettings = function () {
         try { localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible)); } catch (e) { /* ignore */ }
+        try { localStorage.setItem(PRICE_KEY, $scope.fuelPrice); } catch (e) { /* ignore */ }
         $scope.settingsOpen = false;
       };
 
@@ -126,6 +141,7 @@ angular.module('beamng.apps')
       $scope.instantLph = '';
       $scope.instantL100km = '';
       $scope.data7 = ''; // overall average
+      $scope.costPerKm = '';
 
       var distance_m = 0;
       var lastTime_ms = performance.now();
@@ -342,6 +358,9 @@ angular.module('beamng.apps')
           var rangeOverallMedianStr = Number.isFinite(rangeOverallMedianVal)
                          ? UiUnits.buildString('distance', rangeOverallMedianVal, 0)
                          : 'Infinity';
+
+          var costPerKmVal = calculateCostPerKm(avg_l_per_100km_ok, $scope.fuelPrice);
+          $scope.costPerKm = costPerKmVal.toFixed(2) + ' /km';
 
           $scope.data1 = UiUnits.buildString('distance', distance_m, 1);
           $scope.fuelUsed = fuel_used_l.toFixed(2) + ' L';
