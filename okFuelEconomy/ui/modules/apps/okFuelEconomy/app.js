@@ -119,16 +119,20 @@ angular.module('beamng.apps')
         }
       } catch (e) { /* ignore */ }
 
+      function loadPriceAndCurrency() {
+        try {
+          var p = parseFloat(localStorage.getItem(PRICE_KEY));
+          if (!isNaN(p)) $scope.fuelPrice = p;
+        } catch (e) { /* ignore */ }
+        try {
+          var cur = localStorage.getItem(CURRENCY_KEY);
+          if (typeof cur === 'string') $scope.currency = cur;
+        } catch (e) { /* ignore */ }
+      }
+
       $scope.fuelPrice = 0;
       $scope.currency = '';
-      try {
-        var p = parseFloat(localStorage.getItem(PRICE_KEY));
-        if (!isNaN(p)) $scope.fuelPrice = p;
-      } catch (e) { /* ignore */ }
-      try {
-        var cur = localStorage.getItem(CURRENCY_KEY);
-        if (typeof cur === 'string') $scope.currency = cur;
-      } catch (e) { /* ignore */ }
+      loadPriceAndCurrency();
 
       $scope.saveSettings = function () {
         try { localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible)); } catch (e) { /* ignore */ }
@@ -138,12 +142,15 @@ angular.module('beamng.apps')
       };
 
       $scope.$watch('fuelPrice', function (val, old) {
-        if (val === old) return;
+        if (val === old || typeof val === 'undefined') return;
         try { localStorage.setItem(PRICE_KEY, val); } catch (e) { /* ignore */ }
       });
       $scope.$watch('currency', function (val, old) {
-        if (val === old) return;
+        if (val === old || typeof val === 'undefined') return;
         try { localStorage.setItem(CURRENCY_KEY, val); } catch (e) { /* ignore */ }
+      });
+      $scope.$watch('settingsOpen', function (open) {
+        if (open) loadPriceAndCurrency();
       });
 
       // UI outputs

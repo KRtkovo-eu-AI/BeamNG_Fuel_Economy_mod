@@ -261,4 +261,36 @@ describe('fuel price persistence', () => {
     $scope2.on_streamsUpdate(null, streams);
     assert.ok($scope2.costPerKm.includes('EUR'));
   });
+
+  it('keeps user-defined values when settings are reopened', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {};
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+
+    const watchers = {};
+    const $scope = { $on: () => {}, $evalAsync: fn => fn(), $watch: (expr, fn) => { watchers[expr] = fn; } };
+    controllerFn({ debug: () => {} }, $scope);
+
+    $scope.fuelPrice = 3.3;
+    $scope.currency = 'USD';
+    $scope.saveSettings();
+
+    watchers.fuelPrice(undefined, 3.3);
+    watchers.currency(undefined, 'USD');
+    watchers.settingsOpen(false, true);
+
+    watchers.settingsOpen(true, false);
+
+    assert.equal($scope.fuelPrice, 3.3);
+    assert.equal($scope.currency, 'USD');
+  });
 });
