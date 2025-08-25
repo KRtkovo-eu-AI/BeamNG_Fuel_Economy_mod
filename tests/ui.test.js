@@ -86,7 +86,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','instantHistory','data6','data7','data8','data9'];
     placeholders.forEach(p => {
       assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
     });
@@ -106,7 +106,8 @@ describe('UI template styling', () => {
     assert.ok(html.includes('ng-if="visible.distanceMeasured || visible.distanceEcu"'));
     assert.ok(html.includes('ng-if="visible.fuelUsed || visible.fuelLeft || visible.fuelCap"'));
     assert.ok(html.includes('ng-if="visible.instantLph || visible.instantL100km"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.instantLph','visible.instantL100km'];
+    assert.ok(html.includes('ng-if="visible.instantGraph"'));
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.instantLph','visible.instantL100km','visible.instantGraph'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -134,14 +135,16 @@ describe('controller integration', () => {
 
     const streams = {
       engineInfo: Array(15).fill(0),
-      electrics: { wheelspeed: 10, trip: 5, throttle_input: 0 }
+      electrics: { wheelspeed: 10, trip: 5, throttle_input: 0.5, rpmTacho: 1000 }
     };
     streams.engineInfo[11] = 50;
     streams.engineInfo[12] = 60;
 
     $scope.on_streamsUpdate(null, streams);
+    streams.engineInfo[11] = 49.9;
+    $scope.on_streamsUpdate(null, streams);
 
-    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9'];
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','instantHistory','data6','data7','data8','data9'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
@@ -211,6 +214,7 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.tripAvgHistory, '');
     assert.strictEqual($scope.avgHistory, '');
+    assert.strictEqual($scope.instantHistory, '');
   });
 
   it('ignores unrealistic consumption spikes while stationary', () => {
@@ -288,17 +292,20 @@ describe('visibility settings persistence', () => {
     $scope.visible.heading = false;
     $scope.visible.fuelLeft = false;
     $scope.visible.instantLph = false;
+    $scope.visible.instantGraph = false;
     $scope.saveSettings();
 
     assert.ok(store.okFuelEconomyVisible.includes('"heading":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"fuelLeft":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"instantLph":false'));
+    assert.ok(store.okFuelEconomyVisible.includes('"instantGraph":false'));
 
     const $scope2 = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope2);
     assert.equal($scope2.visible.heading, false);
     assert.equal($scope2.visible.fuelLeft, false);
     assert.equal($scope2.visible.instantLph, false);
+    assert.equal($scope2.visible.instantGraph, false);
     assert.equal($scope2.visible.fuelUsed, true);
   });
 });

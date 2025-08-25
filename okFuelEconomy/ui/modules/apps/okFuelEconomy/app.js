@@ -121,6 +121,7 @@ angular.module('beamng.apps')
         avgGraph: true,
         instantLph: true,
         instantL100km: true,
+        instantGraph: true,
         range: true,
         tripAvg: true,
         tripGraph: true,
@@ -158,6 +159,7 @@ angular.module('beamng.apps')
       $scope.data7 = ''; // overall average
       $scope.tripAvgHistory = '';
       $scope.avgHistory = '';
+      $scope.instantHistory = '';
 
       var distance_m = 0;
       var lastTime_ms = performance.now();
@@ -207,6 +209,22 @@ angular.module('beamng.apps')
           try { localStorage.setItem(AVG_KEY, JSON.stringify(avgHistory)); } catch (e) { /* ignore */ }
       }
 
+      // --------- Instant history persistence (NEW) ----------
+      var INST_KEY = 'okFuelEconomyInstantHistory';
+      var INSTANT_MAX_ENTRIES = 1000;
+
+      var instantHistory = { queue: [] };
+      try {
+          var savedInst = JSON.parse(localStorage.getItem(INST_KEY));
+          if (savedInst && Array.isArray(savedInst.queue)) {
+              instantHistory = savedInst;
+          }
+      } catch (e) { /* ignore */ }
+
+      function saveInstantHistory() {
+          try { localStorage.setItem(INST_KEY, JSON.stringify(instantHistory)); } catch (e) { /* ignore */ }
+      }
+
       function hardReset() {
         distance_m = 0;
         startFuel_l = null;
@@ -227,10 +245,13 @@ angular.module('beamng.apps')
           saveOverall();
           avgHistory = { queue: [] };
           saveAvgHistory();
+          instantHistory = { queue: [] };
+          saveInstantHistory();
           $scope.data7 = UiUnits.buildString('consumptionRate', 0, 1);
           $scope.data6 = UiUnits.buildString('distance', 0, 1); // reset trip
           $scope.tripAvgHistory = '';
           $scope.avgHistory = '';
+          $scope.instantHistory = '';
       };
 
       $scope.$on('VehicleFocusChanged', function () {
@@ -317,6 +338,17 @@ angular.module('beamng.apps')
               ? inst_l_per_100km.toFixed(1) + ' L/100km'
               : 'Infinity';
             lastInstantUpdate_ms = now_ms;
+          }
+
+          if (engineRunning) {
+            instantHistory.queue.push(inst_l_per_h);
+            trimQueue(instantHistory.queue, INSTANT_MAX_ENTRIES);
+            $scope.instantHistory = buildQueueGraphPoints(instantHistory.queue, 100, 40);
+            if (!instantHistory.lastSaveTime) instantHistory.lastSaveTime = 0;
+            if (now_ms - instantHistory.lastSaveTime >= 100) {
+              saveInstantHistory();
+              instantHistory.lastSaveTime = now_ms;
+            }
           }
 
           // ---------- Overall update (NEW) ----------
