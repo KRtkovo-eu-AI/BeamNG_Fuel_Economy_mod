@@ -231,6 +231,7 @@ angular.module('beamng.apps')
                          ? UiUnits.buildString('distance', rangeVal, 0)
                          : 'Infinity';
 
+
           var rangeOverallAvgVal = calculateRange(currentFuel_l, overall_avg / 100000, speed_mps, EPS_SPEED);
           var rangeOverallAvgStr = Number.isFinite(rangeOverallAvgVal)
                          ? UiUnits.buildString('distance', rangeOverallAvgVal, 0)
