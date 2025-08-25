@@ -22,6 +22,9 @@ describe('app.js utility functions', () => {
     it('computes fuel flow', () => {
       assert.strictEqual(calculateFuelFlow(10, 12, 2), 1);
     });
+    it('returns negative when fuel increases (refuel)', () => {
+      assert.strictEqual(calculateFuelFlow(12, 10, 2), -1);
+    });
   });
 
   describe('calculateInstantConsumption', () => {
@@ -37,6 +40,12 @@ describe('app.js utility functions', () => {
         Infinity
       );
     });
+    it('propagates negative fuel flow', () => {
+      assert.strictEqual(
+        calculateInstantConsumption(-0.001, 10),
+        -0.001 / 10 * 100000
+      );
+    });
   });
 
   describe('trimQueue', () => {
@@ -46,6 +55,11 @@ describe('app.js utility functions', () => {
       trimQueue(queue, 5);
       assert.strictEqual(queue.length, 5);
       assert.deepStrictEqual(queue, [5, 6, 7, 8, 9]);
+    });
+    it('empties queue when maxEntries is zero', () => {
+      const queue = [1, 2, 3];
+      trimQueue(queue, 0);
+      assert.deepStrictEqual(queue, []);
     });
   });
 
@@ -59,6 +73,12 @@ describe('app.js utility functions', () => {
     });
     it('computes zero range when stopped without consumption', () => {
       assert.strictEqual(calculateRange(10, 0, 0, EPS_SPEED), 0);
+    });
+    it('treats negative avg as no consumption while moving', () => {
+      assert.strictEqual(calculateRange(10, -5, 1, EPS_SPEED), Infinity);
+    });
+    it('treats negative avg as no consumption while stopped', () => {
+      assert.strictEqual(calculateRange(10, -5, 0, EPS_SPEED), 0);
     });
   });
 });
