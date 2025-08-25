@@ -6,12 +6,12 @@
   "directive": "okFuelEconomy",
   "domElement": "<ok-fuel-economy></ok-fuel-economy>",
   "css": {
-	  "left": "500px",
-	  "top": "300px",
+	  "left": "615px",
+	  "top": "65px",
 	  "width": "auto",
 	  "height": "auto",
-      "min-width": "350px",
-      "min-height": "250px"
+      "min-width": "450px",
+      "min-height": "310px"
   },
   "types": [
     "ui.apps.categories.vehicle_info"
