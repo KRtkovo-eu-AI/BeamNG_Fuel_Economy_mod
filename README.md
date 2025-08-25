@@ -6,6 +6,8 @@ This repository contains a UI mod for BeamNG.drive that displays fuel economy in
 
 ## Features
 
+![Fuel Economy screenshot](https://raw.githubusercontent.com/KRtkovo-eu-AI/BeamNG_Fuel_Economy_mod/refs/heads/main/img/preview.png "Fuel Economy screenshot")
+
 - Tracked distance using a custom calculation and ECU values.
 - Fuel consumed, remaining and total capacity.
 - Average and instant fuel consumption.
