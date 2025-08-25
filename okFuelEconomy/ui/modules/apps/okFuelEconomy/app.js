@@ -219,7 +219,11 @@ angular.module('beamng.apps')
           var avg_l_per_100km_ok = (fuel_used_l / (distance_m * 10)) * 10;
 
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
-          if (throttle <= 0.05 && rawFuelFlow_lps > 0) {
+          if (
+            throttle <= 0.05 &&
+            speed_mps <= EPS_SPEED &&
+            rawFuelFlow_lps > 0
+          ) {
             idleFuelFlow_lps = rawFuelFlow_lps;
           }
           var fuelFlow_lps = smoothFuelFlow(

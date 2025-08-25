@@ -21,6 +21,7 @@ const segments = [
   { name: 'snow', duration: 100, speed: 10, flow: 0.0045, throttle: 0.6 },
   { name: 'summer', duration: 100, speed: 25, flow: 0.0025, throttle: 0.5 },
   { name: 'desert', duration: 100, speed: 8, flow: 0.0035, throttle: 0.5 },
+  { name: 'engineBrake', duration: 100, speed: 15, flow: 0.004, throttle: 0, expectIdleSame: true },
   { name: 'coast', duration: 100, speed: 20, flow: 0, throttle: 0, expectIdle: true },
   { name: 'sport', duration: 100, speed: 30, flow: 0.004, throttle: 0.8 },
   { name: 'offroad', duration: 100, speed: 12, flow: 0.003, throttle: 0.6 },
@@ -42,6 +43,7 @@ function runCycle() {
   let idleFlow = 0;
 
   for (const seg of segments) {
+    const idleBefore = idleFlow;
     for (let t = 0; t < seg.duration; t += dt) {
       const current = fuel - seg.flow * dt;
       const raw = calculateFuelFlow(current, prev, dt);
@@ -72,6 +74,9 @@ function runCycle() {
       fuel = current;
       prev = current;
       lastFlow = flow;
+    }
+    if (seg.expectIdleSame) {
+      assert.strictEqual(idleFlow, idleBefore);
     }
   }
 
