@@ -10,8 +10,8 @@ function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
 
 // Resolve the fuel flow when sensor readings are static.
 // - While accelerating (throttle > 0) keep the last measured flow.
-// - While coasting with zero throttle, fall back to the latest idle flow
-//   scaled by RPM so the value keeps updating instead of freezing at the
+// - While coasting with zero throttle, ease the previous reading toward the
+//   stored idle flow so the value keeps updating instead of freezing at the
 //   last accelerating reading.
 function smoothFuelFlow(
   fuelFlow_lps,
@@ -19,10 +19,6 @@ function smoothFuelFlow(
   throttle,
   lastFuelFlow_lps,
   idleFuelFlow_lps,
-  idleRPM,
-  rpm,
-  lastMeasuredFlow_lps,
-  lastMeasuredRPM,
   EPS_SPEED
 ) {
   if (fuelFlow_lps > 0 && throttle > 0.05) {
@@ -30,30 +26,19 @@ function smoothFuelFlow(
     return fuelFlow_lps;
   }
 
+  const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
+
   if (speed_mps > EPS_SPEED) {
     if (throttle <= 0.05) {
-      // Coasting with zero throttle – prefer the stored idle flow scaled by RPM.
-      if (idleFuelFlow_lps > 0 && idleRPM > 0) {
-        return idleFuelFlow_lps * (rpm / idleRPM);
-      }
-      // Without an idle baseline fall back to the last measured flow scaled by RPM
-      // so the value keeps updating instead of freezing or dropping to zero.
-      if (lastMeasuredFlow_lps > 0 && lastMeasuredRPM > 0) {
-        return lastMeasuredFlow_lps * (rpm / lastMeasuredRPM);
-      }
-      // As a last resort keep the previous smoothed value.
-      return lastFuelFlow_lps;
+      // Coasting with zero throttle – blend previous value toward idle.
+      return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
     }
     // Throttle applied but sensor static – keep the last flow.
     return lastFuelFlow_lps;
   }
 
-  // Vehicle stopped: show idle if known, otherwise the last flow.
-  return idleFuelFlow_lps > 0
-    ? idleFuelFlow_lps
-    : lastFuelFlow_lps > 0
-      ? lastFuelFlow_lps
-      : 0;
+  // Vehicle stopped: smoothly approach idle flow.
+  return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
 }
 
 function trimQueue(queue, maxEntries) {
@@ -147,10 +132,7 @@ angular.module('beamng.apps')
       var startFuel_l = null;
       var previousFuel_l = null;
       var lastFuelFlow_lps = 0; // last smoothed value
-      var lastMeasuredFlow_lps = 0; // last raw reading when flow > 0
-      var lastMeasuredRPM = 0; // rpm at last raw reading
       var idleFuelFlow_lps = 0;
-      var idleRPM = 0;
       var lastThrottle = 0;
 
       var lastCapacity_l = null;
@@ -218,7 +200,6 @@ angular.module('beamng.apps')
 
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
-          var rpm = streams.engineInfo[0] || 0;
           var throttle = streams.electrics.throttle_input || 0;
 
           if (!Number.isFinite(currentFuel_l) || !Number.isFinite(capacity_l)) return;
@@ -252,13 +233,8 @@ angular.module('beamng.apps')
             previousFuel_l = currentFuel_l;
           }
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
-          if (rawFuelFlow_lps > 0 && throttle > 0.05) {
-            lastMeasuredFlow_lps = rawFuelFlow_lps;
-            lastMeasuredRPM = rpm;
-          }
           if (speed_mps <= EPS_SPEED && throttle <= 0.05 && rawFuelFlow_lps > 0) {
             idleFuelFlow_lps = rawFuelFlow_lps;
-            idleRPM = rpm;
           }
           var fuelFlow_lps = smoothFuelFlow(
             rawFuelFlow_lps,
@@ -266,10 +242,6 @@ angular.module('beamng.apps')
             throttle,
             lastFuelFlow_lps,
             idleFuelFlow_lps,
-            idleRPM,
-            rpm,
-            lastMeasuredFlow_lps,
-            lastMeasuredRPM,
             EPS_SPEED
           );
           lastFuelFlow_lps = fuelFlow_lps;

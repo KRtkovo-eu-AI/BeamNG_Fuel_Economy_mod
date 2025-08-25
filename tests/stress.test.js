@@ -14,20 +14,20 @@ const {
 
 // Driving segments used for repeated environment cycles
 const segments = [
-  { name: 'launch', duration: 100, speed: 30, flow: 0.004, throttle: 0.8, rpmStart: 2500, rpmEnd: 2500 },
-  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, rpmStart: 2500, rpmEnd: 800, expectFallback: true, initialRaw: 0.003 },
-  { name: 'city', duration: 100, speed: 0, flow: 0.001, throttle: 0, rpmStart: 800, rpmEnd: 800 },
-  { name: 'mountains', duration: 100, speed: 15, flow: 0.004, throttle: 0.6, rpmStart: 2000, rpmEnd: 2000 },
-  { name: 'countryside', duration: 100, speed: 20, flow: 0.002, throttle: 0.5, rpmStart: 1800, rpmEnd: 1800 },
-  { name: 'highway', duration: 100, speed: 35, flow: 0.003, throttle: 0.7, rpmStart: 2500, rpmEnd: 2500 },
-  { name: 'snow', duration: 100, speed: 10, flow: 0.0045, throttle: 0.6, rpmStart: 1500, rpmEnd: 1500 },
-  { name: 'summer', duration: 100, speed: 25, flow: 0.0025, throttle: 0.5, rpmStart: 2000, rpmEnd: 2000 },
-  { name: 'desert', duration: 100, speed: 8, flow: 0.0035, throttle: 0.5, rpmStart: 1600, rpmEnd: 1600 },
-  { name: 'engineBrake', duration: 100, speed: 15, flow: 0.004, throttle: 0, rpmStart: 2200, rpmEnd: 1500, expectIdleSame: true },
-  { name: 'coast', duration: 100, speed: 20, flow: 0, throttle: 0, rpmStart: 2000, rpmEnd: 800, expectCoastDynamic: true },
-  { name: 'sport', duration: 100, speed: 30, flow: 0.004, throttle: 0.8, rpmStart: 3000, rpmEnd: 3000 },
-  { name: 'offroad', duration: 100, speed: 12, flow: 0.003, throttle: 0.6, rpmStart: 1700, rpmEnd: 1700 },
-  { name: 'combined', duration: 100, speed: 22, flow: 0.0022, throttle: 0.5, rpmStart: 1900, rpmEnd: 1900 }
+  { name: 'launch', duration: 100, speed: 30, flow: 0.004, throttle: 0.8 },
+  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, expectDecay: true, initialRaw: 0.003 },
+  { name: 'city', duration: 100, speed: 0, flow: 0.001, throttle: 0 },
+  { name: 'mountains', duration: 100, speed: 15, flow: 0.004, throttle: 0.6 },
+  { name: 'countryside', duration: 100, speed: 20, flow: 0.002, throttle: 0.5 },
+  { name: 'highway', duration: 100, speed: 35, flow: 0.003, throttle: 0.7 },
+  { name: 'snow', duration: 100, speed: 10, flow: 0.0045, throttle: 0.6 },
+  { name: 'summer', duration: 100, speed: 25, flow: 0.0025, throttle: 0.5 },
+  { name: 'desert', duration: 100, speed: 8, flow: 0.0035, throttle: 0.5 },
+  { name: 'engineBrake', duration: 100, speed: 15, flow: 0.004, throttle: 0, expectIdleSame: true },
+  { name: 'coast', duration: 100, speed: 20, flow: 0, throttle: 0, expectCoastIdle: true },
+  { name: 'sport', duration: 100, speed: 30, flow: 0.004, throttle: 0.8 },
+  { name: 'offroad', duration: 100, speed: 12, flow: 0.003, throttle: 0.6 },
+  { name: 'combined', duration: 100, speed: 22, flow: 0.0022, throttle: 0.5 }
 ];
 
 const dt = 1;
@@ -42,16 +42,11 @@ function runCycle() {
   let distance = 0;
   const queue = [];
   let lastFlow = 0;
-  let lastMeasuredFlow = 0;
-  let lastMeasuredRpm = 0;
   let idleFlow = 0;
-  let idleRpm = 0;
   let lastThrottle = segments[0].throttle;
 
   for (const seg of segments) {
     const idleBefore = idleFlow;
-    const lastMeasuredBefore = lastMeasuredFlow;
-    const lastMeasuredRpmBefore = lastMeasuredRpm;
     let startFlow, endFlow;
     if (seg.throttle <= 0.05 && lastThrottle > 0.05) {
       prev = fuel;
@@ -61,14 +56,8 @@ function runCycle() {
       if (seg.initialRaw && t === 0) flowInput = seg.initialRaw;
       const current = fuel - flowInput * dt;
       const raw = calculateFuelFlow(current, prev, dt);
-      const rpm = seg.rpmStart + (seg.rpmEnd - seg.rpmStart) * (t / seg.duration);
-      if (raw > 0 && seg.throttle > 0.05) {
-        lastMeasuredFlow = raw;
-        lastMeasuredRpm = rpm;
-      }
       if (seg.speed <= EPS_SPEED && seg.throttle <= 0.05 && raw > 0) {
         idleFlow = raw;
-        idleRpm = rpm;
       }
       const flow = smoothFuelFlow(
         raw,
@@ -76,13 +65,9 @@ function runCycle() {
         seg.throttle,
         lastFlow,
         idleFlow,
-        idleRpm,
-        rpm,
-        lastMeasuredFlow,
-        lastMeasuredRpm,
         EPS_SPEED
       );
-      if (seg.expectCoastDynamic || seg.expectFallback) {
+      if (seg.expectDecay || seg.expectCoastIdle) {
         if (t === 0) startFlow = flow;
         if (t === seg.duration - 1) endFlow = flow;
       }
@@ -103,16 +88,12 @@ function runCycle() {
     if (seg.expectIdleSame) {
       assert.strictEqual(idleFlow, idleBefore);
     }
-    if (seg.expectCoastDynamic) {
+    if (seg.expectCoastIdle) {
       assert.ok(startFlow > idleFlow);
-      assert.ok(endFlow < startFlow);
-      assert.ok(endFlow >= idleFlow);
+      assert.ok(Math.abs(endFlow - idleFlow) < 1e-9);
     }
-    if (seg.expectFallback) {
-      const expectedStart = lastMeasuredBefore * (seg.rpmStart / lastMeasuredRpmBefore);
-      const expectedEnd = lastMeasuredBefore * (seg.rpmEnd / lastMeasuredRpmBefore);
-      assert.ok(Math.abs(startFlow - expectedStart) < 1e-9);
-      assert.ok(Math.abs(endFlow - expectedEnd) < 1e-4);
+    if (seg.expectDecay) {
+      assert.ok(startFlow > endFlow);
     }
   }
 
@@ -142,9 +123,7 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
   const queue = [];
   let lastFlow = 0;
   let lastMeasuredFlow = 0;
-  let lastMeasuredRpm = 0;
   let idleFlow = 0.001;
-  let idleRpm = 800;
 
   const end = Date.now() + 30_000; // run for ~30s
   while (Date.now() < end) {
@@ -153,18 +132,15 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
     const raw = throttle > 0.1 ? Math.random() * 0.005 : 0; // L/s change
     const current = fuel - raw * dt;
     let flowRate = calculateFuelFlow(current, prev, dt);
-    const rpm = 800 + Math.random() * 4000;
     if (flowRate > 0) {
       lastMeasuredFlow = flowRate;
-      lastMeasuredRpm = rpm;
     }
     if (speed <= EPS_SPEED && throttle <= 0.05 && flowRate > 0) {
       idleFlow = flowRate;
-      idleRpm = rpm;
     }
-    flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, idleRpm, rpm, lastMeasuredFlow, lastMeasuredRpm, EPS_SPEED);
+    flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, EPS_SPEED);
     if (throttle <= 0.05 && speed > EPS_SPEED && raw === 0 && idleFlow > 0) {
-      assert.ok(flowRate >= idleFlow);
+      assert.ok(flowRate > 0);
     }
     const inst = calculateInstantConsumption(flowRate, speed);
 
