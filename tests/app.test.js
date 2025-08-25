@@ -132,6 +132,10 @@ describe('app.js utility functions', () => {
       const pts = buildQueueGraphPoints([0, 100], 100, 40);
       assert.strictEqual(pts, '0.0,40.0 100.0,0.0');
     });
+    it('handles intermediate values', () => {
+      const pts = buildQueueGraphPoints([0, 50, 100], 100, 40);
+      assert.strictEqual(pts, '0.0,40.0 50.0,20.0 100.0,0.0');
+    });
     it('handles zero max values', () => {
       assert.strictEqual(buildQueueGraphPoints([0, 0], 100, 40), '');
     });

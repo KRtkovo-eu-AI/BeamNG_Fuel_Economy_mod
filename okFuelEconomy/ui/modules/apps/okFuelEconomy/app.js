@@ -104,6 +104,7 @@ angular.module('beamng.apps')
         fuelLeft: true,
         fuelCap: true,
         avg: true,
+        avgGraph: true,
         instantLph: true,
         instantL100km: true,
         range: true,
@@ -142,6 +143,7 @@ angular.module('beamng.apps')
       $scope.instantL100km = '';
       $scope.data7 = ''; // overall average
       $scope.tripAvgHistory = '';
+      $scope.avgHistory = '';
 
       var distance_m = 0;
       var lastTime_ms = performance.now();
@@ -174,6 +176,22 @@ angular.module('beamng.apps')
           try { localStorage.setItem(OVERALL_KEY, JSON.stringify(overall)); } catch (e) { /* ignore */ }
       }
 
+      // --------- Average history persistence (NEW) ----------
+      var AVG_KEY = 'okFuelEconomyAvgHistory';
+      var AVG_MAX_ENTRIES = 1000;
+
+      var avgHistory = { queue: [] };
+      try {
+          var savedAvg = JSON.parse(localStorage.getItem(AVG_KEY));
+          if (savedAvg && Array.isArray(savedAvg.queue)) {
+              avgHistory = savedAvg;
+          }
+      } catch (e) { /* ignore */ }
+
+      function saveAvgHistory() {
+          try { localStorage.setItem(AVG_KEY, JSON.stringify(avgHistory)); } catch (e) { /* ignore */ }
+      }
+
       function hardReset() {
         distance_m = 0;
         startFuel_l = null;
@@ -192,9 +210,12 @@ angular.module('beamng.apps')
           $log.debug('<ok-fuel-economy> manual reset overall');
           overall = { queue: [], distance: 0 };
           saveOverall();
+          avgHistory = { queue: [] };
+          saveAvgHistory();
           $scope.data7 = UiUnits.buildString('consumptionRate', 0, 1);
           $scope.data6 = UiUnits.buildString('distance', 0, 1); // reset trip
           $scope.tripAvgHistory = '';
+          $scope.avgHistory = '';
       };
 
       $scope.$on('VehicleFocusChanged', function () {
@@ -350,6 +371,16 @@ angular.module('beamng.apps')
               avg_l_per_100km_ok = overall.previousAvgTrip;
           }
 
+          if (avg_l_per_100km_ok > 0) {
+              avgHistory.queue.push(avg_l_per_100km_ok);
+              trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
+              $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
+              if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
+              if (now_ms - avgHistory.lastSaveTime >= 100) {
+                  saveAvgHistory();
+                  avgHistory.lastSaveTime = now_ms;
+              }
+          }
 
           var rangeVal = calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED);
           var rangeStr = Number.isFinite(rangeVal)
