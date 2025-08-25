@@ -66,7 +66,7 @@ angular.module('beamng.apps')
 
       // --------- Overall persistence (NEW) ----------
       var OVERALL_KEY = 'okFuelEconomyOverall';
-      var MAX_ENTRIES = 1500; // pevný počet hodnot pro frontu
+      var MAX_ENTRIES = 2500; // pevný počet hodnot pro frontu
 
       var overall = { queue: [], distance: 0 }; // fronta posledních průměrů + celková ujetá vzdálenost
       try {
