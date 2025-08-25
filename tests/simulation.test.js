@@ -154,5 +154,39 @@ describe('extended drive simulations', () => {
     assert.strictEqual(tripDistance, 50);
     assert.strictEqual(overallDistance, 100);
   });
+
+  it('simulates long-term operation with repeated vehicle resets', () => {
+    const dt = 1;
+    const speed = 20;
+    const capacity = 60;
+
+    let fuel = capacity;
+    let prevFuel = fuel;
+    let trip = 0;
+    let distance = 0;
+
+    const resets = 5;
+    const stepsPerReset = 200; // total steps = 1000
+
+    for (let r = 0; r < resets; r++) {
+      for (let i = 0; i < stepsPerReset; i++) {
+        const current = prevFuel - 0.001; // constant consumption
+        calculateFuelFlow(current, prevFuel, dt);
+        trip += speed * dt; // trip never resets
+        distance += speed * dt;
+        prevFuel = current;
+        fuel = current;
+      }
+
+      // vehicle reset: fuel back to full, distance counters reset but trip persists
+      fuel = capacity;
+      prevFuel = null; // clearing ensures zero flow on next tick
+      assert.strictEqual(calculateFuelFlow(fuel, prevFuel, dt), 0);
+      distance = 0;
+    }
+
+    assert.strictEqual(trip, resets * stepsPerReset * speed);
+    assert.strictEqual(distance, 0); // last reset leaves distance cleared
+  });
 });
 
