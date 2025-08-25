@@ -1,17 +1,17 @@
 {
   "name" : "Fuel Economy",
   "author": "KRtekTM",
-  "version": "1.0.0.2",
+  "version": "1.0.0.3",
   "description": "Fuel Economy - Average Fuel Consumption",
   "directive": "okFuelEconomy",
   "domElement": "<ok-fuel-economy></ok-fuel-economy>",
   "css": {
 	  "left": "615px",
 	  "top": "65px",
-	  "width": "auto",
-	  "height": "auto",
-      "min-width": "450px",
-      "min-height": "310px"
+    "min-width": "50px",
+    "min-height": "50px",
+    "width": "460px",
+    "height": "270px"
   },
   "types": [
     "ui.apps.categories.vehicle_info"
