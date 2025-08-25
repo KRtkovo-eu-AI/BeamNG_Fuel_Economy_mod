@@ -86,7 +86,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','data5','data6','data7','data8','data9'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9'];
     placeholders.forEach(p => {
       assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
     });
@@ -105,7 +105,8 @@ describe('UI template styling', () => {
   it('allows toggling visibility of heading and subfields', () => {
     assert.ok(html.includes('ng-if="visible.distanceMeasured || visible.distanceEcu"'));
     assert.ok(html.includes('ng-if="visible.fuelUsed || visible.fuelLeft || visible.fuelCap"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap'];
+    assert.ok(html.includes('ng-if="visible.instantLph || visible.instantL100km"'));
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.instantLph','visible.instantL100km'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -136,13 +137,48 @@ describe('controller integration', () => {
       electrics: { wheelspeed: 10, trip: 5, throttle_input: 0 }
     };
     streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
 
     $scope.on_streamsUpdate(null, streams);
 
-    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','data5','data6','data7','data8','data9'];
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
+  });
+
+  it('throttles instant consumption updates', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {};
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 5, throttle_input: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+    const first = $scope.instantLph;
+
+    now = 100;
+    $scope.on_streamsUpdate(null, streams);
+    assert.equal($scope.instantLph, first);
+
+    now = 300;
+    $scope.on_streamsUpdate(null, streams);
+    assert.notStrictEqual($scope.instantLph, first);
   });
 });
 
@@ -167,15 +203,18 @@ describe('visibility settings persistence', () => {
     assert.equal($scope.visible.heading, true);
     $scope.visible.heading = false;
     $scope.visible.fuelLeft = false;
+    $scope.visible.instantLph = false;
     $scope.saveSettings();
 
     assert.ok(store.okFuelEconomyVisible.includes('"heading":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"fuelLeft":false'));
+    assert.ok(store.okFuelEconomyVisible.includes('"instantLph":false'));
 
     const $scope2 = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope2);
     assert.equal($scope2.visible.heading, false);
     assert.equal($scope2.visible.fuelLeft, false);
+    assert.equal($scope2.visible.instantLph, false);
     assert.equal($scope2.visible.fuelUsed, true);
   });
 });

@@ -42,12 +42,14 @@
       </td>
     </tr>
 
-    <tr ng-if="visible.instant">
+    <tr ng-if="visible.instantLph || visible.instantL100km">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Instant consumption:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        {{ data5 }}
+        <span ng-if="visible.instantLph">{{ instantLph }}</span>
+        <span ng-if="visible.instantLph && visible.instantL100km"> | </span>
+        <span ng-if="visible.instantL100km">{{ instantL100km }}</span>
       </td>
     </tr>
 
@@ -130,7 +132,8 @@
     <label><input type="checkbox" ng-model="visible.fuelLeft"> Fuel left</label><br>
     <label><input type="checkbox" ng-model="visible.fuelCap"> Fuel capacity</label><br>
     <label><input type="checkbox" ng-model="visible.avg"> Average consumption</label><br>
-    <label><input type="checkbox" ng-model="visible.instant"> Instant consumption</label><br>
+    <label><input type="checkbox" ng-model="visible.instantLph"> Instant L/h</label><br>
+    <label><input type="checkbox" ng-model="visible.instantL100km"> Instant L/100km</label><br>
     <label><input type="checkbox" ng-model="visible.range"> Range</label><br>
     <label><input type="checkbox" ng-model="visible.tripAvg"> Trip average consumption</label><br>
     <label><input type="checkbox" ng-model="visible.tripDistance"> Trip distance</label><br>
