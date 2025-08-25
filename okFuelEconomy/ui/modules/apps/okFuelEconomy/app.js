@@ -45,13 +45,52 @@ angular.module('beamng.apps')
         StreamsManager.remove(streamsList);
       });
 
+      // Settings for visible fields
+      var SETTINGS_KEY = 'okFuelEconomyVisible';
+      $scope.settingsOpen = false;
+      $scope.visible = {
+        heading: true,
+        distanceMeasured: true,
+        distanceEcu: true,
+        fuelUsed: true,
+        fuelLeft: true,
+        fuelCap: true,
+        avg: true,
+        instantLph: true,
+        instantL100km: true,
+        range: true,
+        tripAvg: true,
+        tripDistance: true,
+        tripRange: true,
+        tripReset: true
+      };
+      try {
+        var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+        if (s && typeof s === 'object') {
+          // backward compatibility for old "instant" flag
+          if ('instant' in s && !('instantLph' in s) && !('instantL100km' in s)) {
+            s.instantLph = s.instantL100km = s.instant;
+            delete s.instant;
+          }
+          Object.assign($scope.visible, s);
+        }
+      } catch (e) { /* ignore */ }
+
+      $scope.saveSettings = function () {
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible)); } catch (e) { /* ignore */ }
+        $scope.settingsOpen = false;
+      };
+
       // UI outputs
-      $scope.data1 = ''; // distance
-      $scope.data6 = ''; // trip
-      $scope.data2 = ''; // fuel used / left / cap
+      $scope.data1 = ''; // distance measured
+      $scope.data6 = ''; // distance from ECU
+      $scope.fuelUsed = '';
+      $scope.fuelLeft = '';
+      $scope.fuelCap = '';
       $scope.data3 = ''; // avg consumption
       $scope.data4 = ''; // range
-      $scope.data5 = ''; // instant consumption
+      $scope.instantLph = '';
+      $scope.instantL100km = '';
       $scope.data7 = ''; // overall average
 
       var distance_m = 0;
@@ -61,6 +100,8 @@ angular.module('beamng.apps')
 
       var lastCapacity_l = null;
       var EPS_SPEED = 0.005; // [m/s] ignore noise
+      var lastInstantUpdate_ms = 0;
+      var INSTANT_UPDATE_INTERVAL = 250;
 
       $scope.vehicleNameStr = "";
 
@@ -155,7 +196,13 @@ angular.module('beamng.apps')
 
           var inst_l_per_h = fuelFlow_lps * 3600;
           var inst_l_per_100km = calculateInstantConsumption(fuelFlow_lps, speed_mps);
-          var instantStr = inst_l_per_h.toFixed(1) + ' L/h (' + inst_l_per_100km.toFixed(1) + ' L/100km)';
+          if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
+            $scope.instantLph = inst_l_per_h.toFixed(1) + ' L/h';
+            $scope.instantL100km = Number.isFinite(inst_l_per_100km)
+              ? inst_l_per_100km.toFixed(1) + ' L/100km'
+              : 'Infinity';
+            lastInstantUpdate_ms = now_ms;
+          }
 
           // ---------- Overall update (NEW) ----------
           var deltaDistance = speed_mps * dt;
@@ -245,12 +292,11 @@ angular.module('beamng.apps')
                          : 'Infinity';
 
           $scope.data1 = UiUnits.buildString('distance', distance_m, 1);
-          $scope.data2 = fuel_used_l.toFixed(2) + ' L used / ' +
-                         UiUnits.buildString('volume', currentFuel_l, 2) + ' left / ' +
-                         UiUnits.buildString('volume', capacity_l, 1) + ' cap';
+          $scope.fuelUsed = fuel_used_l.toFixed(2) + ' L';
+          $scope.fuelLeft = UiUnits.buildString('volume', currentFuel_l, 2);
+          $scope.fuelCap = UiUnits.buildString('volume', capacity_l, 1);
           $scope.data3 = UiUnits.buildString('consumptionRate', avg_l_per_100km_ok, 1);
           $scope.data4 = rangeStr;
-          $scope.data5 = instantStr;
           $scope.data6 = UiUnits.buildString('distance', trip_m, 1);
           $scope.data7 = UiUnits.buildString('consumptionRate', overall_median, 1);
           $scope.data8 = UiUnits.buildString('distance', overall.distance, 1);
