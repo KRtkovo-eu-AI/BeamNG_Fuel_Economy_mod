@@ -9,7 +9,8 @@ const {
   calculateInstantConsumption,
   smoothFuelFlow,
   trimQueue,
-  calculateRange
+  calculateRange,
+  buildQueueGraphPoints
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('app.js utility functions', () => {
@@ -120,6 +121,23 @@ describe('app.js utility functions', () => {
     });
     it('treats negative avg as no consumption while stopped', () => {
       assert.strictEqual(calculateRange(10, -5, 0, EPS_SPEED), 0);
+    });
+  });
+
+  describe('buildQueueGraphPoints', () => {
+    it('returns empty string for short queues', () => {
+      assert.strictEqual(buildQueueGraphPoints([1], 100, 40), '');
+    });
+    it('scales values to width and height', () => {
+      const pts = buildQueueGraphPoints([0, 100], 100, 40);
+      assert.strictEqual(pts, '0.0,40.0 100.0,0.0');
+    });
+    it('handles intermediate values', () => {
+      const pts = buildQueueGraphPoints([0, 50, 100], 100, 40);
+      assert.strictEqual(pts, '0.0,40.0 50.0,20.0 100.0,0.0');
+    });
+    it('handles zero max values', () => {
+      assert.strictEqual(buildQueueGraphPoints([0, 0], 100, 40), '');
     });
   });
 });
