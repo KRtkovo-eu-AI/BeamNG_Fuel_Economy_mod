@@ -14,6 +14,8 @@ const {
 
 // Driving segments used for repeated environment cycles
 const segments = [
+  { name: 'launch', duration: 100, speed: 30, flow: 0.004, throttle: 0.8, rpmStart: 2500, rpmEnd: 2500 },
+  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, rpmStart: 2500, rpmEnd: 800, expectFallback: true },
   { name: 'city', duration: 100, speed: 0, flow: 0.001, throttle: 0, rpmStart: 800, rpmEnd: 800 },
   { name: 'mountains', duration: 100, speed: 15, flow: 0.004, throttle: 0.6, rpmStart: 2000, rpmEnd: 2000 },
   { name: 'countryside', duration: 100, speed: 20, flow: 0.002, throttle: 0.5, rpmStart: 1800, rpmEnd: 1800 },
@@ -40,16 +42,24 @@ function runCycle() {
   let distance = 0;
   const queue = [];
   let lastFlow = 0;
+  let lastMeasuredFlow = 0;
+  let lastMeasuredRpm = 0;
   let idleFlow = 0;
   let idleRpm = 0;
 
   for (const seg of segments) {
     const idleBefore = idleFlow;
+    const lastMeasuredBefore = lastMeasuredFlow;
+    const lastMeasuredRpmBefore = lastMeasuredRpm;
     let startFlow, endFlow;
     for (let t = 0; t < seg.duration; t += dt) {
       const current = fuel - seg.flow * dt;
       const raw = calculateFuelFlow(current, prev, dt);
       const rpm = seg.rpmStart + (seg.rpmEnd - seg.rpmStart) * (t / seg.duration);
+      if (raw > 0) {
+        lastMeasuredFlow = raw;
+        lastMeasuredRpm = rpm;
+      }
       if (seg.speed <= EPS_SPEED && seg.throttle <= 0.05 && raw > 0) {
         idleFlow = raw;
         idleRpm = rpm;
@@ -62,9 +72,11 @@ function runCycle() {
         idleFlow,
         idleRpm,
         rpm,
+        lastMeasuredFlow,
+        lastMeasuredRpm,
         EPS_SPEED
       );
-      if (seg.expectCoastDynamic) {
+      if (seg.expectCoastDynamic || seg.expectFallback) {
         if (t === 0) startFlow = flow;
         if (t === seg.duration - 1) endFlow = flow;
       }
@@ -88,6 +100,12 @@ function runCycle() {
       assert.ok(startFlow > idleFlow);
       assert.ok(endFlow < startFlow);
       assert.ok(endFlow >= idleFlow);
+    }
+    if (seg.expectFallback) {
+      const expectedStart = lastMeasuredBefore * (seg.rpmStart / lastMeasuredRpmBefore);
+      const expectedEnd = lastMeasuredBefore * (seg.rpmEnd / lastMeasuredRpmBefore);
+      assert.ok(Math.abs(startFlow - expectedStart) < 1e-9);
+      assert.ok(Math.abs(endFlow - expectedEnd) < 1e-4);
     }
   }
 
@@ -116,6 +134,8 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
   let distance = 0;
   const queue = [];
   let lastFlow = 0;
+  let lastMeasuredFlow = 0;
+  let lastMeasuredRpm = 0;
   let idleFlow = 0.001;
   let idleRpm = 800;
 
@@ -127,11 +147,15 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
     const current = fuel - raw * dt;
     let flowRate = calculateFuelFlow(current, prev, dt);
     const rpm = 800 + Math.random() * 4000;
+    if (flowRate > 0) {
+      lastMeasuredFlow = flowRate;
+      lastMeasuredRpm = rpm;
+    }
     if (speed <= EPS_SPEED && throttle <= 0.05 && flowRate > 0) {
       idleFlow = flowRate;
       idleRpm = rpm;
     }
-    flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, idleRpm, rpm, EPS_SPEED);
+    flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, idleRpm, rpm, lastMeasuredFlow, lastMeasuredRpm, EPS_SPEED);
     if (throttle <= 0.05 && speed > EPS_SPEED && raw === 0 && idleFlow > 0) {
       assert.ok(flowRate >= idleFlow);
     }
