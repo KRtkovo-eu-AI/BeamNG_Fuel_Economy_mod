@@ -26,12 +26,12 @@ function smoothFuelFlow(
   }
   if (speed_mps > EPS_SPEED) {
     if (throttle <= 0.05) {
-      if (idleFuelFlow_lps > 0) {
-        if (idleRPM > 0 && rpm > idleRPM) {
-          return idleFuelFlow_lps * (idleRPM / rpm);
+        if (idleFuelFlow_lps > 0) {
+          if (idleRPM > 0 && rpm > idleRPM) {
+            return idleFuelFlow_lps * (rpm / idleRPM);
+          }
+          return idleFuelFlow_lps;
         }
-        return idleFuelFlow_lps;
-      }
       return lastFuelFlow_lps;
     }
     return lastFuelFlow_lps;

@@ -85,9 +85,9 @@ function runCycle() {
       assert.strictEqual(idleFlow, idleBefore);
     }
     if (seg.expectCoastDynamic) {
-      assert.ok(startFlow < idleFlow);
-      assert.ok(endFlow > startFlow);
-      assert.ok(endFlow <= idleFlow);
+      assert.ok(startFlow > idleFlow);
+      assert.ok(endFlow < startFlow);
+      assert.ok(endFlow >= idleFlow);
     }
   }
 
@@ -133,7 +133,7 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
     }
     flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, idleRpm, rpm, EPS_SPEED);
     if (throttle <= 0.05 && speed > EPS_SPEED && raw === 0 && idleFlow > 0) {
-      assert.ok(flowRate <= idleFlow);
+      assert.ok(flowRate >= idleFlow);
     }
     const inst = calculateInstantConsumption(flowRate, speed);
 

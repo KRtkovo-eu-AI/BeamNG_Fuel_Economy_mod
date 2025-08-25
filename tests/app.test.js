@@ -101,9 +101,9 @@ describe('app.js utility functions', () => {
       prev = curr;
       curr = 9.9;
       let flow2 = calculateFuelFlow(curr, prev, dt); // 0
-      flow2 = smoothFuelFlow(flow2, speed, 0, flow, idle, 800, 1200, EPS_SPEED); // should use idle
+      flow2 = smoothFuelFlow(flow2, speed, 0, flow, idle, 800, 1200, EPS_SPEED); // should use idle scaled by rpm
       const inst = calculateInstantConsumption(flow2, speed);
-      assert.strictEqual(flow2, idle * (800 / 1200));
+      assert.strictEqual(flow2, idle * (1200 / 800));
       assert.ok(inst > 0);
     });
 
@@ -113,7 +113,20 @@ describe('app.js utility functions', () => {
       const rpm = 1600;
       const last = 0.02;
       const res = smoothFuelFlow(0, 10, 0, last, idle, idleRpm, rpm, EPS_SPEED);
-      assert.strictEqual(res, idle * (idleRpm / rpm));
+      assert.strictEqual(res, idle * (rpm / idleRpm));
+    });
+
+    it('updates flow each frame as rpm changes while coasting', () => {
+      const idle = 0.01;
+      const idleRpm = 800;
+      const speed = 10;
+      let last = 0.02;
+      const flow1 = smoothFuelFlow(0, speed, 0, last, idle, idleRpm, 2000, EPS_SPEED);
+      last = flow1;
+      const flow2 = smoothFuelFlow(0, speed, 0, last, idle, idleRpm, 1500, EPS_SPEED);
+      assert.strictEqual(flow1, idle * (2000 / idleRpm));
+      assert.strictEqual(flow2, idle * (1500 / idleRpm));
+      assert.notStrictEqual(flow1, flow2);
     });
   });
 
