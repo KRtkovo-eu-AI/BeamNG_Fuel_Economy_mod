@@ -10,7 +10,7 @@
 
   <table ng-attr-style="{{ useCustomStyles ? 'width:100%; border-collapse:collapse; font-size:0.85em;' : '' }}">
     <tr ng-if="visible.distanceMeasured || visible.distanceEcu">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:42%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Traveled distance:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
@@ -21,14 +21,14 @@
     </tr>
 
     <tr ng-if="visible.fuelUsed || visible.fuelLeft || visible.fuelCap">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:42%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Fuel (used / left / capacity):
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Fuel:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         <span ng-if="visible.fuelUsed">Used: {{ fuelUsed }}</span>
-        <span ng-if="visible.fuelUsed && (visible.fuelLeft || visible.fuelCap)"> / </span>
+        <span ng-if="visible.fuelUsed && (visible.fuelLeft || visible.fuelCap)"> | </span>
         <span ng-if="visible.fuelLeft">Left: {{ fuelLeft }}</span>
-        <span ng-if="visible.fuelLeft && visible.fuelCap"> / </span>
+        <span ng-if="visible.fuelLeft && visible.fuelCap"> | </span>
         <span ng-if="visible.fuelCap">Capacity: {{ fuelCap }}</span>
       </td>
     </tr>
