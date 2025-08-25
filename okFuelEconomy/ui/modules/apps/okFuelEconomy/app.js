@@ -45,6 +45,32 @@ angular.module('beamng.apps')
         StreamsManager.remove(streamsList);
       });
 
+      // Settings for visible fields
+      var SETTINGS_KEY = 'okFuelEconomyVisible';
+      $scope.settingsOpen = false;
+      $scope.visible = {
+        distance: true,
+        fuel: true,
+        avg: true,
+        instant: true,
+        range: true,
+        tripAvg: true,
+        tripDistance: true,
+        tripRange: true,
+        tripReset: true
+      };
+      try {
+        var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+        if (s && typeof s === 'object') {
+          Object.assign($scope.visible, s);
+        }
+      } catch (e) { /* ignore */ }
+
+      $scope.saveSettings = function () {
+        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible)); } catch (e) { /* ignore */ }
+        $scope.settingsOpen = false;
+      };
+
       // UI outputs
       $scope.data1 = ''; // distance
       $scope.data6 = ''; // trip

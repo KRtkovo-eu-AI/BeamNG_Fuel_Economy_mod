@@ -58,21 +58,22 @@ describe('UI template styling', () => {
     assert.ok(!styleTrue.includes("url('app.png')"));
   });
 
-  it('positions reset and style toggle icons consistently', () => {
+  it('positions reset, style toggle and settings icons consistently', () => {
     const resetAttr = getNgAttrStyle('ng-click="reset($event)"');
     const toggleAttr = getNgAttrStyle('ng-click="useCustomStyles=!useCustomStyles"');
+    const settingsAttr = getNgAttrStyle('ng-click="settingsOpen=!settingsOpen"');
     const r = parseStyle(resetAttr);
     const t = parseStyle(toggleAttr);
+    const s = parseStyle(settingsAttr);
 
     assert.ok(r.base.includes('position:absolute; top:2px; right:4px;'));
     assert.ok(t.base.includes('position:absolute; top:24px; right:4px;'));
-    assert.ok(r.base.includes('cursor:pointer;'));
-    assert.ok(t.base.includes('cursor:pointer;'));
-    assert.ok(r.base.includes('font-size:18px;'));
-    assert.ok(t.base.includes('font-size:18px;'));
-
-    assert.ok(r.custom.includes('color:#5fdcff;'));
-    assert.ok(t.custom.includes('color:#5fdcff;'));
+    assert.ok(s.base.includes('position:absolute; top:46px; right:4px;'));
+    [r, t, s].forEach(obj => {
+      assert.ok(obj.base.includes('cursor:pointer;'));
+      assert.ok(obj.base.includes('font-size:18px;'));
+      assert.ok(obj.custom.includes('color:#5fdcff;'));
+    });
   });
 
   it('preserves neon background and typography when custom styles are enabled', () => {
@@ -91,8 +92,10 @@ describe('UI template styling', () => {
     assert.ok(html.includes('{{ vehicleNameStr }}'));
     assert.ok(html.includes('ng-click="reset($event)"'));
     assert.ok(html.includes('ng-click="useCustomStyles=!useCustomStyles"'));
+    assert.ok(html.includes('ng-click="settingsOpen=!settingsOpen"'));
     assert.ok(html.includes('autorenew'));
     assert.ok(html.includes('palette'));
+    assert.ok(html.includes('settings'));
   });
 });
 

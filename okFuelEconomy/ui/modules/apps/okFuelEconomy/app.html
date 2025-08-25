@@ -8,7 +8,7 @@
   </strong>
 
   <table ng-attr-style="{{ useCustomStyles ? 'width:100%; border-collapse:collapse; font-size:0.85em;' : '' }}">
-    <tr>
+    <tr ng-if="visible.distance">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:42%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Traveled distance:
       </td>
@@ -17,7 +17,7 @@
       </td>
     </tr>
 
-    <tr>
+    <tr ng-if="visible.fuel">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:42%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Fuel (used / left / capacity):
       </td>
@@ -26,7 +26,7 @@
       </td>
     </tr>
 
-    <tr>
+    <tr ng-if="visible.avg">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Average consumption:
       </td>
@@ -35,7 +35,7 @@
       </td>
     </tr>
 
-    <tr>
+    <tr ng-if="visible.instant">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Instant consumption:
       </td>
@@ -44,7 +44,7 @@
       </td>
     </tr>
 
-    <tr>
+    <tr ng-if="visible.range">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Range:
       </td>
@@ -53,7 +53,7 @@
       </td>
     </tr>
 
-    <tr>
+    <tr ng-if="visible.tripAvg">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip average consumption:
       </td>
@@ -62,7 +62,7 @@
       </td>
     </tr>
 
-    <tr>
+    <tr ng-if="visible.tripDistance">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip distance:
       </td>
@@ -71,7 +71,7 @@
       </td>
     </tr>
 
-    <tr>
+    <tr ng-if="visible.tripRange">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip range:
       </td>
@@ -80,7 +80,7 @@
       </td>
     </tr>
 
-    <tr>
+    <tr ng-if="visible.tripReset">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip reset:
       </td>
@@ -106,4 +106,25 @@
         ng-attr-style="{{ 'position:absolute; top:24px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
     palette
   </span>
+  <!-- Settings icon -->
+  <span class="material-icons"
+        ng-click="settingsOpen=!settingsOpen"
+        ng-attr-style="{{ 'position:absolute; top:46px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
+    settings
+  </span>
+
+  <!-- Settings dialog -->
+  <div ng-if="settingsOpen"
+       ng-attr-style="{{ 'position:absolute; top:68px; right:4px; z-index:10; background:rgba(0,0,0,0.85); padding:8px; border-radius:6px;' + (useCustomStyles ? ' color:#aeeaff; border:1px solid #5fdcff;' : ' color:#fff; border:1px solid #ccc; background:#333;') }}">
+    <label><input type="checkbox" ng-model="visible.distance"> Traveled distance</label><br>
+    <label><input type="checkbox" ng-model="visible.fuel"> Fuel</label><br>
+    <label><input type="checkbox" ng-model="visible.avg"> Average consumption</label><br>
+    <label><input type="checkbox" ng-model="visible.instant"> Instant consumption</label><br>
+    <label><input type="checkbox" ng-model="visible.range"> Range</label><br>
+    <label><input type="checkbox" ng-model="visible.tripAvg"> Trip average consumption</label><br>
+    <label><input type="checkbox" ng-model="visible.tripDistance"> Trip distance</label><br>
+    <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
+    <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
+    <button ng-click="saveSettings()">Save</button>
+  </div>
 </div>
