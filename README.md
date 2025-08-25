@@ -16,6 +16,7 @@ This repository contains a UI mod for BeamNG.drive that displays fuel economy in
 - Estimated range based on current and long-term consumption.
 - Long-term consumption overview with reset option.
 - Trip statistics showing average consumption, distance and range, with reset control.
+- History graphs for average and trip average fuel consumption with toggleable visibility and custom style support.
 - Hide or show heading and individual data points through an in-app settings dialog that remembers user choices.
 - Switch between the default BeamNG style and a custom neon-themed look.
 
