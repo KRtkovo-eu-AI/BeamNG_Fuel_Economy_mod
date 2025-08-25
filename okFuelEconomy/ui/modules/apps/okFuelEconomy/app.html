@@ -3,26 +3,33 @@
      ng-attr-style="{{ 'width:100%; height:100%; overflow:auto; position:relative;' + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:16px 16px,16px 16px; color:#aeeaff; font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
      layout="column">
 
-  <strong ng-attr-style="{{ useCustomStyles ? 'display:block; margin:2px 0 4px; padding-left: 2px; font-size:1em; font-weight:600; color:#3fd6ff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '' }}">
+  <strong ng-if="visible.heading"
+          ng-attr-style="{{ useCustomStyles ? 'display:block; margin:2px 0 4px; padding-left: 2px; font-size:1em; font-weight:600; color:#3fd6ff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '' }}">
     Fuel Economy: {{ vehicleNameStr }}
   </strong>
 
   <table ng-attr-style="{{ useCustomStyles ? 'width:100%; border-collapse:collapse; font-size:0.85em;' : '' }}">
-    <tr ng-if="visible.distance">
+    <tr ng-if="visible.distanceMeasured || visible.distanceEcu">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:42%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Traveled distance:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Measured: {{ data1 }} | From ECU: {{ data6 }}
+        <span ng-if="visible.distanceMeasured">Measured: {{ data1 }}</span>
+        <span ng-if="visible.distanceMeasured && visible.distanceEcu"> | </span>
+        <span ng-if="visible.distanceEcu">From ECU: {{ data6 }}</span>
       </td>
     </tr>
 
-    <tr ng-if="visible.fuel">
+    <tr ng-if="visible.fuelUsed || visible.fuelLeft || visible.fuelCap">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:42%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Fuel (used / left / capacity):
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        {{ data2 }}
+        <span ng-if="visible.fuelUsed">Used: {{ fuelUsed }}</span>
+        <span ng-if="visible.fuelUsed && (visible.fuelLeft || visible.fuelCap)"> / </span>
+        <span ng-if="visible.fuelLeft">Left: {{ fuelLeft }}</span>
+        <span ng-if="visible.fuelLeft && visible.fuelCap"> / </span>
+        <span ng-if="visible.fuelCap">Capacity: {{ fuelCap }}</span>
       </td>
     </tr>
 
@@ -116,8 +123,12 @@
   <!-- Settings dialog -->
   <div ng-if="settingsOpen"
        ng-attr-style="{{ 'position:absolute; top:68px; right:4px; z-index:10; background:rgba(0,0,0,0.85); padding:8px; border-radius:6px;' + (useCustomStyles ? ' color:#aeeaff; border:1px solid #5fdcff;' : ' color:#fff; border:1px solid #ccc; background:#333;') }}">
-    <label><input type="checkbox" ng-model="visible.distance"> Traveled distance</label><br>
-    <label><input type="checkbox" ng-model="visible.fuel"> Fuel</label><br>
+    <label><input type="checkbox" ng-model="visible.heading"> Heading</label><br>
+    <label><input type="checkbox" ng-model="visible.distanceMeasured"> Distance measured</label><br>
+    <label><input type="checkbox" ng-model="visible.distanceEcu"> Distance from ECU</label><br>
+    <label><input type="checkbox" ng-model="visible.fuelUsed"> Fuel used</label><br>
+    <label><input type="checkbox" ng-model="visible.fuelLeft"> Fuel left</label><br>
+    <label><input type="checkbox" ng-model="visible.fuelCap"> Fuel capacity</label><br>
     <label><input type="checkbox" ng-model="visible.avg"> Average consumption</label><br>
     <label><input type="checkbox" ng-model="visible.instant"> Instant consumption</label><br>
     <label><input type="checkbox" ng-model="visible.range"> Range</label><br>
@@ -125,6 +136,9 @@
     <label><input type="checkbox" ng-model="visible.tripDistance"> Trip distance</label><br>
     <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
     <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
-    <button ng-click="saveSettings()">Save</button>
+    <button ng-click="saveSettings()"
+            ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">
+      <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
+    </button>
   </div>
 </div>

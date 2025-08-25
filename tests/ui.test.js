@@ -86,16 +86,29 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    for (let i = 1; i <= 9; i++) {
-      assert.ok(html.includes(`{{ data${i} }}`), `missing data${i}`);
-    }
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','data5','data6','data7','data8','data9'];
+    placeholders.forEach(p => {
+      assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
+    });
     assert.ok(html.includes('{{ vehicleNameStr }}'));
+    assert.ok(html.includes('strong ng-if="visible.heading"'));
     assert.ok(html.includes('ng-click="reset($event)"'));
     assert.ok(html.includes('ng-click="useCustomStyles=!useCustomStyles"'));
     assert.ok(html.includes('ng-click="settingsOpen=!settingsOpen"'));
     assert.ok(html.includes('autorenew'));
     assert.ok(html.includes('palette'));
     assert.ok(html.includes('settings'));
+    assert.ok(html.includes('<span class="material-icons"')); 
+    assert.ok(html.includes('save</span>'));
+  });
+
+  it('allows toggling visibility of heading and subfields', () => {
+    assert.ok(html.includes('ng-if="visible.distanceMeasured || visible.distanceEcu"'));
+    assert.ok(html.includes('ng-if="visible.fuelUsed || visible.fuelLeft || visible.fuelCap"'));
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap'];
+    toggles.forEach(t => {
+      assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
+    });
   });
 });
 
@@ -126,8 +139,43 @@ describe('controller integration', () => {
 
     $scope.on_streamsUpdate(null, streams);
 
-    for (let i = 1; i <= 9; i++) {
-      assert.notStrictEqual($scope['data' + i], '', `data${i} empty`);
-    }
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','data5','data6','data7','data8','data9'];
+    fields.forEach(f => {
+      assert.notStrictEqual($scope[f], '', `${f} empty`);
+    });
+  });
+});
+
+describe('visibility settings persistence', () => {
+  it('saves and restores user choices', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {};
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+
+    assert.equal($scope.visible.heading, true);
+    $scope.visible.heading = false;
+    $scope.visible.fuelLeft = false;
+    $scope.saveSettings();
+
+    assert.ok(store.okFuelEconomyVisible.includes('"heading":false'));
+    assert.ok(store.okFuelEconomyVisible.includes('"fuelLeft":false'));
+
+    const $scope2 = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope2);
+    assert.equal($scope2.visible.heading, false);
+    assert.equal($scope2.visible.fuelLeft, false);
+    assert.equal($scope2.visible.fuelUsed, true);
   });
 });

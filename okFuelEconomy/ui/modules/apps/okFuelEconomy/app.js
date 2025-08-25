@@ -49,8 +49,12 @@ angular.module('beamng.apps')
       var SETTINGS_KEY = 'okFuelEconomyVisible';
       $scope.settingsOpen = false;
       $scope.visible = {
-        distance: true,
-        fuel: true,
+        heading: true,
+        distanceMeasured: true,
+        distanceEcu: true,
+        fuelUsed: true,
+        fuelLeft: true,
+        fuelCap: true,
         avg: true,
         instant: true,
         range: true,
@@ -72,9 +76,11 @@ angular.module('beamng.apps')
       };
 
       // UI outputs
-      $scope.data1 = ''; // distance
-      $scope.data6 = ''; // trip
-      $scope.data2 = ''; // fuel used / left / cap
+      $scope.data1 = ''; // distance measured
+      $scope.data6 = ''; // distance from ECU
+      $scope.fuelUsed = '';
+      $scope.fuelLeft = '';
+      $scope.fuelCap = '';
       $scope.data3 = ''; // avg consumption
       $scope.data4 = ''; // range
       $scope.data5 = ''; // instant consumption
@@ -271,9 +277,9 @@ angular.module('beamng.apps')
                          : 'Infinity';
 
           $scope.data1 = UiUnits.buildString('distance', distance_m, 1);
-          $scope.data2 = fuel_used_l.toFixed(2) + ' L used / ' +
-                         UiUnits.buildString('volume', currentFuel_l, 2) + ' left / ' +
-                         UiUnits.buildString('volume', capacity_l, 1) + ' cap';
+          $scope.fuelUsed = fuel_used_l.toFixed(2) + ' L';
+          $scope.fuelLeft = UiUnits.buildString('volume', currentFuel_l, 2);
+          $scope.fuelCap = UiUnits.buildString('volume', capacity_l, 1);
           $scope.data3 = UiUnits.buildString('consumptionRate', avg_l_per_100km_ok, 1);
           $scope.data4 = rangeStr;
           $scope.data5 = instantStr;
