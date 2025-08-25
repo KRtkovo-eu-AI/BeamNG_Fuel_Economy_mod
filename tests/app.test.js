@@ -7,6 +7,7 @@ global.angular = { module: () => ({ directive: () => ({}) }) };
 const {
   calculateFuelFlow,
   calculateInstantConsumption,
+  smoothFuelFlow,
   trimQueue,
   calculateRange
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -60,6 +61,46 @@ describe('app.js utility functions', () => {
       const queue = [1, 2, 3];
       trimQueue(queue, 0);
       assert.deepStrictEqual(queue, []);
+    });
+  });
+
+  describe('smoothFuelFlow', () => {
+    const EPS_SPEED = 0.005;
+    it('retains last flow when throttle applied but fuel reading static', () => {
+      const last = 0.01;
+      const res = smoothFuelFlow(0, 5, 0.6, last, 0.002, EPS_SPEED);
+      assert.strictEqual(res, last);
+    });
+    it('uses idle flow when coasting with zero throttle', () => {
+      const last = 0.03;
+      const idle = 0.005;
+      const res = smoothFuelFlow(0, 5, 0, last, idle, EPS_SPEED);
+      assert.ok(res < last);
+    });
+    it('updates to new positive flow', () => {
+      const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, EPS_SPEED);
+      assert.strictEqual(res, 0.02);
+    });
+    it('moves toward idle when stopped', () => {
+      const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, EPS_SPEED);
+      assert.ok(res < 0.01);
+      assert.ok(res > 0.005);
+    });
+    it('eases towards idle while coasting', () => {
+      const idle = 0.005;
+      let last = 0.02;
+      const flow1 = smoothFuelFlow(0, 20, 0, last, idle, EPS_SPEED);
+      const flow2 = smoothFuelFlow(0, 20, 0, flow1, idle, EPS_SPEED);
+      assert.ok(flow1 < last);
+      assert.ok(flow2 < flow1);
+      assert.ok(flow2 > idle);
+    });
+    it('decays when idle is unknown', () => {
+      let last = 0.03;
+      const flow1 = smoothFuelFlow(0, 25, 0, last, 0, EPS_SPEED);
+      const flow2 = smoothFuelFlow(0, 25, 0, flow1, 0, EPS_SPEED);
+      assert.ok(flow1 < last);
+      assert.ok(flow2 < flow1);
     });
   });
 

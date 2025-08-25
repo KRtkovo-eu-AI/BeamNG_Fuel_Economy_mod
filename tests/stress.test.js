@@ -7,39 +7,70 @@ global.angular = { module: () => ({ directive: () => ({}) }) };
 const {
   calculateFuelFlow,
   calculateInstantConsumption,
+  smoothFuelFlow,
   trimQueue,
   calculateRange
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 // Driving segments used for repeated environment cycles
 const segments = [
-  { name: 'mountains', duration: 100, speed: 15, flow: 0.004 },
-  { name: 'countryside', duration: 100, speed: 20, flow: 0.002 },
-  { name: 'highway', duration: 100, speed: 35, flow: 0.003 },
-  { name: 'snow', duration: 100, speed: 10, flow: 0.0045 },
-  { name: 'summer', duration: 100, speed: 25, flow: 0.0025 },
-  { name: 'desert', duration: 100, speed: 8, flow: 0.0035 },
-  { name: 'city', duration: 100, speed: 0, flow: 0.001 },
-  { name: 'sport', duration: 100, speed: 30, flow: 0.004 },
-  { name: 'offroad', duration: 100, speed: 12, flow: 0.003 },
-  { name: 'combined', duration: 100, speed: 22, flow: 0.0022 }
+  { name: 'launch', duration: 100, speed: 30, flow: 0.004, throttle: 0.8 },
+  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, expectDecay: true, initialRaw: 0.003 },
+  { name: 'city', duration: 100, speed: 0, flow: 0.001, throttle: 0 },
+  { name: 'mountains', duration: 100, speed: 15, flow: 0.004, throttle: 0.6 },
+  { name: 'countryside', duration: 100, speed: 20, flow: 0.002, throttle: 0.5 },
+  { name: 'highway', duration: 100, speed: 35, flow: 0.003, throttle: 0.7 },
+  { name: 'snow', duration: 100, speed: 10, flow: 0.0045, throttle: 0.6 },
+  { name: 'summer', duration: 100, speed: 25, flow: 0.0025, throttle: 0.5 },
+  { name: 'desert', duration: 100, speed: 8, flow: 0.0035, throttle: 0.5 },
+  { name: 'engineBrake', duration: 100, speed: 15, flow: 0.004, throttle: 0, expectIdleSame: true },
+  { name: 'coast', duration: 100, speed: 20, flow: 0, throttle: 0, expectCoastIdle: true },
+  { name: 'sport', duration: 100, speed: 30, flow: 0.004, throttle: 0.8 },
+  { name: 'offroad', duration: 100, speed: 12, flow: 0.003, throttle: 0.6 },
+  { name: 'combined', duration: 100, speed: 22, flow: 0.0022, throttle: 0.5 }
 ];
 
 const dt = 1;
 const capacity = 60;
-const expectedFuelUsed = segments.reduce((s, seg) => s + seg.flow * seg.duration, 0);
+const expectedFuelUsed = segments.reduce((s, seg) => s + seg.flow * seg.duration + (seg.initialRaw || 0), 0);
 const expectedDistance = segments.reduce((s, seg) => s + seg.speed * seg.duration, 0);
 
 function runCycle() {
+  const EPS_SPEED = 0.005;
   let fuel = capacity;
   let prev = fuel;
   let distance = 0;
   const queue = [];
+  let lastFlow = 0;
+  let idleFlow = 0;
+  let lastThrottle = segments[0].throttle;
 
   for (const seg of segments) {
+    const idleBefore = idleFlow;
+    let startFlow, endFlow;
+    if (seg.throttle <= 0.05 && lastThrottle > 0.05) {
+      prev = fuel;
+    }
     for (let t = 0; t < seg.duration; t += dt) {
-      const current = fuel - seg.flow * dt;
-      const flow = calculateFuelFlow(current, prev, dt);
+      let flowInput = seg.flow;
+      if (seg.initialRaw && t === 0) flowInput = seg.initialRaw;
+      const current = fuel - flowInput * dt;
+      const raw = calculateFuelFlow(current, prev, dt);
+      if (seg.speed <= EPS_SPEED && seg.throttle <= 0.05 && raw > 0) {
+        idleFlow = raw;
+      }
+      const flow = smoothFuelFlow(
+        raw,
+        seg.speed,
+        seg.throttle,
+        lastFlow,
+        idleFlow,
+        EPS_SPEED
+      );
+      if (seg.expectDecay || seg.expectCoastIdle) {
+        if (t === 0) startFlow = flow;
+        if (t === seg.duration - 1) endFlow = flow;
+      }
       const inst = calculateInstantConsumption(flow, seg.speed);
       if (seg.speed === 0) {
         assert.strictEqual(inst, Infinity);
@@ -51,6 +82,18 @@ function runCycle() {
       distance += seg.speed * dt;
       fuel = current;
       prev = current;
+      lastFlow = flow;
+    }
+    lastThrottle = seg.throttle;
+    if (seg.expectIdleSame) {
+      assert.strictEqual(idleFlow, idleBefore);
+    }
+    if (seg.expectCoastIdle) {
+      assert.ok(startFlow > idleFlow);
+      assert.ok(Math.abs(endFlow - idleFlow) < 1e-9);
+    }
+    if (seg.expectDecay) {
+      assert.ok(startFlow > endFlow);
     }
   }
 
@@ -72,18 +115,33 @@ for (let run = 1; run <= 3; run++) {
 // Simulates repeated vehicle resets without trip resets
 // and varying driving conditions in random order.
 test('30-second random stress simulation', { timeout: 70000 }, async () => {
+  const EPS_SPEED = 0.005;
   let fuel = capacity;
   let prev = fuel;
   let trip = 0;
   let distance = 0;
   const queue = [];
+  let lastFlow = 0;
+  let lastMeasuredFlow = 0;
+  let idleFlow = 0.001;
 
   const end = Date.now() + 30_000; // run for ~30s
   while (Date.now() < end) {
     const speed = Math.random() * 40; // m/s
-    const flow = Math.random() * 0.005; // L/s
-    const current = fuel - flow * dt;
-    const flowRate = calculateFuelFlow(current, prev, dt);
+    const throttle = Math.random();
+    const raw = throttle > 0.1 ? Math.random() * 0.005 : 0; // L/s change
+    const current = fuel - raw * dt;
+    let flowRate = calculateFuelFlow(current, prev, dt);
+    if (flowRate > 0) {
+      lastMeasuredFlow = flowRate;
+    }
+    if (speed <= EPS_SPEED && throttle <= 0.05 && flowRate > 0) {
+      idleFlow = flowRate;
+    }
+    flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, EPS_SPEED);
+    if (throttle <= 0.05 && speed > EPS_SPEED && raw === 0 && idleFlow > 0) {
+      assert.ok(flowRate > 0);
+    }
     const inst = calculateInstantConsumption(flowRate, speed);
 
     if (speed === 0) {
@@ -99,6 +157,7 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
     trip += speed * dt;
     fuel = current;
     prev = current;
+    lastFlow = flowRate;
 
     // Occasionally simulate a vehicle reset (fuel to full, distance reset) but keep trip
     if (Math.random() < 0.1) {
@@ -107,8 +166,8 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
       distance = 0;
     }
 
-    const avg = distance > 0 ? ( (capacity - fuel) / distance ) * 100000 : -1;
-    const range = calculateRange(fuel, avg, speed, 0.005);
+    const avg = distance > 0 ? ((capacity - fuel) / distance) * 100000 : -1;
+    const range = calculateRange(fuel, avg, speed, EPS_SPEED);
     assert.ok(Number.isFinite(range) || range === Infinity);
 
     // small delay so the loop lasts ~30 seconds

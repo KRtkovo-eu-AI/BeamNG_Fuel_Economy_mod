@@ -8,6 +8,39 @@ function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
   return (fuelFlow_lps / speed_mps) * 100000;
 }
 
+// Resolve the fuel flow when sensor readings are static.
+// - While accelerating (throttle > 0) keep the last measured flow.
+// - While coasting with zero throttle, ease the previous reading toward the
+//   stored idle flow so the value keeps updating instead of freezing at the
+//   last accelerating reading.
+function smoothFuelFlow(
+  fuelFlow_lps,
+  speed_mps,
+  throttle,
+  lastFuelFlow_lps,
+  idleFuelFlow_lps,
+  EPS_SPEED
+) {
+  if (fuelFlow_lps > 0 && throttle > 0.05) {
+    // A fresh reading while throttle is applied – use it directly.
+    return fuelFlow_lps;
+  }
+
+  const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
+
+  if (speed_mps > EPS_SPEED) {
+    if (throttle <= 0.05) {
+      // Coasting with zero throttle – blend previous value toward idle.
+      return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
+    }
+    // Throttle applied but sensor static – keep the last flow.
+    return lastFuelFlow_lps;
+  }
+
+  // Vehicle stopped: smoothly approach idle flow.
+  return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
+}
+
 function trimQueue(queue, maxEntries) {
   while (queue.length > maxEntries) {
     queue.shift();
@@ -25,6 +58,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     calculateFuelFlow,
     calculateInstantConsumption,
+    smoothFuelFlow,
     trimQueue,
     calculateRange
   };
@@ -97,6 +131,9 @@ angular.module('beamng.apps')
       var lastTime_ms = performance.now();
       var startFuel_l = null;
       var previousFuel_l = null;
+      var lastFuelFlow_lps = 0; // last smoothed value
+      var idleFuelFlow_lps = 0;
+      var lastThrottle = 0;
 
       var lastCapacity_l = null;
       var EPS_SPEED = 0.005; // [m/s] ignore noise
@@ -163,6 +200,7 @@ angular.module('beamng.apps')
 
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
+          var throttle = streams.electrics.throttle_input || 0;
 
           if (!Number.isFinite(currentFuel_l) || !Number.isFinite(capacity_l)) return;
 
@@ -191,8 +229,24 @@ angular.module('beamng.apps')
 
           var avg_l_per_100km_ok = (fuel_used_l / (distance_m * 10)) * 10;
 
-          var fuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
+          if (throttle <= 0.05 && lastThrottle > 0.05) {
+            previousFuel_l = currentFuel_l;
+          }
+          var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
+          if (speed_mps <= EPS_SPEED && throttle <= 0.05 && rawFuelFlow_lps > 0) {
+            idleFuelFlow_lps = rawFuelFlow_lps;
+          }
+          var fuelFlow_lps = smoothFuelFlow(
+            rawFuelFlow_lps,
+            speed_mps,
+            throttle,
+            lastFuelFlow_lps,
+            idleFuelFlow_lps,
+            EPS_SPEED
+          );
+          lastFuelFlow_lps = fuelFlow_lps;
           previousFuel_l = currentFuel_l;
+          lastThrottle = throttle;
 
           var inst_l_per_h = fuelFlow_lps * 3600;
           var inst_l_per_100km = calculateInstantConsumption(fuelFlow_lps, speed_mps);
@@ -208,7 +262,6 @@ angular.module('beamng.apps')
           var deltaDistance = speed_mps * dt;
           if (!overall.previousAvg) overall.previousAvg = 0;
 
-          var throttle = streams.electrics.throttle_input || 0;
           var shouldPush = false;
 
           if (speed_mps > EPS_SPEED) {
@@ -259,7 +312,6 @@ angular.module('beamng.apps')
           // ---------- Overall update (NEW) ----------
 
           // ---------- Average Consumption rules (prevent increasing while stopped) ----------
-          var throttle = streams.electrics.throttle_input || 0;
           if (!overall.previousAvgTrip) overall.previousAvgTrip = 0;
           var shouldUpdateAvg = false;
 
