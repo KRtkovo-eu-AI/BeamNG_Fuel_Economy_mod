@@ -1,5 +1,7 @@
 # BeamNG Fuel Economy UI App
 
+![Fuel Economy](https://raw.githubusercontent.com/KRtkovo-eu-AI/BeamNG_Fuel_Economy_mod/refs/heads/main/okFuelEconomy/ui/modules/apps/okFuelEconomy/app.png "Fuel Economy")
+
 This repository contains a UI mod for BeamNG.drive that displays fuel economy information. The app is written in JavaScript using Angular.
 
 ## Features
