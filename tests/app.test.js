@@ -7,6 +7,7 @@ global.angular = { module: () => ({ directive: () => ({}) }) };
 const {
   calculateFuelFlow,
   calculateInstantConsumption,
+  calculateAverageConsumption,
   trimQueue,
   calculateRange
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -36,6 +37,16 @@ describe('app.js utility functions', () => {
         calculateInstantConsumption(0.001, 0),
         Infinity
       );
+    });
+  });
+
+  describe('calculateAverageConsumption', () => {
+    it('computes avg consumption for fuel and distance', () => {
+      const avg = calculateAverageConsumption(0.5, 1000); // 0.5 L over 1km
+      assert.ok(Math.abs(avg - 50) < 1e-9);
+    });
+    it('returns 0 when distance is non-positive', () => {
+      assert.strictEqual(calculateAverageConsumption(1, 0), 0);
     });
   });
 
