@@ -18,10 +18,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm install
-      - run: npm test -- --test-reporter=spec --test-reporter=junit --test-reporter-destination=stdout --test-reporter-destination=test-results.xml
+      - run: |
+          npm test -- \
+            --test-reporter=spec \
+            --test-reporter=junit \
+            --test-reporter-destination=stdout \
+            --test-reporter-destination=test-results.xml
       - uses: dorny/test-reporter@v1
         if: always()
         with:
           name: Node.js tests
           path: test-results.xml
-          reporter: junit
+          reporter: jest-junit
