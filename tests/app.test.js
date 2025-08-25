@@ -7,6 +7,7 @@ global.angular = { module: () => ({ directive: () => ({}) }) };
 const {
   calculateFuelFlow,
   calculateInstantConsumption,
+  smoothFuelFlow,
   trimQueue,
   calculateRange
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -60,6 +61,38 @@ describe('app.js utility functions', () => {
       const queue = [1, 2, 3];
       trimQueue(queue, 0);
       assert.deepStrictEqual(queue, []);
+    });
+  });
+
+  describe('smoothFuelFlow', () => {
+    const EPS_SPEED = 0.005;
+    it('holds last fuel flow while moving', () => {
+      const last = 0.01;
+      const res = smoothFuelFlow(0, 5, last, EPS_SPEED);
+      assert.strictEqual(res, last);
+    });
+    it('updates to new positive flow', () => {
+      const res = smoothFuelFlow(0.02, 5, 0.01, EPS_SPEED);
+      assert.strictEqual(res, 0.02);
+    });
+    it('allows zero flow when stopped', () => {
+      const res = smoothFuelFlow(0, 0, 0.01, EPS_SPEED);
+      assert.strictEqual(res, 0);
+    });
+    it('keeps instant consumption non-zero while coasting', () => {
+      // step 1: consume fuel while accelerating
+      let prev = 10;
+      let curr = 9.9;
+      const dt = 1;
+      const speed = 10;
+      const flow = calculateFuelFlow(curr, prev, dt); // 0.1
+      // step 2: coasting, fuel reading unchanged
+      prev = curr;
+      curr = 9.9;
+      let flow2 = calculateFuelFlow(curr, prev, dt); // 0
+      flow2 = smoothFuelFlow(flow2, speed, flow, EPS_SPEED); // should stay at 0.1
+      const inst = calculateInstantConsumption(flow2, speed);
+      assert.ok(inst > 0);
     });
   });
 

@@ -8,6 +8,16 @@ function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
   return (fuelFlow_lps / speed_mps) * 100000;
 }
 
+// Keep the last non-zero fuel flow so that instant consumption continues
+// to be reported while the engine is running and the vehicle is still
+// moving even if the current fuel reading does not change.
+function smoothFuelFlow(fuelFlow_lps, speed_mps, lastFuelFlow_lps, EPS_SPEED) {
+  if (fuelFlow_lps <= 0 && speed_mps > EPS_SPEED) {
+    return lastFuelFlow_lps;
+  }
+  return fuelFlow_lps;
+}
+
 function trimQueue(queue, maxEntries) {
   while (queue.length > maxEntries) {
     queue.shift();
@@ -25,6 +35,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     calculateFuelFlow,
     calculateInstantConsumption,
+    smoothFuelFlow,
     trimQueue,
     calculateRange
   };
@@ -97,6 +108,7 @@ angular.module('beamng.apps')
       var lastTime_ms = performance.now();
       var startFuel_l = null;
       var previousFuel_l = null;
+      var lastFuelFlow_lps = 0;
 
       var lastCapacity_l = null;
       var EPS_SPEED = 0.005; // [m/s] ignore noise
@@ -192,6 +204,8 @@ angular.module('beamng.apps')
           var avg_l_per_100km_ok = (fuel_used_l / (distance_m * 10)) * 10;
 
           var fuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
+          fuelFlow_lps = smoothFuelFlow(fuelFlow_lps, speed_mps, lastFuelFlow_lps, EPS_SPEED);
+          lastFuelFlow_lps = fuelFlow_lps;
           previousFuel_l = currentFuel_l;
 
           var inst_l_per_h = fuelFlow_lps * 3600;
