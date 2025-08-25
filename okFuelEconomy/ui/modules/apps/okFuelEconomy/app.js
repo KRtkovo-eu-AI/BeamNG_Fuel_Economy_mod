@@ -66,12 +66,12 @@ angular.module('beamng.apps')
 
       // --------- Overall persistence (NEW) ----------
       var OVERALL_KEY = 'okFuelEconomyOverall';
-      var MAX_ENTRIES = 1500; // pevný počet hodnot pro frontu
 
-      var overall = { queue: [], distance: 0 }; // fronta posledních průměrů + celková ujetá vzdálenost
+      // běžící průměr spotřeby a celková ujetá vzdálenost od posledního resetu
+      var overall = { avg: 0, count: 0, distance: 0 };
       try {
           var saved = JSON.parse(localStorage.getItem(OVERALL_KEY));
-          if (saved && Array.isArray(saved.queue)) {
+          if (saved && typeof saved.avg === 'number') {
               overall = saved;
           }
       } catch (e) { /* ignore */ }
@@ -96,7 +96,7 @@ angular.module('beamng.apps')
       // reset overall včetně vzdálenosti
       $scope.resetOverall = function () {
           $log.debug('<ok-fuel-economy> manual reset overall');
-          overall = { queue: [], distance: 0 };
+          overall = { avg: 0, count: 0, distance: 0 };
           saveOverall();
           $scope.data7 = UiUnits.buildString('consumptionRate', 0, 1);
           $scope.data6 = UiUnits.buildString('distance', 0, 1); // reset trip
@@ -159,33 +159,30 @@ angular.module('beamng.apps')
 
           // ---------- Overall update (NEW) ----------
           var deltaDistance = speed_mps * dt;
-          if (!overall.previousAvg) overall.previousAvg = 0;
+          if (overall.prevAvg === undefined) overall.prevAvg = 0;
 
           var throttle = streams.electrics.throttle_input || 0;
           var shouldPush = false;
 
           if (speed_mps > EPS_SPEED) {
               shouldPush = true; // vozidlo jede → libovolný růst
-          } else {
-              if (throttle > 0.2) {
-                  shouldPush = true; // stojí, ale motor v zátěži → libovolný růst
-              } else {
-                  // stojí, motor volnoběh → jen pokud průměrná spotřeba neklesá
-                  if (avg_l_per_100km_ok <= overall.previousAvg) {
-                      shouldPush = true;
-                  }
-              }
+          } else if (throttle > 0.2) {
+              shouldPush = true; // stojí, ale motor v zátěži → libovolný růst
+          } else if (avg_l_per_100km_ok <= overall.prevAvg) {
+              // stojí, motor volnoběh → jen pokud průměrná spotřeba neklesá
+              shouldPush = true;
           }
 
           if (shouldPush && avg_l_per_100km_ok > 0) {
-              overall.queue.push(avg_l_per_100km_ok);
-              trimQueue(overall.queue, MAX_ENTRIES);
+              var cnt = overall.count || 0;
+              overall.avg = ((overall.avg || 0) * cnt + avg_l_per_100km_ok) / (cnt + 1);
+              overall.count = cnt + 1;
 
               if (speed_mps > EPS_SPEED) {
                   overall.distance = (overall.distance || 0) + deltaDistance;
               }
 
-              overall.previousAvg = avg_l_per_100km_ok;
+              overall.prevAvg = avg_l_per_100km_ok;
 
               if (!overall.lastSaveTime) overall.lastSaveTime = 0;
               var now = performance.now();
@@ -195,20 +192,7 @@ angular.module('beamng.apps')
               }
           }
 
-
-          // Overall median: počítat z libovolného počtu prvků
-          function median(arr) {
-              if (arr.length === 0) return 0;
-              const sorted = arr.slice().sort((a, b) => a - b);
-              const mid = Math.floor(sorted.length / 2);
-              if (sorted.length % 2 === 0) {
-                  return (sorted[mid - 1] + sorted[mid]) / 2;
-              } else {
-                  return sorted[mid];
-              }
-          }
-
-          var overall_median = median(overall.queue);
+          var overall_avg = overall.avg || 0;
           // ---------- Overall update (NEW) ----------
 
           // ---------- Average Consumption rules (prevent increasing while stopped) ----------
@@ -239,9 +223,9 @@ angular.module('beamng.apps')
                          ? UiUnits.buildString('distance', rangeVal, 0)
                          : 'Infinity';
 
-          var rangeOverallMedianVal = calculateRange(currentFuel_l, overall_median, speed_mps, EPS_SPEED);
-          var rangeOverallMedianStr = Number.isFinite(rangeOverallMedianVal)
-                         ? UiUnits.buildString('distance', rangeOverallMedianVal, 0)
+          var rangeOverallAvgVal = calculateRange(currentFuel_l, overall_avg, speed_mps, EPS_SPEED);
+          var rangeOverallAvgStr = Number.isFinite(rangeOverallAvgVal)
+                         ? UiUnits.buildString('distance', rangeOverallAvgVal, 0)
                          : 'Infinity';
 
           $scope.data1 = UiUnits.buildString('distance', distance_m, 1);
@@ -252,9 +236,9 @@ angular.module('beamng.apps')
           $scope.data4 = rangeStr;
           $scope.data5 = instantStr;
           $scope.data6 = UiUnits.buildString('distance', trip_m, 1);
-          $scope.data7 = UiUnits.buildString('consumptionRate', overall_median, 1);
+          $scope.data7 = UiUnits.buildString('consumptionRate', overall_avg, 1);
           $scope.data8 = UiUnits.buildString('distance', overall.distance, 1);
-          $scope.data9 = rangeOverallMedianStr;
+          $scope.data9 = rangeOverallAvgStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
         });
       });
