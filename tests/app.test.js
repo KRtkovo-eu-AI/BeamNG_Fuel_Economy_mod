@@ -85,9 +85,9 @@ describe('app.js utility functions', () => {
     const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, 800, 800, EPS_SPEED);
       assert.strictEqual(res, 0.005);
     });
-    it('falls back to last flow if idle unknown', () => {
-    const res = smoothFuelFlow(0, 5, 0, 0.02, 0, 800, 1200, EPS_SPEED);
-      assert.strictEqual(res, 0.02);
+    it('returns zero if idle flow is unknown while coasting', () => {
+      const res = smoothFuelFlow(0, 5, 0, 0.02, 0, 800, 1200, EPS_SPEED);
+      assert.strictEqual(res, 0);
     });
     it('keeps instant consumption at idle while coasting', () => {
       const idle = 0.005;

@@ -10,7 +10,9 @@ function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
 
 // Resolve the fuel flow when sensor readings are static.
 // - While accelerating (throttle > 0) keep the last measured flow.
-// - While coasting with zero throttle use the last known idle flow scaled by RPM.
+// - While coasting with zero throttle, fall back to the latest idle flow
+//   scaled by RPM so the value keeps updating instead of freezing at the
+//   last accelerating reading.
 function smoothFuelFlow(
   fuelFlow_lps,
   speed_mps,
@@ -22,17 +24,24 @@ function smoothFuelFlow(
   EPS_SPEED
 ) {
   if (fuelFlow_lps > 0) {
+    // A fresh reading is available, use it directly.
     return fuelFlow_lps;
   }
+
   if (speed_mps > EPS_SPEED) {
     if (throttle <= 0.05) {
+      // Coasting with zero throttle – prefer the stored idle flow scaled by RPM.
       if (idleFuelFlow_lps > 0 && idleRPM > 0) {
         return idleFuelFlow_lps * (rpm / idleRPM);
       }
-      return lastFuelFlow_lps;
+      // Without an idle baseline fall back to zero rather than a stale value.
+      return 0;
     }
+    // Throttle applied but sensor static – keep the last flow.
     return lastFuelFlow_lps;
   }
+
+  // Vehicle stopped: show idle if known, otherwise zero.
   return idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
 }
 
