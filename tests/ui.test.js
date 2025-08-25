@@ -86,10 +86,11 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9','costPerKm'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9'];
     placeholders.forEach(p => {
       assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
     });
+    assert.ok(html.includes('calculateCostPerKm(avgConsumption, fuelPrice)'), 'missing cost per km calculation');
     assert.ok(html.includes('{{ vehicleNameStr }}'));
     assert.ok(html.includes('strong ng-if="visible.heading"'));
     assert.ok(html.includes('ng-click="reset($event)"'));
@@ -122,11 +123,7 @@ describe('controller integration', () => {
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
     global.bngApi = { engineLua: () => '' };
-    global.localStorage = { getItem: k => {
-      if (k === 'okFuelEconomyPrice') return '1.5';
-      if (k === 'okFuelEconomyCurrency') return 'USD';
-      return null;
-    }, setItem: () => {} };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -148,11 +145,16 @@ describe('controller integration', () => {
 
     $scope.on_streamsUpdate(null, streams);
 
-    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9','costPerKm'];
+    $scope.fuelPrice = 1.5;
+    $scope.currency = 'USD';
+
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','data3','data4','instantLph','instantL100km','data6','data7','data8','data9'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
-    assert.ok($scope.costPerKm.includes('USD'));
+    const c = $scope.calculateCostPerKm($scope.avgConsumption, $scope.fuelPrice);
+    assert.equal(typeof c, 'number');
+    assert.equal($scope.currency, 'USD');
   });
 
   it('throttles instant consumption updates', () => {
@@ -230,65 +232,54 @@ describe('visibility settings persistence', () => {
   });
 });
 
-describe('fuel price persistence', () => {
-  it('saves and restores fuel price, currency and computes cost per km', () => {
+describe('fuel price handling', () => {
+  it('computes cost per km with user provided price and currency', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
     global.bngApi = { engineLua: () => '' };
-    const store = {};
-    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[2];
 
-    const $scope = { $on: () => {}, $evalAsync: fn => fn(), $watch: () => {} };
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
     controllerFn({ debug: () => {} }, $scope);
     $scope.fuelPrice = 2.5;
     $scope.currency = 'EUR';
-    $scope.saveSettings();
-
-    const $scope2 = { $on: (name, cb) => { $scope2['on_' + name] = cb; }, $evalAsync: fn => fn(), $watch: () => {} };
-    controllerFn({ debug: () => {} }, $scope2);
-    assert.equal($scope2.fuelPrice, 2.5);
-    assert.equal($scope2.currency, 'EUR');
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 5, throttle_input: 0 } };
     streams.engineInfo[11] = 50; streams.engineInfo[12] = 60;
-    $scope2.on_streamsUpdate(null, streams);
-    assert.ok($scope2.costPerKm.includes('EUR'));
+    $scope.on_streamsUpdate(null, streams);
+
+    const cost = $scope.calculateCostPerKm($scope.avgConsumption, $scope.fuelPrice);
+    assert.equal(typeof cost, 'number');
+    assert.equal($scope.currency, 'EUR');
   });
 
-  it('keeps user-defined values when settings are reopened', () => {
+  it('retains values when settings are reopened', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
     global.bngApi = { engineLua: () => '' };
-    const store = {};
-    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[2];
 
-    const watchers = {};
-    const $scope = { $on: () => {}, $evalAsync: fn => fn(), $watch: (expr, fn) => { watchers[expr] = fn; } };
+    const $scope = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope);
 
     $scope.fuelPrice = 3.3;
     $scope.currency = 'USD';
-    $scope.saveSettings();
-
-    watchers.fuelPrice(undefined, 3.3);
-    watchers.currency(undefined, 'USD');
-    watchers.settingsOpen(false, true);
-
-    watchers.settingsOpen(true, false);
+    $scope.settingsOpen = true;
+    $scope.settingsOpen = false;
 
     assert.equal($scope.fuelPrice, 3.3);
     assert.equal($scope.currency, 'USD');

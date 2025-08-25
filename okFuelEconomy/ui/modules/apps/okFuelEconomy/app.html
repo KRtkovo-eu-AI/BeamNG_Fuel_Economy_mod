@@ -47,7 +47,7 @@
         Cost per km:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        {{ costPerKm }}
+        {{ fuelPrice > 0 && avgConsumption > 0 ? (calculateCostPerKm(avgConsumption, fuelPrice) | number:2) + (currency ? ' ' + currency : '') + ' /km' : '' }}
       </td>
     </tr>
 
