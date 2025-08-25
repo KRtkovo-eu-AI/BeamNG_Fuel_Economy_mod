@@ -15,7 +15,7 @@ const {
 // Driving segments used for repeated environment cycles
 const segments = [
   { name: 'launch', duration: 100, speed: 30, flow: 0.004, throttle: 0.8, rpmStart: 2500, rpmEnd: 2500 },
-  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, rpmStart: 2500, rpmEnd: 800, expectFallback: true },
+  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, rpmStart: 2500, rpmEnd: 800, expectFallback: true, initialRaw: 0.003 },
   { name: 'city', duration: 100, speed: 0, flow: 0.001, throttle: 0, rpmStart: 800, rpmEnd: 800 },
   { name: 'mountains', duration: 100, speed: 15, flow: 0.004, throttle: 0.6, rpmStart: 2000, rpmEnd: 2000 },
   { name: 'countryside', duration: 100, speed: 20, flow: 0.002, throttle: 0.5, rpmStart: 1800, rpmEnd: 1800 },
@@ -32,7 +32,7 @@ const segments = [
 
 const dt = 1;
 const capacity = 60;
-const expectedFuelUsed = segments.reduce((s, seg) => s + seg.flow * seg.duration, 0);
+const expectedFuelUsed = segments.reduce((s, seg) => s + seg.flow * seg.duration + (seg.initialRaw || 0), 0);
 const expectedDistance = segments.reduce((s, seg) => s + seg.speed * seg.duration, 0);
 
 function runCycle() {
@@ -46,17 +46,23 @@ function runCycle() {
   let lastMeasuredRpm = 0;
   let idleFlow = 0;
   let idleRpm = 0;
+  let lastThrottle = segments[0].throttle;
 
   for (const seg of segments) {
     const idleBefore = idleFlow;
     const lastMeasuredBefore = lastMeasuredFlow;
     const lastMeasuredRpmBefore = lastMeasuredRpm;
     let startFlow, endFlow;
+    if (seg.throttle <= 0.05 && lastThrottle > 0.05) {
+      prev = fuel;
+    }
     for (let t = 0; t < seg.duration; t += dt) {
-      const current = fuel - seg.flow * dt;
+      let flowInput = seg.flow;
+      if (seg.initialRaw && t === 0) flowInput = seg.initialRaw;
+      const current = fuel - flowInput * dt;
       const raw = calculateFuelFlow(current, prev, dt);
       const rpm = seg.rpmStart + (seg.rpmEnd - seg.rpmStart) * (t / seg.duration);
-      if (raw > 0) {
+      if (raw > 0 && seg.throttle > 0.05) {
         lastMeasuredFlow = raw;
         lastMeasuredRpm = rpm;
       }
@@ -93,6 +99,7 @@ function runCycle() {
       prev = current;
       lastFlow = flow;
     }
+    lastThrottle = seg.throttle;
     if (seg.expectIdleSame) {
       assert.strictEqual(idleFlow, idleBefore);
     }

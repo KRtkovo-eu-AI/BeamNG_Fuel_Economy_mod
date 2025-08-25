@@ -25,8 +25,8 @@ function smoothFuelFlow(
   lastMeasuredRPM,
   EPS_SPEED
 ) {
-  if (fuelFlow_lps > 0) {
-    // A fresh reading is available, use it directly.
+  if (fuelFlow_lps > 0 && throttle > 0.05) {
+    // A fresh reading while throttle is applied – use it directly.
     return fuelFlow_lps;
   }
 
@@ -151,6 +151,7 @@ angular.module('beamng.apps')
       var lastMeasuredRPM = 0; // rpm at last raw reading
       var idleFuelFlow_lps = 0;
       var idleRPM = 0;
+      var lastThrottle = 0;
 
       var lastCapacity_l = null;
       var EPS_SPEED = 0.005; // [m/s] ignore noise
@@ -247,8 +248,11 @@ angular.module('beamng.apps')
 
           var avg_l_per_100km_ok = (fuel_used_l / (distance_m * 10)) * 10;
 
+          if (throttle <= 0.05 && lastThrottle > 0.05) {
+            previousFuel_l = currentFuel_l;
+          }
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
-          if (rawFuelFlow_lps > 0) {
+          if (rawFuelFlow_lps > 0 && throttle > 0.05) {
             lastMeasuredFlow_lps = rawFuelFlow_lps;
             lastMeasuredRPM = rpm;
           }
@@ -270,6 +274,7 @@ angular.module('beamng.apps')
           );
           lastFuelFlow_lps = fuelFlow_lps;
           previousFuel_l = currentFuel_l;
+          lastThrottle = throttle;
 
           var inst_l_per_h = fuelFlow_lps * 3600;
           var inst_l_per_100km = calculateInstantConsumption(fuelFlow_lps, speed_mps);

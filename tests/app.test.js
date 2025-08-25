@@ -91,6 +91,12 @@ describe('app.js utility functions', () => {
       const res = smoothFuelFlow(0, 20, 0, lastMeasured, 0, 0, 1000, lastMeasured, lastMeasuredRpm, EPS_SPEED);
       assert.strictEqual(res, lastMeasured * (1000 / lastMeasuredRpm));
     });
+    it('ignores positive raw flow when throttle is zero', () => {
+      const idle = 0.005;
+      const idleRpm = 800;
+      const res = smoothFuelFlow(0.02, 15, 0, 0.01, idle, idleRpm, 1200, 0, 0, EPS_SPEED);
+      assert.strictEqual(res, idle * (1200 / idleRpm));
+    });
     it('keeps instant consumption at idle while coasting', () => {
       const idle = 0.005;
       // step 1: consume fuel while accelerating
