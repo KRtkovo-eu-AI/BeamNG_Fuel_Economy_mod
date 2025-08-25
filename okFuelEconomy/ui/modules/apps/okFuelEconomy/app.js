@@ -88,6 +88,7 @@ angular.module('beamng.apps')
       // Settings for visible fields
       var SETTINGS_KEY = 'okFuelEconomyVisible';
       var PRICE_KEY = 'okFuelEconomyPrice';
+      var CURRENCY_KEY = 'okFuelEconomyCurrency';
       $scope.settingsOpen = false;
       $scope.visible = {
         heading: true,
@@ -119,16 +120,31 @@ angular.module('beamng.apps')
       } catch (e) { /* ignore */ }
 
       $scope.fuelPrice = 0;
+      $scope.currency = '';
       try {
         var p = parseFloat(localStorage.getItem(PRICE_KEY));
         if (!isNaN(p)) $scope.fuelPrice = p;
+      } catch (e) { /* ignore */ }
+      try {
+        var cur = localStorage.getItem(CURRENCY_KEY);
+        if (typeof cur === 'string') $scope.currency = cur;
       } catch (e) { /* ignore */ }
 
       $scope.saveSettings = function () {
         try { localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible)); } catch (e) { /* ignore */ }
         try { localStorage.setItem(PRICE_KEY, $scope.fuelPrice); } catch (e) { /* ignore */ }
+        try { localStorage.setItem(CURRENCY_KEY, $scope.currency); } catch (e) { /* ignore */ }
         $scope.settingsOpen = false;
       };
+
+      $scope.$watch('fuelPrice', function (val, old) {
+        if (val === old) return;
+        try { localStorage.setItem(PRICE_KEY, val); } catch (e) { /* ignore */ }
+      });
+      $scope.$watch('currency', function (val, old) {
+        if (val === old) return;
+        try { localStorage.setItem(CURRENCY_KEY, val); } catch (e) { /* ignore */ }
+      });
 
       // UI outputs
       $scope.data1 = ''; // distance measured
@@ -360,7 +376,8 @@ angular.module('beamng.apps')
                          : 'Infinity';
 
           var costPerKmVal = calculateCostPerKm(avg_l_per_100km_ok, $scope.fuelPrice);
-          $scope.costPerKm = costPerKmVal.toFixed(2) + ' /km';
+          var curr = $scope.currency ? ' ' + $scope.currency : '';
+          $scope.costPerKm = costPerKmVal.toFixed(2) + curr + ' /km';
 
           $scope.data1 = UiUnits.buildString('distance', distance_m, 1);
           $scope.fuelUsed = fuel_used_l.toFixed(2) + ' L';

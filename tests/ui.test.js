@@ -98,9 +98,10 @@ describe('UI template styling', () => {
     assert.ok(html.includes('autorenew'));
     assert.ok(html.includes('palette'));
     assert.ok(html.includes('settings'));
-    assert.ok(html.includes('<span class="material-icons"')); 
+    assert.ok(html.includes('<span class="material-icons"'));
     assert.ok(html.includes('save</span>'));
     assert.ok(html.includes('ng-model="fuelPrice"'));
+    assert.ok(html.includes('ng-model="currency"'));
   });
 
   it('allows toggling visibility of heading and subfields', () => {
@@ -121,7 +122,11 @@ describe('controller integration', () => {
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
     global.bngApi = { engineLua: () => '' };
-    global.localStorage = { getItem: k => (k === 'okFuelEconomyPrice' ? '1.5' : null), setItem: () => {} };
+    global.localStorage = { getItem: k => {
+      if (k === 'okFuelEconomyPrice') return '1.5';
+      if (k === 'okFuelEconomyCurrency') return 'USD';
+      return null;
+    }, setItem: () => {} };
     global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -129,7 +134,8 @@ describe('controller integration', () => {
     const controllerFn = directiveDef.controller[2];
     const $scope = {
       $on: (name, cb) => { $scope['on_' + name] = cb; },
-      $evalAsync: fn => fn()
+      $evalAsync: fn => fn(),
+      $watch: () => {}
     };
     controllerFn({ debug: () => {} }, $scope);
 
@@ -146,6 +152,7 @@ describe('controller integration', () => {
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
+    assert.ok($scope.costPerKm.includes('USD'));
   });
 
   it('throttles instant consumption updates', () => {
@@ -162,7 +169,7 @@ describe('controller integration', () => {
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[2];
-    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn(), $watch: () => {} };
     controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 5, throttle_input: 0 } };
@@ -198,7 +205,7 @@ describe('visibility settings persistence', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[2];
 
-    const $scope = { $on: () => {} };
+    const $scope = { $on: () => {}, $watch: () => {} };
     controllerFn({ debug: () => {} }, $scope);
 
     assert.equal($scope.visible.heading, true);
@@ -213,7 +220,7 @@ describe('visibility settings persistence', () => {
     assert.ok(store.okFuelEconomyVisible.includes('"instantLph":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"costPerKm":false'));
 
-    const $scope2 = { $on: () => {} };
+    const $scope2 = { $on: () => {}, $watch: () => {} };
     controllerFn({ debug: () => {} }, $scope2);
     assert.equal($scope2.visible.heading, false);
     assert.equal($scope2.visible.fuelLeft, false);
@@ -224,7 +231,7 @@ describe('visibility settings persistence', () => {
 });
 
 describe('fuel price persistence', () => {
-  it('saves and restores fuel price and computes cost per km', () => {
+  it('saves and restores fuel price, currency and computes cost per km', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
@@ -238,18 +245,20 @@ describe('fuel price persistence', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[2];
 
-    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    const $scope = { $on: () => {}, $evalAsync: fn => fn(), $watch: () => {} };
     controllerFn({ debug: () => {} }, $scope);
     $scope.fuelPrice = 2.5;
+    $scope.currency = 'EUR';
     $scope.saveSettings();
 
-    const $scope2 = { $on: (name, cb) => { $scope2['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    const $scope2 = { $on: (name, cb) => { $scope2['on_' + name] = cb; }, $evalAsync: fn => fn(), $watch: () => {} };
     controllerFn({ debug: () => {} }, $scope2);
     assert.equal($scope2.fuelPrice, 2.5);
+    assert.equal($scope2.currency, 'EUR');
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 5, throttle_input: 0 } };
     streams.engineInfo[11] = 50; streams.engineInfo[12] = 60;
     $scope2.on_streamsUpdate(null, streams);
-    assert.ok($scope2.costPerKm !== '');
+    assert.ok($scope2.costPerKm.includes('EUR'));
   });
 });
