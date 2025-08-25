@@ -212,6 +212,58 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripAvgHistory, '');
     assert.strictEqual($scope.avgHistory, '');
   });
+
+  it('ignores unrealistic consumption spikes while stationary', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    $scope.reset();
+
+    now = 1000;
+    $scope.on_streamsUpdate(null, streams); // engine off snapshot
+
+    now = 2000;
+    streams.electrics.rpmTacho = 1000;
+    streams.electrics.throttle_input = 0.5;
+    streams.engineInfo[11] = 49.999;
+    $scope.on_streamsUpdate(null, streams); // high consumption while stationary
+
+    assert.strictEqual($scope.tripAvgHistory, '');
+    assert.strictEqual($scope.avgHistory, '');
+
+    now = 3000;
+    streams.electrics.wheelspeed = 10;
+    streams.electrics.airspeed = 10;
+    streams.engineInfo[11] = 49.99;
+    $scope.on_streamsUpdate(null, streams); // start moving
+
+    const overall = JSON.parse(store.okFuelEconomyOverall);
+    const avg = JSON.parse(store.okFuelEconomyAvgHistory);
+    assert.equal(overall.queue.length, 1);
+    assert.equal(avg.queue.length, 1);
+    assert.ok(overall.queue[0] < 1000);
+    assert.ok(avg.queue[0] < 1000);
+  });
 });
 
 describe('visibility settings persistence', () => {

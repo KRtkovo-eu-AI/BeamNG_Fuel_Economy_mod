@@ -171,6 +171,7 @@ angular.module('beamng.apps')
       var EPS_SPEED = 0.005; // [m/s] ignore noise
       var lastInstantUpdate_ms = 0;
       var INSTANT_UPDATE_INTERVAL = 250;
+      var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
 
       $scope.vehicleNameStr = "";
 
@@ -285,6 +286,9 @@ angular.module('beamng.apps')
           distance_m += speed_mps * dt;
 
           var avg_l_per_100km_ok = (fuel_used_l / (distance_m * 10)) * 10;
+          if (!Number.isFinite(avg_l_per_100km_ok) || avg_l_per_100km_ok > MAX_CONSUMPTION) {
+            avg_l_per_100km_ok = 0;
+          }
 
           if (throttle <= 0.05 && lastThrottle > 0.05) {
             previousFuel_l = currentFuel_l;
