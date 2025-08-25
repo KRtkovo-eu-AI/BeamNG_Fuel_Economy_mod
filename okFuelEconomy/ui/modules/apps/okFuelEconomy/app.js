@@ -26,12 +26,9 @@ function smoothFuelFlow(
   }
   if (speed_mps > EPS_SPEED) {
     if (throttle <= 0.05) {
-        if (idleFuelFlow_lps > 0) {
-          if (idleRPM > 0 && rpm > idleRPM) {
-            return idleFuelFlow_lps * (rpm / idleRPM);
-          }
-          return idleFuelFlow_lps;
-        }
+      if (idleFuelFlow_lps > 0 && idleRPM > 0) {
+        return idleFuelFlow_lps * (rpm / idleRPM);
+      }
       return lastFuelFlow_lps;
     }
     return lastFuelFlow_lps;
@@ -229,11 +226,7 @@ angular.module('beamng.apps')
           var avg_l_per_100km_ok = (fuel_used_l / (distance_m * 10)) * 10;
 
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
-          if (
-            throttle <= 0.05 &&
-            rawFuelFlow_lps > 0 &&
-            (speed_mps <= EPS_SPEED || idleFuelFlow_lps === 0 || rawFuelFlow_lps <= idleFuelFlow_lps * 1.2)
-          ) {
+          if (speed_mps <= EPS_SPEED && throttle <= 0.05 && rawFuelFlow_lps > 0) {
             idleFuelFlow_lps = rawFuelFlow_lps;
             idleRPM = rpm;
           }

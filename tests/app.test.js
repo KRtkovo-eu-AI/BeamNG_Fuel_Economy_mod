@@ -116,6 +116,15 @@ describe('app.js utility functions', () => {
       assert.strictEqual(res, idle * (rpm / idleRpm));
     });
 
+    it('scales idle flow even when rpm falls below idle', () => {
+      const idle = 0.01;
+      const idleRpm = 1000;
+      const rpm = 700;
+      const last = 0.02;
+      const res = smoothFuelFlow(0, 10, 0, last, idle, idleRpm, rpm, EPS_SPEED);
+      assert.strictEqual(res, idle * (rpm / idleRpm));
+    });
+
     it('updates flow each frame as rpm changes while coasting', () => {
       const idle = 0.01;
       const idleRpm = 800;
