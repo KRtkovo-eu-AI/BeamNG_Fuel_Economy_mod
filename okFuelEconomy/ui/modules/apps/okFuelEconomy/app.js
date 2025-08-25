@@ -155,6 +155,7 @@ angular.module('beamng.apps')
           distance_m += speed_mps * dt;
 
           var avg_l_per_100km_ok = calculateAverageConsumption(fuel_used_l, distance_m);
+          var avg_l_per_m = avg_l_per_100km_ok / 100000;
 
           var fuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
           previousFuel_l = currentFuel_l;
@@ -223,13 +224,14 @@ angular.module('beamng.apps')
               avg_l_per_100km_ok = overall.previousAvgTrip;
           }
 
+          avg_l_per_m = avg_l_per_100km_ok / 100000;
 
-          var rangeVal = calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED);
+          var rangeVal = calculateRange(currentFuel_l, avg_l_per_m, speed_mps, EPS_SPEED);
           var rangeStr = Number.isFinite(rangeVal)
                          ? UiUnits.buildString('distance', rangeVal, 0)
                          : 'Infinity';
 
-          var rangeOverallAvgVal = calculateRange(currentFuel_l, overall_avg, speed_mps, EPS_SPEED);
+          var rangeOverallAvgVal = calculateRange(currentFuel_l, overall_avg / 100000, speed_mps, EPS_SPEED);
           var rangeOverallAvgStr = Number.isFinite(rangeOverallAvgVal)
                          ? UiUnits.buildString('distance', rangeOverallAvgVal, 0)
                          : 'Infinity';
@@ -238,11 +240,11 @@ angular.module('beamng.apps')
           $scope.data2 = fuel_used_l.toFixed(2) + ' L used / ' +
                          UiUnits.buildString('volume', currentFuel_l, 2) + ' left / ' +
                          UiUnits.buildString('volume', capacity_l, 1) + ' cap';
-          $scope.data3 = UiUnits.buildString('consumptionRate', avg_l_per_100km_ok, 1);
+          $scope.data3 = UiUnits.buildString('consumptionRate', avg_l_per_m, 1);
           $scope.data4 = rangeStr;
           $scope.data5 = instantStr;
           $scope.data6 = UiUnits.buildString('distance', trip_m, 1);
-          $scope.data7 = UiUnits.buildString('consumptionRate', overall_avg, 1);
+          $scope.data7 = UiUnits.buildString('consumptionRate', overall_avg / 100000, 1);
           $scope.data8 = UiUnits.buildString('distance', overall.distance, 1);
           $scope.data9 = rangeOverallAvgStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");

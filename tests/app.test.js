@@ -71,5 +71,12 @@ describe('app.js utility functions', () => {
     it('computes zero range when stopped without consumption', () => {
       assert.strictEqual(calculateRange(10, 0, 0, EPS_SPEED), 0);
     });
+
+    it('uses per-meter averages when given per-100km values', () => {
+      // 0.5 L over 1 km -> 50 L/100km -> 0.0005 L/m
+      const avg100 = calculateAverageConsumption(0.5, 1000);
+      const range = calculateRange(10, avg100 / 100000, 1, EPS_SPEED);
+      assert.strictEqual(range, 20000);
+    });
   });
 });
