@@ -68,25 +68,25 @@ describe('app.js utility functions', () => {
     const EPS_SPEED = 0.005;
     it('retains last flow when throttle applied but fuel reading static', () => {
       const last = 0.01;
-      const res = smoothFuelFlow(0, 5, 0.6, last, 0.002, EPS_SPEED);
+    const res = smoothFuelFlow(0, 5, 0.6, last, 0.002, 1000, 1500, EPS_SPEED);
       assert.strictEqual(res, last);
     });
     it('uses idle flow when coasting with zero throttle', () => {
       const last = 0.03;
       const idle = 0.005;
-      const res = smoothFuelFlow(0, 5, 0, last, idle, EPS_SPEED);
+    const res = smoothFuelFlow(0, 5, 0, last, idle, 800, 800, EPS_SPEED);
       assert.strictEqual(res, idle);
     });
     it('updates to new positive flow', () => {
-      const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, EPS_SPEED);
+    const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, 800, 1500, EPS_SPEED);
       assert.strictEqual(res, 0.02);
     });
     it('uses idle flow when stopped', () => {
-      const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, EPS_SPEED);
+    const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, 800, 800, EPS_SPEED);
       assert.strictEqual(res, 0.005);
     });
     it('falls back to last flow if idle unknown', () => {
-      const res = smoothFuelFlow(0, 5, 0, 0.02, 0, EPS_SPEED);
+    const res = smoothFuelFlow(0, 5, 0, 0.02, 0, 800, 1200, EPS_SPEED);
       assert.strictEqual(res, 0.02);
     });
     it('keeps instant consumption at idle while coasting', () => {
@@ -101,10 +101,19 @@ describe('app.js utility functions', () => {
       prev = curr;
       curr = 9.9;
       let flow2 = calculateFuelFlow(curr, prev, dt); // 0
-      flow2 = smoothFuelFlow(flow2, speed, 0, flow, idle, EPS_SPEED); // should use idle
+      flow2 = smoothFuelFlow(flow2, speed, 0, flow, idle, 800, 1200, EPS_SPEED); // should use idle
       const inst = calculateInstantConsumption(flow2, speed);
-      assert.strictEqual(flow2, idle);
+      assert.strictEqual(flow2, idle * (800 / 1200));
       assert.ok(inst > 0);
+    });
+
+    it('scales idle flow by rpm while coasting', () => {
+      const idle = 0.01;
+      const idleRpm = 800;
+      const rpm = 1600;
+      const last = 0.02;
+      const res = smoothFuelFlow(0, 10, 0, last, idle, idleRpm, rpm, EPS_SPEED);
+      assert.strictEqual(res, idle * (idleRpm / rpm));
     });
   });
 

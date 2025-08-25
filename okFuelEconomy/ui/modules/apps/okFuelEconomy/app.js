@@ -10,13 +10,15 @@ function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
 
 // Resolve the fuel flow when sensor readings are static.
 // - While accelerating (throttle > 0) keep the last measured flow.
-// - While coasting with zero throttle use the last known idle flow.
+// - While coasting with zero throttle use the last known idle flow scaled by RPM.
 function smoothFuelFlow(
   fuelFlow_lps,
   speed_mps,
   throttle,
   lastFuelFlow_lps,
   idleFuelFlow_lps,
+  idleRPM,
+  rpm,
   EPS_SPEED
 ) {
   if (fuelFlow_lps > 0) {
@@ -24,7 +26,13 @@ function smoothFuelFlow(
   }
   if (speed_mps > EPS_SPEED) {
     if (throttle <= 0.05) {
-      return idleFuelFlow_lps > 0 ? idleFuelFlow_lps : lastFuelFlow_lps;
+      if (idleFuelFlow_lps > 0) {
+        if (idleRPM > 0 && rpm > idleRPM) {
+          return idleFuelFlow_lps * (idleRPM / rpm);
+        }
+        return idleFuelFlow_lps;
+      }
+      return lastFuelFlow_lps;
     }
     return lastFuelFlow_lps;
   }
@@ -123,6 +131,7 @@ angular.module('beamng.apps')
       var previousFuel_l = null;
       var lastFuelFlow_lps = 0;
       var idleFuelFlow_lps = 0;
+      var idleRPM = 0;
 
       var lastCapacity_l = null;
       var EPS_SPEED = 0.005; // [m/s] ignore noise
@@ -189,6 +198,7 @@ angular.module('beamng.apps')
 
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
+          var rpm = streams.engineInfo[0] || 0;
           var throttle = streams.electrics.throttle_input || 0;
 
           if (!Number.isFinite(currentFuel_l) || !Number.isFinite(capacity_l)) return;
@@ -221,10 +231,11 @@ angular.module('beamng.apps')
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
           if (
             throttle <= 0.05 &&
-            speed_mps <= EPS_SPEED &&
-            rawFuelFlow_lps > 0
+            rawFuelFlow_lps > 0 &&
+            (speed_mps <= EPS_SPEED || idleFuelFlow_lps === 0 || rawFuelFlow_lps <= idleFuelFlow_lps * 1.2)
           ) {
             idleFuelFlow_lps = rawFuelFlow_lps;
+            idleRPM = rpm;
           }
           var fuelFlow_lps = smoothFuelFlow(
             rawFuelFlow_lps,
@@ -232,6 +243,8 @@ angular.module('beamng.apps')
             throttle,
             lastFuelFlow_lps,
             idleFuelFlow_lps,
+            idleRPM,
+            rpm,
             EPS_SPEED
           );
           lastFuelFlow_lps = fuelFlow_lps;
