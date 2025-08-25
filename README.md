@@ -24,7 +24,7 @@ The project includes Node.js tests that verify these helper functions and cumula
 npm test
 ```
 
-We recommend running tests after every change.
+We recommend running tests after every change. Our GitHub repo is configured to run tests automatically with PRs.
 
 ## Structure
 
