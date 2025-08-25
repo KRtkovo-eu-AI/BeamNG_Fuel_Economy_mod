@@ -54,13 +54,27 @@ function calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED)
   return speed_mps > EPS_SPEED ? Infinity : 0;
 }
 
+function buildQueueGraphPoints(queue, width, height) {
+  if (!Array.isArray(queue) || queue.length < 2) return '';
+  var max = Math.max.apply(null, queue);
+  if (max <= 0) return '';
+  return queue
+    .map(function (val, i) {
+      var x = (i / (queue.length - 1)) * width;
+      var y = height - (val / max) * height;
+      return x.toFixed(1) + ',' + y.toFixed(1);
+    })
+    .join(' ');
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     calculateFuelFlow,
     calculateInstantConsumption,
     smoothFuelFlow,
     trimQueue,
-    calculateRange
+    calculateRange,
+    buildQueueGraphPoints
   };
 }
 
@@ -94,6 +108,7 @@ angular.module('beamng.apps')
         instantL100km: true,
         range: true,
         tripAvg: true,
+        tripGraph: true,
         tripDistance: true,
         tripRange: true,
         tripReset: true
@@ -126,6 +141,7 @@ angular.module('beamng.apps')
       $scope.instantLph = '';
       $scope.instantL100km = '';
       $scope.data7 = ''; // overall average
+      $scope.tripAvgHistory = '';
 
       var distance_m = 0;
       var lastTime_ms = performance.now();
@@ -178,6 +194,7 @@ angular.module('beamng.apps')
           saveOverall();
           $scope.data7 = UiUnits.buildString('consumptionRate', 0, 1);
           $scope.data6 = UiUnits.buildString('distance', 0, 1); // reset trip
+          $scope.tripAvgHistory = '';
       };
 
       $scope.$on('VehicleFocusChanged', function () {
@@ -309,6 +326,7 @@ angular.module('beamng.apps')
           }
 
           var overall_median = median(overall.queue);
+          $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
           // ---------- Overall update (NEW) ----------
 
           // ---------- Average Consumption rules (prevent increasing while stopped) ----------
