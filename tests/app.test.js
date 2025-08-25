@@ -81,9 +81,13 @@ describe('app.js utility functions', () => {
       const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, EPS_SPEED);
       assert.strictEqual(res, 0.02);
     });
-    it('allows zero flow when stopped', () => {
+    it('uses idle flow when stopped', () => {
       const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, EPS_SPEED);
-      assert.strictEqual(res, 0);
+      assert.strictEqual(res, 0.005);
+    });
+    it('falls back to last flow if idle unknown', () => {
+      const res = smoothFuelFlow(0, 5, 0, 0.02, 0, EPS_SPEED);
+      assert.strictEqual(res, 0.02);
     });
     it('keeps instant consumption at idle while coasting', () => {
       const idle = 0.005;
