@@ -66,20 +66,27 @@ describe('app.js utility functions', () => {
 
   describe('smoothFuelFlow', () => {
     const EPS_SPEED = 0.005;
-    it('holds last fuel flow while moving', () => {
+    it('retains last flow when throttle applied but fuel reading static', () => {
       const last = 0.01;
-      const res = smoothFuelFlow(0, 5, last, EPS_SPEED);
+      const res = smoothFuelFlow(0, 5, 0.6, last, 0.002, EPS_SPEED);
       assert.strictEqual(res, last);
     });
+    it('uses idle flow when coasting with zero throttle', () => {
+      const last = 0.03;
+      const idle = 0.005;
+      const res = smoothFuelFlow(0, 5, 0, last, idle, EPS_SPEED);
+      assert.strictEqual(res, idle);
+    });
     it('updates to new positive flow', () => {
-      const res = smoothFuelFlow(0.02, 5, 0.01, EPS_SPEED);
+      const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, EPS_SPEED);
       assert.strictEqual(res, 0.02);
     });
     it('allows zero flow when stopped', () => {
-      const res = smoothFuelFlow(0, 0, 0.01, EPS_SPEED);
+      const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, EPS_SPEED);
       assert.strictEqual(res, 0);
     });
-    it('keeps instant consumption non-zero while coasting', () => {
+    it('keeps instant consumption at idle while coasting', () => {
+      const idle = 0.005;
       // step 1: consume fuel while accelerating
       let prev = 10;
       let curr = 9.9;
@@ -90,8 +97,9 @@ describe('app.js utility functions', () => {
       prev = curr;
       curr = 9.9;
       let flow2 = calculateFuelFlow(curr, prev, dt); // 0
-      flow2 = smoothFuelFlow(flow2, speed, flow, EPS_SPEED); // should stay at 0.1
+      flow2 = smoothFuelFlow(flow2, speed, 0, flow, idle, EPS_SPEED); // should use idle
       const inst = calculateInstantConsumption(flow2, speed);
+      assert.strictEqual(flow2, idle);
       assert.ok(inst > 0);
     });
   });
