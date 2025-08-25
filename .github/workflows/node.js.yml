@@ -24,10 +24,9 @@ jobs:
             --test-reporter=junit \
             --test-reporter-destination=stdout \
             --test-reporter-destination=test-results.xml
-      - run: node scripts/flatten-junit.js test-results.xml junit.xml
       - uses: dorny/test-reporter@v1
         if: always()
         with:
           name: Node.js tests
-          path: junit.xml
-          reporter: jest-junit
+          path: test-results.xml
+          reporter: java-junit
