@@ -10,7 +10,8 @@ const {
   smoothFuelFlow,
   trimQueue,
   calculateRange,
-  buildQueueGraphPoints
+  buildQueueGraphPoints,
+  resolveSpeed
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('app.js utility functions', () => {
@@ -138,6 +139,28 @@ describe('app.js utility functions', () => {
     });
     it('handles zero max values', () => {
       assert.strictEqual(buildQueueGraphPoints([0, 0], 100, 40), '');
+    });
+  });
+
+  describe('resolveSpeed', () => {
+    const EPS_SPEED = 0.005;
+    it('zeroes wheel speed when airspeed indicates standing still', () => {
+      const s = resolveSpeed(10, 0, EPS_SPEED);
+      assert.strictEqual(s, 0);
+    });
+    it('prevents distance growth while stationary', () => {
+      const dt = 1;
+      let distance = 0;
+      distance += resolveSpeed(15, 0, EPS_SPEED) * dt;
+      assert.strictEqual(distance, 0);
+    });
+    it('prefers airspeed when available', () => {
+      const s = resolveSpeed(5, 8, EPS_SPEED);
+      assert.strictEqual(s, 8);
+    });
+    it('falls back to wheel speed when airspeed missing', () => {
+      const s = resolveSpeed(7, undefined, EPS_SPEED);
+      assert.strictEqual(s, 7);
     });
   });
 });
