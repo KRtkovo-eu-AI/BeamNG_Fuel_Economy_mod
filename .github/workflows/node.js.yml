@@ -30,10 +30,11 @@ jobs:
             --test-reporter=junit \
             --test-reporter-destination=stdout \
             --test-reporter-destination=test-results.xml
+          node scripts/flatten-junit.js test-results.xml junit.xml
       - uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.node-version }}
-          path: test-results.xml
+          path: junit.xml
 
   report:
     needs: test
@@ -48,6 +49,6 @@ jobs:
       - uses: dorny/test-reporter@v1
         with:
           name: Node.js tests
-          path: reports/**/test-results.xml
+          path: reports/**/junit.xml
           reporter: java-junit
           token: ${{ secrets.GITHUB_TOKEN }}
