@@ -1,6 +1,6 @@
 <div class="bngApp"
      ng-init="useCustomStyles=true"
-     ng-attr-style="{{ 'width:100%; height:100%; overflow:auto; position:relative;' + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:16px 16px,16px 16px; color:#aeeaff; font-family:"Segoe UI",Tahoma,Geneva,Verdana,sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
+     ng-attr-style="{{ 'width:100%; height:100%; overflow:auto; position:relative;' + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:url(app.png), linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:cover,16px 16px,16px 16px; background-repeat:no-repeat, repeat, repeat; color:#aeeaff; font-family:"Segoe UI", Tahoma, Geneva, Verdana, sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
      layout="column">
 
   <strong ng-attr-style="{{ useCustomStyles ? 'display:block; margin:2px 0 6px; font-size:1em; font-weight:600; color:#3fd6ff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '' }}">
@@ -87,7 +87,7 @@
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         <span class="material-icons"
               ng-click="resetOverall($event)"
-              ng-attr-style="{{ useCustomStyles ? 'cursor:pointer; margin-left:6px; color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '' }}">
+              ng-attr-style="{{ 'cursor:pointer; margin-left:6px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
           delete
         </span>
       </td>
