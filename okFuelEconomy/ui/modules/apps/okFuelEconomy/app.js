@@ -248,10 +248,10 @@ angular.module('beamng.apps')
         tripDistance: true,
         tripRange: true,
         tripReset: true,
-        costTotal: true,
-        costPerDistance: true,
-        tripCostTotal: true,
-        tripCostPerDistance: true
+        costTotal: false,
+        costPerDistance: false,
+        tripCostTotal: false,
+        tripCostPerDistance: false
       };
       try {
         var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
