@@ -47,6 +47,14 @@ function trimQueue(queue, maxEntries) {
   }
 }
 
+function calculateMedian(queue) {
+  if (!Array.isArray(queue) || queue.length === 0) return 0;
+  var sorted = queue.slice().sort(function (a, b) { return a - b; });
+  var mid = Math.floor(sorted.length / 2);
+  if (sorted.length % 2) return sorted[mid];
+  return (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
 function calculateAverageConsumption(fuelUsed_l, distance_m) {
   if (distance_m <= 0) return 0;
   return (fuelUsed_l / distance_m) * 100000;
@@ -163,6 +171,7 @@ if (typeof module !== 'undefined') {
     calculateInstantConsumption,
     smoothFuelFlow,
     trimQueue,
+    calculateMedian,
     calculateAverageConsumption,
     calculateRange,
     buildQueueGraphPoints,
@@ -553,10 +562,8 @@ angular.module('beamng.apps')
           }
 
 
-          // Use the latest recorded average for trip stats and graphs
-          var overall_latest = overall.queue.length
-            ? overall.queue[overall.queue.length - 1]
-            : 0;
+          // Use the median of the recorded averages for trip stats and graphs
+          var overall_median = calculateMedian(overall.queue);
           $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
 
           // ---------- Average Consumption rules (prevent increasing while stopped) ----------
@@ -598,9 +605,9 @@ angular.module('beamng.apps')
                          ? formatDistance(rangeVal, $scope.unitMode, 0)
                          : 'Infinity';
 
-          var rangeOverallLatestVal = calculateRange(currentFuel_l, overall_latest, speed_mps, EPS_SPEED);
-          var rangeOverallLatestStr = Number.isFinite(rangeOverallLatestVal)
-                         ? formatDistance(rangeOverallLatestVal, $scope.unitMode, 0)
+          var rangeOverallMedianVal = calculateRange(currentFuel_l, overall_median, speed_mps, EPS_SPEED);
+          var rangeOverallMedianStr = Number.isFinite(rangeOverallMedianVal)
+                         ? formatDistance(rangeOverallMedianVal, $scope.unitMode, 0)
                          : 'Infinity';
 
           $scope.data1 = formatDistance(distance_m, $scope.unitMode, 1);
@@ -615,14 +622,14 @@ angular.module('beamng.apps')
           );
           $scope.data4 = rangeStr;
           $scope.data6 = formatDistance(trip_m, $scope.unitMode, 1);
-          $scope.tripAvgL100km = formatConsumptionRate(overall_latest, $scope.unitMode, 1);
+          $scope.tripAvgL100km = formatConsumptionRate(overall_median, $scope.unitMode, 1);
           $scope.tripAvgKmL = formatEfficiency(
-            overall_latest > 0 ? 100 / overall_latest : Infinity,
+            overall_median > 0 ? 100 / overall_median : Infinity,
             $scope.unitMode,
             2
           );
           $scope.data8 = formatDistance(overall.distance, $scope.unitMode, 1);
-          $scope.data9 = rangeOverallLatestStr;
+          $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
           lastDistance_m = distance_m;
         });

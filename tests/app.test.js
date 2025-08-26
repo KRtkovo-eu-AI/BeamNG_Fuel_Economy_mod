@@ -9,6 +9,7 @@ const {
   calculateInstantConsumption,
   smoothFuelFlow,
   trimQueue,
+  calculateMedian,
   calculateAverageConsumption,
   calculateRange,
   buildQueueGraphPoints,
@@ -69,6 +70,16 @@ describe('app.js utility functions', () => {
       const queue = [1, 2, 3];
       trimQueue(queue, 0);
       assert.deepStrictEqual(queue, []);
+    });
+  });
+
+  describe('calculateMedian', () => {
+    it('handles empty queues', () => {
+      assert.strictEqual(calculateMedian([]), 0);
+    });
+    it('computes median for odd and even counts', () => {
+      assert.strictEqual(calculateMedian([1, 3, 2]), 2);
+      assert.strictEqual(calculateMedian([1, 2, 3, 4]), 2.5);
     });
   });
 
