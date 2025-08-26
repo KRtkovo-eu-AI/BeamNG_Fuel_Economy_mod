@@ -280,6 +280,9 @@ angular.module('beamng.apps')
           var throttle = streams.electrics.throttle_input || 0;
           var rpm = streams.electrics.rpmTacho || 0;
           var engineRunning = rpm > 0;
+          if (!engineRunning) {
+            idleFuelFlow_lps = 0;
+          }
 
           if (!Number.isFinite(currentFuel_l) || !Number.isFinite(capacity_l)) return;
 
@@ -326,12 +329,19 @@ angular.module('beamng.apps')
             idleFuelFlow_lps,
             EPS_SPEED
           );
-          lastFuelFlow_lps = fuelFlow_lps;
+          if (!engineRunning) {
+            fuelFlow_lps = 0;
+            lastFuelFlow_lps = 0;
+          } else {
+            lastFuelFlow_lps = fuelFlow_lps;
+          }
           previousFuel_l = currentFuel_l;
           lastThrottle = throttle;
 
           var inst_l_per_h = fuelFlow_lps * 3600;
-          var inst_l_per_100km = calculateInstantConsumption(fuelFlow_lps, speed_mps);
+          var inst_l_per_100km = engineRunning
+            ? calculateInstantConsumption(fuelFlow_lps, speed_mps)
+            : 0;
           if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
             $scope.instantLph = inst_l_per_h.toFixed(1) + ' L/h';
             $scope.instantL100km = Number.isFinite(inst_l_per_100km)
