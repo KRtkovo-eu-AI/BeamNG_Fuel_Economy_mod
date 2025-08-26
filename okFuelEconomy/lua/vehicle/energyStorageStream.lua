@@ -7,6 +7,8 @@ local function registerHandler()
   local streamsMod = streams -- vehicle's existing guistreams module
   if not (streamsMod and debug and streamsMod.update) then return end
 
+  log('D', 'okFuelEconomy', 'energyStorageStream initializing')
+
   -- Locate the private 'streamsHandlers' table inside guistreams.lua
   local handlers
   local i = 1

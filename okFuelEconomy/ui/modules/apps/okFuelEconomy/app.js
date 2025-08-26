@@ -103,12 +103,16 @@ angular.module('beamng.apps')
       var streamsList = ['electrics', 'engineInfo', 'energyStorage'];
       StreamsManager.add(streamsList);
 
-      if (bngApi && bngApi.engineLua) {
-        bngApi.engineLua(
-          'local v=be:getPlayerVehicle(0); if v then v:queueLuaCommand("extensions.load(\\"vehicle/energyStorageStream\\")") end'
-        );
-        console.debug('[ok-fuel-economy] requested energyStorage stream');
+      function requestEnergyStream() {
+        if (bngApi && bngApi.engineLua) {
+          bngApi.engineLua(
+            'local v=be:getPlayerVehicle(0); if v then v:queueLuaCommand("extensions.load(\\"energyStorageStream\\")") end'
+          );
+          console.debug('[ok-fuel-economy] requested energyStorage stream');
+        }
       }
+
+      requestEnergyStream();
 
       $scope.$on('$destroy', function () {
         StreamsManager.remove(streamsList);
@@ -283,6 +287,7 @@ angular.module('beamng.apps')
 
       $scope.$on('VehicleFocusChanged', function () {
         $log.debug('<ok-fuel-economy> vehicle changed -> reset trip');
+        requestEnergyStream();
         hardReset();
       });
 

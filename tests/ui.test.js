@@ -170,7 +170,35 @@ describe('controller integration', () => {
       sentCommand &&
         sentCommand
           .toLowerCase()
-          .includes('queueluacommand("extensions.load(\\"vehicle/energystoragestream\\")")')
+          .includes('queueluacommand("extensions.load(\\"energystoragestream\\")")')
+    );
+  });
+
+  it('reloads energyStorage stream on vehicle change', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const commands = [];
+    global.bngApi = { engineLua: cmd => { commands.push(cmd.toLowerCase()); } };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: (evt, cb) => { $scope['on_' + evt] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    // initial load
+    assert.ok(commands[0].includes('extensions.load(\\"energystoragestream\\")'));
+
+    // simulate vehicle change
+    $scope.on_VehicleFocusChanged();
+    assert.ok(
+      commands[1] &&
+        commands[1].includes('extensions.load(\\"energystoragestream\\")'),
+      'energy stream not reloaded'
     );
   });
 
