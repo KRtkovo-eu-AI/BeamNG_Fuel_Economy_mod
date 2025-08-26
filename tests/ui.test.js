@@ -254,7 +254,7 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.instantLph, '0.0 L/h');
     assert.strictEqual($scope.instantL100km, '0.0 L/100km');
-    assert.strictEqual($scope.instantKmL, '500.00 km/L');
+    assert.strictEqual($scope.instantKmL, '100.00 km/L');
     assert.strictEqual($scope.instantHistory, '');
     assert.strictEqual($scope.instantKmLHistory, '');
   });
@@ -293,7 +293,7 @@ describe('controller integration', () => {
 
     const val = parseFloat($scope.instantKmL);
     assert.notStrictEqual($scope.instantKmLHistory, '');
-    assert.ok(val <= 500, `instantKmL not capped: ${$scope.instantKmL}`);
+    assert.ok(val <= 100, `instantKmL not capped: ${$scope.instantKmL}`);
   });
 
   it('resets instant history when vehicle changes', () => {
