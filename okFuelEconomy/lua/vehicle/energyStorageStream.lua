@@ -26,25 +26,41 @@ local function registerHandler()
   handlers.energyStorage = function()
     local list = {}
 
-    -- Resolve the powertrain controller; some vehicles expose it via the
-    -- global 'powertrain' while others keep it under the main controller.
-    local pt = powertrain
-    if not pt and controller and controller.getController then
-      pt = controller.getController('powertrain')
-    end
-    if not pt and controller and controller.mainController then
-      pt = controller.mainController.powertrain
+    -- The dedicated energyStorage extension exposes fuel tanks and batteries.
+    -- Prefer it when available as the powertrain device list often omits
+    -- these components.
+    local es = energyStorage
+    if not es and controller and controller.getController then
+      es = controller.getController('energyStorage')
     end
 
-    if pt and pt.getDevices then
-      local devices = pt.getDevices() or {}
+    if es and es.getDevices then
+      local devices = es.getDevices() or {}
       for _, dev in pairs(devices) do
-        if dev.category == 'energyStorage' or dev.energyStorageType or dev.type == 'fuelTank' then
-          list[#list + 1] = {
-            energyStorageType = dev.energyStorageType,
-            type = dev.type,
-            category = dev.category
-          }
+        list[#list + 1] = {
+          energyStorageType = dev.energyStorageType,
+          type = dev.type,
+          category = dev.category
+        }
+      end
+    else
+      -- Fallback: try scanning the powertrain for energy storage devices.
+      local pt = powertrain
+      if not pt and controller and controller.getController then
+        pt = controller.getController('powertrain')
+      end
+      if not pt and controller and controller.mainController then
+        pt = controller.mainController.powertrain
+      end
+      if pt and pt.getDevices then
+        for _, dev in pairs(pt.getDevices() or {}) do
+          if dev.category == 'energyStorage' or dev.energyStorageType or dev.type == 'fuelTank' then
+            list[#list + 1] = {
+              energyStorageType = dev.energyStorageType,
+              type = dev.type,
+              category = dev.category
+            }
+          end
         end
       end
     end
