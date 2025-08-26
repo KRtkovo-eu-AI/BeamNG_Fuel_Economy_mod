@@ -33,6 +33,15 @@
       </td>
     </tr>
 
+    <tr ng-if="visible.costPrice">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Fuel price:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span id="fuelPriceDisplay"></span>
+      </td>
+    </tr>
+
     <tr ng-if="visible.costTotal || visible.costPerDistance">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Fuel cost:
@@ -242,6 +251,7 @@
       <label><input type="checkbox" ng-model="visible.tripDistance"> Trip distance</label><br>
       <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
       <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
+      <label><input type="checkbox" ng-model="visible.costPrice"> Fuel price</label><br>
       <label><input type="checkbox" ng-model="visible.costTotal"> Fuel cost total</label><br>
       <label><input type="checkbox" ng-model="visible.costPerDistance"> Fuel cost per {{ unitDistanceUnit }}</label><br>
       <label><input type="checkbox" ng-model="visible.tripCostTotal"> Trip cost total</label><br>
@@ -270,75 +280,72 @@
         <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
       </button>
   </div>
-  <script type="text/javascript">
-    (function () {
-      var PRICE_KEY = 'okFuelEconomyFuelPrice';
-      var storedPrice = 0;
-      try {
-        storedPrice = parseFloat(localStorage.getItem(PRICE_KEY)) || 0;
-      } catch (e) {}
-
-      function parseNumber(str) {
-        return parseFloat((str || '').replace(/[^0-9.]/g, '')) || 0;
-      }
-      function parseUnit(str) {
-        var m = (str || '').match(/([a-zA-Z\/]+)$/);
-        return m ? m[1] : '';
-      }
-      function getText(id) {
-        var el = document.getElementById(id);
-        return el ? el.textContent : '';
-      }
-      function bindControls() {
-        var priceInput = document.getElementById('fuelPriceInput');
-        if (priceInput && !priceInput.dataset.bound) {
-          priceInput.value = storedPrice.toString();
-          priceInput.dataset.bound = '1';
+    <script type="text/javascript">
+      (function () {
+        function parseNumber(str) {
+          return parseFloat((str || '').replace(/[^0-9.]/g, '')) || 0;
         }
-        var saveBtn = document.getElementById('settingsSaveButton');
-        if (saveBtn && !saveBtn.dataset.bound) {
-          saveBtn.addEventListener('click', function () {
-            var val = parseFloat(document.getElementById('fuelPriceInput').value) || 0;
-            storedPrice = val;
-            try { localStorage.setItem(PRICE_KEY, val); } catch (e) {}
-          });
-          saveBtn.dataset.bound = '1';
+        function parseUnit(str) {
+          var m = (str || '').match(/([a-zA-Z\/]+)$/);
+          return m ? m[1] : '';
         }
-      }
-      function updateCosts() {
-        bindControls();
-        var priceInput = document.getElementById('fuelPriceInput');
-        var price = priceInput ? (parseFloat(priceInput.value) || 0) : storedPrice;
-        var fuelUsedStr = getText('fuelUsedDisplay');
-        var fuelUsed = parseNumber(fuelUsedStr);
-        var volUnit = parseUnit(fuelUsedStr);
-        var priceLabel = document.getElementById('fuelPriceLabel');
-        if (priceLabel) priceLabel.textContent = 'Fuel price per ' + volUnit + ':';
-        var costTotal = fuelUsed * price;
-        var totalEl = document.getElementById('fuelCostTotal');
-        if (totalEl) totalEl.textContent = costTotal.toFixed(2) + ' money';
+        function getText(id) {
+          var el = document.getElementById(id);
+          return el ? el.textContent : '';
+        }
+        function bindControls() {
+          var priceInput = document.getElementById('fuelPriceInput');
+          if (priceInput && !priceInput.dataset.bound) {
+            priceInput.value = parseNumber(getText('fuelPriceDisplay')).toString();
+            priceInput.dataset.bound = '1';
+          }
+          var saveBtn = document.getElementById('settingsSaveButton');
+          if (saveBtn && !saveBtn.dataset.bound) {
+            saveBtn.addEventListener('click', function () {
+              var val = parseFloat(document.getElementById('fuelPriceInput').value) || 0;
+              var volUnit = parseUnit(getText('fuelUsedDisplay'));
+              var disp = document.getElementById('fuelPriceDisplay');
+              if (disp) disp.textContent = val.toFixed(2) + ' money/' + volUnit;
+            });
+            saveBtn.dataset.bound = '1';
+          }
+        }
+        function updateCosts() {
+          bindControls();
+          var priceStr = getText('fuelPriceDisplay');
+          var price = parseNumber(priceStr);
+          var volUnit = parseUnit(getText('fuelUsedDisplay'));
+          var priceLabel = document.getElementById('fuelPriceLabel');
+          if (priceLabel) priceLabel.textContent = 'Fuel price per ' + volUnit + ':';
+          var priceDisplay = document.getElementById('fuelPriceDisplay');
+          if (priceDisplay) priceDisplay.textContent = price.toFixed(2) + ' money/' + volUnit;
+          var fuelUsedStr = getText('fuelUsedDisplay');
+          var fuelUsed = parseNumber(fuelUsedStr);
+          var costTotal = fuelUsed * price;
+          var totalEl = document.getElementById('fuelCostTotal');
+          if (totalEl) totalEl.textContent = costTotal.toFixed(2) + ' money';
 
-        var distStr = getText('distanceMeasuredDisplay');
-        var distVal = parseNumber(distStr);
-        var distUnit = parseUnit(distStr);
-        var perDist = distVal ? costTotal / distVal : 0;
-        var perDistEl = document.getElementById('fuelCostPerDistance');
-        if (perDistEl) perDistEl.textContent = perDist.toFixed(2) + ' money/' + distUnit;
+          var distStr = getText('distanceMeasuredDisplay');
+          var distVal = parseNumber(distStr);
+          var distUnit = parseUnit(distStr);
+          var perDist = distVal ? costTotal / distVal : 0;
+          var perDistEl = document.getElementById('fuelCostPerDistance');
+          if (perDistEl) perDistEl.textContent = perDist.toFixed(2) + ' money/' + distUnit;
 
-        var tripAvgStr = getText('tripAvgDisplay');
-        var tripAvg = parseNumber(tripAvgStr);
-        var tripDistStr = getText('tripDistanceDisplay');
-        var tripDist = parseNumber(tripDistStr);
-        var tripDistUnit = parseUnit(tripDistStr);
-        var consPerUnit = tripAvg / 100;
-        var tripTotalFuel = consPerUnit * tripDist;
-        var tripTotal = tripTotalFuel * price;
-        var tripTotalEl = document.getElementById('tripCostTotal');
-        if (tripTotalEl) tripTotalEl.textContent = tripTotal.toFixed(2) + ' money';
-        var tripPerDistEl = document.getElementById('tripCostPerDistance');
-        if (tripPerDistEl) tripPerDistEl.textContent = (consPerUnit * price).toFixed(2) + ' money/' + tripDistUnit;
-      }
-      setInterval(updateCosts, 500);
-    })();
-  </script>
+          var tripAvgStr = getText('tripAvgDisplay');
+          var tripAvg = parseNumber(tripAvgStr);
+          var tripDistStr = getText('tripDistanceDisplay');
+          var tripDist = parseNumber(tripDistStr);
+          var tripDistUnit = parseUnit(tripDistStr);
+          var consPerUnit = tripAvg / 100;
+          var tripTotalFuel = consPerUnit * tripDist;
+          var tripTotal = tripTotalFuel * price;
+          var tripTotalEl = document.getElementById('tripCostTotal');
+          if (tripTotalEl) tripTotalEl.textContent = tripTotal.toFixed(2) + ' money';
+          var tripPerDistEl = document.getElementById('tripCostPerDistance');
+          if (tripPerDistEl) tripPerDistEl.textContent = (consPerUnit * price).toFixed(2) + ' money/' + tripDistUnit;
+        }
+        setInterval(updateCosts, 500);
+      })();
+    </script>
 </div>

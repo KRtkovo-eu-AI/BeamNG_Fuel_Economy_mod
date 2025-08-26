@@ -60,89 +60,79 @@ describe('UI template styling', () => {
   });
 
   it('handles fuel cost calculation entirely in HTML', () => {
-    assert.ok(html.includes('id="fuelPriceInput"'));
-    assert.ok(html.includes('id="fuelCostTotal"'));
+      assert.ok(html.includes('id="fuelPriceInput"'));
+      assert.ok(html.includes('id="fuelPriceDisplay"'));
+      assert.ok(html.includes('id="fuelCostTotal"'));
     assert.ok(html.includes('<script type="text/javascript">'));
     assert.ok(!html.includes('ng-model="fuelPrice"'));
   });
 
   it('computes fuel costs in the embedded script', () => {
-    const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
-    assert.ok(match, 'script block not found');
-    const script = match[1];
-    const elements = {
-      fuelPriceInput: { value: '1.5', dataset: {} },
-      fuelUsedDisplay: { textContent: '2.0 L' },
-      fuelPriceLabel: { textContent: '' },
-      fuelCostTotal: { textContent: '' },
-      distanceMeasuredDisplay: { textContent: '20 km' },
-      fuelCostPerDistance: { textContent: '' },
-      tripAvgDisplay: { textContent: '5.0 L/100km' },
-      tripDistanceDisplay: { textContent: '100 km' },
-      tripCostTotal: { textContent: '' },
-      tripCostPerDistance: { textContent: '' },
-    };
-    const fakeDocument = { getElementById: id => elements[id] || null };
-    let updater;
-    const store = { okFuelEconomyFuelPrice: '1.5' };
-    const context = {
-      document: fakeDocument,
-      setInterval: fn => { updater = fn; },
-      localStorage: {
-        getItem: key => store[key] || null,
-        setItem: (key, val) => { store[key] = String(val); }
-      }
-    };
-    vm.runInNewContext(script, context);
-    updater();
-    assert.strictEqual(elements.fuelPriceLabel.textContent, 'Fuel price per L:');
-    assert.strictEqual(elements.fuelCostTotal.textContent, '3.00 money');
-    assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.15 money/km');
-    assert.strictEqual(elements.tripCostTotal.textContent, '7.51 money');
-    assert.strictEqual(elements.tripCostPerDistance.textContent, '0.08 money/km');
+      const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
+      assert.ok(match, 'script block not found');
+      const script = match[1];
+      const elements = {
+        fuelPriceInput: { value: '0', dataset: {} },
+        fuelPriceDisplay: { textContent: '1.5 money/L' },
+        fuelUsedDisplay: { textContent: '2.0 L' },
+        fuelPriceLabel: { textContent: '' },
+        fuelCostTotal: { textContent: '' },
+        distanceMeasuredDisplay: { textContent: '20 km' },
+        fuelCostPerDistance: { textContent: '' },
+        tripAvgDisplay: { textContent: '5.0 L/100km' },
+        tripDistanceDisplay: { textContent: '100 km' },
+        tripCostTotal: { textContent: '' },
+        tripCostPerDistance: { textContent: '' },
+      };
+      const fakeDocument = { getElementById: id => elements[id] || null };
+      let updater;
+      const context = {
+        document: fakeDocument,
+        setInterval: fn => { updater = fn; }
+      };
+      vm.runInNewContext(script, context);
+      updater();
+      assert.strictEqual(elements.fuelPriceInput.value, '1.5');
+      assert.strictEqual(elements.fuelPriceLabel.textContent, 'Fuel price per L:');
+      assert.strictEqual(elements.fuelCostTotal.textContent, '3.00 money');
+      assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.15 money/km');
+      assert.strictEqual(elements.tripCostTotal.textContent, '7.51 money');
+      assert.strictEqual(elements.tripCostPerDistance.textContent, '0.08 money/km');
   });
 
-  it('persists fuel price and restores it after saving', () => {
-    const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
-    const script = match[1];
-    const store = {};
-    const elements = {
-      fuelPriceInput: { value: '0', dataset: {} },
-      settingsSaveButton: { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton.click = fn; } },
-      fuelPriceLabel: { textContent: '' },
-      fuelCostTotal: { textContent: '' },
-      distanceMeasuredDisplay: { textContent: '10 km' },
-      fuelCostPerDistance: { textContent: '' },
-      fuelUsedDisplay: { textContent: '1 L' },
-      tripAvgDisplay: { textContent: '5 L/100km' },
-      tripDistanceDisplay: { textContent: '100 km' },
-      tripCostTotal: { textContent: '' },
-      tripCostPerDistance: { textContent: '' }
-    };
-    const fakeDocument = { getElementById: id => elements[id] || null };
-    let updater;
-    const context = {
-      document: fakeDocument,
-      localStorage: {
-        getItem: key => store[key] || null,
-        setItem: (key, val) => { store[key] = String(val); }
-      },
-      setInterval: fn => { updater = fn; }
-    };
-    vm.runInNewContext(script, context);
-    updater();
-    // user sets price and saves
-    elements.fuelPriceInput.value = '4.20';
-    elements.settingsSaveButton.click();
-    delete elements.fuelPriceInput; // close settings
-    updater(); // cost uses stored price
-    assert.strictEqual(elements.fuelCostTotal.textContent, '4.20 money');
-    assert.strictEqual(store.okFuelEconomyFuelPrice, '4.2');
-    // reopen settings
-    elements.fuelPriceInput = { value: '0', dataset: {} };
-    updater();
-    assert.strictEqual(elements.fuelPriceInput.value, '4.2');
-  });
+it('persists fuel price via DOM and reuses it for calculations', () => {
+  const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
+  const script = match[1];
+  const elements = {
+    fuelPriceInput: { value: '0', dataset: {} },
+    fuelPriceDisplay: { textContent: '' },
+    settingsSaveButton: { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton.click = fn; } },
+    fuelPriceLabel: { textContent: '' },
+    fuelCostTotal: { textContent: '' },
+    distanceMeasuredDisplay: { textContent: '10 km' },
+    fuelCostPerDistance: { textContent: '' },
+    fuelUsedDisplay: { textContent: '1 L' },
+    tripAvgDisplay: { textContent: '5 L/100km' },
+    tripDistanceDisplay: { textContent: '100 km' },
+    tripCostTotal: { textContent: '' },
+    tripCostPerDistance: { textContent: '' }
+  };
+  const fakeDocument = { getElementById: id => elements[id] || null };
+  let updater;
+  const context = { document: fakeDocument, setInterval: fn => { updater = fn; } };
+  vm.runInNewContext(script, context);
+  updater();
+  elements.fuelPriceInput.value = '4.20';
+  elements.settingsSaveButton.click();
+  updater();
+  // simulate closing and reopening settings
+  elements.fuelPriceInput = { value: '', dataset: {} };
+  updater();
+  assert.strictEqual(elements.fuelPriceDisplay.textContent, '4.20 money/L');
+  assert.strictEqual(elements.fuelPriceInput.value, '4.2');
+  assert.strictEqual(elements.fuelCostTotal.textContent, '4.20 money');
+  assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.42 money/km');
+});
 
   it('positions reset, style toggle and settings icons consistently', () => {
     const resetAttr = getNgAttrStyle('ng-click="reset($event)"');

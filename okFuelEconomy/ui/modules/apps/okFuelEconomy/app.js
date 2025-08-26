@@ -248,6 +248,7 @@ angular.module('beamng.apps')
         tripDistance: true,
         tripRange: true,
         tripReset: true,
+        costPrice: false,
         costTotal: false,
         costPerDistance: false,
         tripCostTotal: false,
