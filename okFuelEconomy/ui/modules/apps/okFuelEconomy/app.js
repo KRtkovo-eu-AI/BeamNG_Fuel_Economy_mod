@@ -165,6 +165,20 @@ function formatFlow(lPerHour, mode, decimals) {
   return value.toFixed(decimals) + ' ' + unit;
 }
 
+function convertVolumeToUnit(liters, mode) {
+  return mode === 'imperial' ? liters / LITERS_PER_GALLON : liters;
+}
+
+function convertDistanceToUnit(meters, mode) {
+  return mode === 'imperial' ? meters / (KM_PER_MILE * 1000) : meters / 1000;
+}
+
+function convertVolumePerDistance(lPerKm, mode) {
+  return mode === 'imperial'
+    ? (lPerKm * KM_PER_MILE) / LITERS_PER_GALLON
+    : lPerKm;
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     calculateFuelFlow,
@@ -181,7 +195,10 @@ if (typeof module !== 'undefined') {
     formatVolume,
     formatConsumptionRate,
     formatEfficiency,
-    formatFlow
+    formatFlow,
+    convertVolumeToUnit,
+    convertDistanceToUnit,
+    convertVolumePerDistance
   };
 }
 
@@ -196,13 +213,13 @@ angular.module('beamng.apps')
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
 
-      var root = typeof window !== 'undefined' ? window : global;
+      $scope.fuelPriceValue = 0;
       $http.get('/ui/modules/apps/okFuelEconomy/app.json')
         .then(function (resp) {
-          root.initialFuelPrice = parseFloat((resp.data || {}).fuelPrice) || 0;
+          $scope.fuelPriceValue = parseFloat((resp.data || {}).fuelPrice) || 0;
         })
         .catch(function () {
-          root.initialFuelPrice = 0;
+          $scope.fuelPriceValue = 0;
         });
 
       $scope.$on('$destroy', function () {
@@ -313,6 +330,11 @@ angular.module('beamng.apps')
       $scope.avgKmLHistory = '';
       $scope.instantHistory = '';
       $scope.instantKmLHistory = '';
+      $scope.costPrice = '';
+      $scope.costTotal = '';
+      $scope.costPerDistance = '';
+      $scope.tripCostTotal = '';
+      $scope.tripCostPerDistance = '';
 
       var distance_m = 0;
       var lastDistance_m = 0;
@@ -667,6 +689,26 @@ angular.module('beamng.apps')
           var rangeOverallMedianStr = Number.isFinite(rangeOverallMedianVal)
                          ? formatDistance(rangeOverallMedianVal, $scope.unitMode, 0)
                          : 'Infinity';
+
+          var unitLabels = getUnitLabels($scope.unitMode);
+          $scope.costPrice = $scope.fuelPriceValue.toFixed(2) + ' money/' + unitLabels.volume;
+
+          var fuelUsedUnit = convertVolumeToUnit(fuel_used_l, $scope.unitMode);
+          var distanceUnit = convertDistanceToUnit(distance_m, $scope.unitMode);
+          var costTotalVal = fuelUsedUnit * $scope.fuelPriceValue;
+          $scope.costTotal = costTotalVal.toFixed(2) + ' money';
+          var costPerDistVal = distanceUnit > 0 ? costTotalVal / distanceUnit : 0;
+          $scope.costPerDistance = costPerDistVal.toFixed(2) + ' money/' + unitLabels.distance;
+
+          var tripDistance_m = overall.distance;
+          var tripFuelUsed_l = (overall_median / 100) * (tripDistance_m / 1000);
+          var tripFuelUsedUnit = convertVolumeToUnit(tripFuelUsed_l, $scope.unitMode);
+          var tripCostTotalVal = tripFuelUsedUnit * $scope.fuelPriceValue;
+          $scope.tripCostTotal = tripCostTotalVal.toFixed(2) + ' money';
+          var litersPerKm = overall_median / 100;
+          var volPerDistUnit = convertVolumePerDistance(litersPerKm, $scope.unitMode);
+          var tripCostPerDistVal = volPerDistUnit * $scope.fuelPriceValue;
+          $scope.tripCostPerDistance = tripCostPerDistVal.toFixed(2) + ' money/' + unitLabels.distance;
 
           $scope.data1 = formatDistance(distance_m, $scope.unitMode, 1);
           $scope.fuelUsed = formatVolume(fuel_used_l, $scope.unitMode, 2);
