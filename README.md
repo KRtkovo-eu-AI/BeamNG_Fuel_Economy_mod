@@ -13,10 +13,11 @@ This repository contains a UI mod for BeamNG.drive that displays fuel economy in
 - Tracked distance using a custom calculation and ECU values.
 - Fuel consumed, remaining and total capacity.
 - Average and instant fuel consumption.
+- Configurable units for fuel economy including km/L, L/100 km, MPG (US or UK) and kWh/100 km.
 - Estimated range based on current and long-term consumption.
 - Long-term consumption overview with reset option.
 - Trip statistics showing average consumption, distance and range, with reset control.
-- History graphs for average and trip average fuel consumption with toggleable visibility and custom style support.
+- Efficiency history graphs for average and trip consumption with toggleable visibility and custom style support.
 - Hide or show heading and individual data points through an in-app settings dialog that remembers user choices.
 - Switch between the default BeamNG style and a custom neon-themed look.
 
