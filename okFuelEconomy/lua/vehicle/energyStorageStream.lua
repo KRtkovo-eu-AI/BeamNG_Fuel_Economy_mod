@@ -23,19 +23,35 @@ local function registerHandler()
 
   handlers.energyStorage = function()
     local list = {}
-    if powertrain and powertrain.getDevicesOfType then
-      local devices = powertrain.getDevicesOfType('energyStorage') or {}
+
+    -- Resolve the powertrain controller; some vehicles expose it via the
+    -- global 'powertrain' while others keep it under the main controller.
+    local pt = powertrain
+    if not pt and controller and controller.getController then
+      pt = controller.getController('powertrain')
+    end
+    if not pt and controller and controller.mainController then
+      pt = controller.mainController.powertrain
+    end
+
+    if pt and pt.getDevices then
+      local devices = pt.getDevices() or {}
       for _, dev in pairs(devices) do
-        list[#list + 1] = {
-          energyStorageType = dev.energyStorageType,
-          type = dev.type
-        }
+        if dev.category == 'energyStorage' or dev.energyStorageType or dev.type then
+          list[#list + 1] = {
+            energyStorageType = dev.energyStorageType,
+            type = dev.type,
+            category = dev.category
+          }
+        end
       end
     end
+
     if not logged then
       log('D', 'okFuelEconomy', 'energyStorage devices: ' .. dumps(list))
       logged = true
     end
+
     guihooks.queueStream('energyStorage', list)
   end
 end

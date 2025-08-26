@@ -294,7 +294,11 @@ angular.module('beamng.apps')
               : Object.values(streams.energyStorage);
             $scope.isElectric = list.some(function (d) {
               var t = (d.energyStorageType || d.type || '').toLowerCase();
-              return t === 'battery' || t === 'electric' || t === 'capacitor';
+              return (
+                t.includes('battery') ||
+                t.includes('capacitor') ||
+                t.includes('electric')
+              );
             });
             console.debug('[ok-fuel-economy] energyStorage', list, 'isElectric:', $scope.isElectric);
           }
