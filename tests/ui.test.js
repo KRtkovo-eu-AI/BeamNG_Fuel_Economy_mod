@@ -224,6 +224,43 @@ describe('controller integration', () => {
     assert.strictEqual($scope.instantHistory, '');
   });
 
+  it('switches to kWh units for electric vehicles', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = {
+      buildString: (type, val, prec) => {
+        if (type === 'energy') return val.toFixed(prec) + ' kWh';
+        if (type === 'energyConsumptionRate') return val.toFixed(prec) + ' kWh/100km';
+        if (type === 'distance') return val.toFixed(prec) + ' km';
+        return '';
+      }
+    };
+    global.bngApi = { engineLua: cmd => cmd.includes('powertrain') ? '[{"energyStorageType":"electric"}]' : '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, batteryEnergy: 3.6e6, batteryEnergyCapacity: 7.2e6, trip: 0 } };
+
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+    now = 300;
+    streams.electrics.batteryEnergy = 3.5e6;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.ok($scope.isElectric);
+    assert.ok($scope.fuelLeft.endsWith('kWh'));
+    assert.ok($scope.instantLph.includes('kW'));
+    assert.ok($scope.instantL100km.includes('kWh/100km'));
+  });
+
   it('resets instant history when vehicle changes', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

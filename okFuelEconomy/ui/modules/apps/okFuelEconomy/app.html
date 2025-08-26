@@ -22,7 +22,7 @@
 
     <tr ng-if="visible.fuelUsed || visible.fuelLeft || visible.fuelCap">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Fuel:
+        {{ isElectric ? 'Energy:' : 'Fuel:' }}
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         <span ng-if="visible.fuelUsed">Used: {{ fuelUsed }}</span>
@@ -66,7 +66,7 @@
 
     <tr ng-if="visible.instantGraph">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Instant L/h history:
+        {{ isElectric ? 'Instant kW history:' : 'Instant L/h history:' }}
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
@@ -161,14 +161,14 @@
     <label><input type="checkbox" ng-model="visible.heading"> Heading</label><br>
     <label><input type="checkbox" ng-model="visible.distanceMeasured"> Distance measured</label><br>
     <label><input type="checkbox" ng-model="visible.distanceEcu"> Distance from ECU</label><br>
-    <label><input type="checkbox" ng-model="visible.fuelUsed"> Fuel used</label><br>
-    <label><input type="checkbox" ng-model="visible.fuelLeft"> Fuel left</label><br>
-    <label><input type="checkbox" ng-model="visible.fuelCap"> Fuel capacity</label><br>
+    <label><input type="checkbox" ng-model="visible.fuelUsed"> {{ isElectric ? 'Energy used' : 'Fuel used' }}</label><br>
+    <label><input type="checkbox" ng-model="visible.fuelLeft"> {{ isElectric ? 'Energy left' : 'Fuel left' }}</label><br>
+    <label><input type="checkbox" ng-model="visible.fuelCap"> {{ isElectric ? 'Energy capacity' : 'Fuel capacity' }}</label><br>
     <label><input type="checkbox" ng-model="visible.avg"> Average consumption</label><br>
     <label><input type="checkbox" ng-model="visible.avgGraph"> Average history</label><br>
-    <label><input type="checkbox" ng-model="visible.instantLph"> Instant L/h</label><br>
-    <label><input type="checkbox" ng-model="visible.instantL100km"> Instant L/100km</label><br>
-    <label><input type="checkbox" ng-model="visible.instantGraph"> Instant history</label><br>
+    <label><input type="checkbox" ng-model="visible.instantLph"> {{ isElectric ? 'Instant kW' : 'Instant L/h' }}</label><br>
+    <label><input type="checkbox" ng-model="visible.instantL100km"> {{ isElectric ? 'Instant kWh/100km' : 'Instant L/100km' }}</label><br>
+    <label><input type="checkbox" ng-model="visible.instantGraph"> {{ isElectric ? 'Instant kW history' : 'Instant history' }}</label><br>
     <label><input type="checkbox" ng-model="visible.range"> Range</label><br>
     <label><input type="checkbox" ng-model="visible.tripAvg"> Trip average consumption</label><br>
     <label><input type="checkbox" ng-model="visible.tripGraph"> Trip average history</label><br>

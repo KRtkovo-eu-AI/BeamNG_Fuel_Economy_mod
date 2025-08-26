@@ -146,6 +146,16 @@ angular.module('beamng.apps')
         $scope.settingsOpen = false;
       };
 
+      // Determine powertrain type once on init. Default to combustion.
+      $scope.isElectric = false;
+      try {
+        var devicesJson = bngApi.engineLua('return jsonEncode(powertrain.getDevices())');
+        var devices = JSON.parse(devicesJson || '[]');
+        $scope.isElectric = devices.some(function (d) {
+          return (d.energyStorageType || '').toLowerCase() === 'electric';
+        });
+      } catch (e) { /* ignore */ }
+
       // UI outputs
       $scope.data1 = ''; // distance measured
       $scope.data6 = ''; // distance from ECU
@@ -277,7 +287,8 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
-          if (!streams.engineInfo || !streams.electrics) return;
+          if (!streams.electrics) return;
+          if (!$scope.isElectric && !streams.engineInfo) return;
 
           var now_ms = performance.now();
           var dt = Math.max(0, (now_ms - lastTime_ms) / 1000);
@@ -290,8 +301,14 @@ angular.module('beamng.apps')
           );
           var trip_m = streams.electrics.trip || 0;
 
-          var currentFuel_l = streams.engineInfo[11];
-          var capacity_l = streams.engineInfo[12];
+          var currentFuel_l, capacity_l;
+          if ($scope.isElectric) {
+            currentFuel_l = (streams.electrics.batteryEnergy || 0) / 3.6e6;
+            capacity_l = (streams.electrics.batteryEnergyCapacity || 0) / 3.6e6;
+          } else {
+            currentFuel_l = streams.engineInfo[11];
+            capacity_l = streams.engineInfo[12];
+          }
           var throttle = streams.electrics.throttle_input || 0;
           var rpm = streams.electrics.rpmTacho || 0;
           var engineRunning = rpm > 0;
@@ -366,9 +383,9 @@ angular.module('beamng.apps')
             ? calculateInstantConsumption(fuelFlow_lps, speed_mps)
             : 0;
           if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
-            $scope.instantLph = inst_l_per_h.toFixed(1) + ' L/h';
+            $scope.instantLph = inst_l_per_h.toFixed(1) + ($scope.isElectric ? ' kW' : ' L/h');
             $scope.instantL100km = Number.isFinite(inst_l_per_100km)
-              ? inst_l_per_100km.toFixed(1) + ' L/100km'
+              ? inst_l_per_100km.toFixed(1) + ($scope.isElectric ? ' kWh/100km' : ' L/100km')
               : 'Infinity';
             lastInstantUpdate_ms = now_ms;
           }
@@ -485,13 +502,13 @@ angular.module('beamng.apps')
                          : 'Infinity';
 
           $scope.data1 = UiUnits.buildString('distance', distance_m, 1);
-          $scope.fuelUsed = fuel_used_l.toFixed(2) + ' L';
-          $scope.fuelLeft = UiUnits.buildString('volume', currentFuel_l, 2);
-          $scope.fuelCap = UiUnits.buildString('volume', capacity_l, 1);
-          $scope.data3 = UiUnits.buildString('consumptionRate', avg_l_per_100km_ok, 1);
+          $scope.fuelUsed = fuel_used_l.toFixed(2) + ($scope.isElectric ? ' kWh' : ' L');
+          $scope.fuelLeft = UiUnits.buildString($scope.isElectric ? 'energy' : 'volume', currentFuel_l, 2);
+          $scope.fuelCap = UiUnits.buildString($scope.isElectric ? 'energy' : 'volume', capacity_l, 1);
+          $scope.data3 = UiUnits.buildString($scope.isElectric ? 'energyConsumptionRate' : 'consumptionRate', avg_l_per_100km_ok, 1);
           $scope.data4 = rangeStr;
           $scope.data6 = UiUnits.buildString('distance', trip_m, 1);
-          $scope.data7 = UiUnits.buildString('consumptionRate', overall_median, 1);
+          $scope.data7 = UiUnits.buildString($scope.isElectric ? 'energyConsumptionRate' : 'consumptionRate', overall_median, 1);
           $scope.data8 = UiUnits.buildString('distance', overall.distance, 1);
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
