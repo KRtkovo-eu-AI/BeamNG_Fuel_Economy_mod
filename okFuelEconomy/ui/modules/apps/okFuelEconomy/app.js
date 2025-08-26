@@ -221,6 +221,8 @@ angular.module('beamng.apps')
         $scope.unitConsumptionUnit = lbls.consumption;
         $scope.unitEfficiencyUnit = lbls.efficiency;
         $scope.unitFlowUnit = lbls.flow;
+        $scope.unitVolumeUnit = lbls.volume;
+        $scope.unitDistanceUnit = lbls.distance;
       }
       updateUnitLabels();
       $scope.visible = {
@@ -246,7 +248,11 @@ angular.module('beamng.apps')
         tripKmLGraph: true,
         tripDistance: true,
         tripRange: true,
-        tripReset: true
+        tripReset: true,
+        costTotal: true,
+        costPerDistance: true,
+        tripCostTotal: true,
+        tripCostPerDistance: true
       };
       try {
         var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
@@ -298,6 +304,11 @@ angular.module('beamng.apps')
       $scope.avgKmLHistory = '';
       $scope.instantHistory = '';
       $scope.instantKmLHistory = '';
+
+      $scope.fuelUsedValue = 0;
+      $scope.distanceValue = 0;
+      $scope.tripDistanceValue = 0;
+      $scope.tripAvgL100kmValue = 0;
 
       var distance_m = 0;
       var lastDistance_m = 0;
@@ -655,6 +666,7 @@ angular.module('beamng.apps')
 
           $scope.data1 = formatDistance(distance_m, $scope.unitMode, 1);
           $scope.fuelUsed = formatVolume(fuel_used_l, $scope.unitMode, 2);
+          $scope.fuelUsedValue = fuel_used_l;
           $scope.fuelLeft = formatVolume(currentFuel_l, $scope.unitMode, 2);
           $scope.fuelCap = formatVolume(capacity_l, $scope.unitMode, 1);
           $scope.avgL100km = formatConsumptionRate(avg_l_per_100km_ok, $scope.unitMode, 1);
@@ -665,6 +677,7 @@ angular.module('beamng.apps')
           );
           $scope.data4 = rangeStr;
           $scope.data6 = formatDistance(trip_m, $scope.unitMode, 1);
+          $scope.distanceValue = distance_m;
           $scope.tripAvgL100km = formatConsumptionRate(overall_median, $scope.unitMode, 1);
           $scope.tripAvgKmL = formatEfficiency(
             overall_median > 0 ? 100 / overall_median : Infinity,
@@ -672,6 +685,8 @@ angular.module('beamng.apps')
             2
           );
           $scope.data8 = formatDistance(overall.distance, $scope.unitMode, 1);
+          $scope.tripDistanceValue = overall.distance;
+          $scope.tripAvgL100kmValue = overall_median;
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
           lastDistance_m = distance_m;

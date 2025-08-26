@@ -1,5 +1,5 @@
 <div class="bngApp"
-     ng-init="useCustomStyles=true"
+     ng-init="useCustomStyles=true; fuelPrice=(+localStorage.getItem('okFuelEconomyFuelPrice')||0)"
      ng-attr-style="{{ 'width:100%; height:100%; overflow:auto; position:relative;' + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:16px 16px,16px 16px; color:#aeeaff; font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
      layout="column">
 
@@ -30,6 +30,17 @@
         <span ng-if="visible.fuelLeft">Left: {{ fuelLeft }}</span>
         <span ng-if="visible.fuelLeft && visible.fuelCap"> | </span>
         <span ng-if="visible.fuelCap">Capacity: {{ fuelCap }}</span>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.costTotal || visible.costPerDistance">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span ng-if="visible.costTotal">{{ ((unitMode === 'imperial' ? fuelUsedValue / 3.78541 : fuelUsedValue) * (fuelPrice || 0)) | number:2 }} money</span>
+        <span ng-if="visible.costTotal && visible.costPerDistance"> | </span>
+        <span ng-if="visible.costPerDistance">{{ ((unitMode === 'imperial' ? fuelUsedValue / 3.78541 : fuelUsedValue) * (fuelPrice || 0)) / ((unitMode === 'imperial' ? distanceValue / 1609.34 : distanceValue / 1000) || 1) | number:2 }} money/{{ unitDistanceUnit }}</span>
       </td>
     </tr>
 
@@ -161,6 +172,17 @@
       </td>
     </tr>
 
+    <tr ng-if="visible.tripCostTotal || visible.tripCostPerDistance">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span ng-if="visible.tripCostTotal">{{ ((unitMode === 'imperial' ? (tripAvgL100kmValue * tripDistanceValue / 100000) / 3.78541 : (tripAvgL100kmValue * tripDistanceValue / 100000)) * (fuelPrice || 0)) | number:2 }} money</span>
+        <span ng-if="visible.tripCostTotal && visible.tripCostPerDistance"> | </span>
+        <span ng-if="visible.tripCostPerDistance">{{ ((unitMode === 'imperial' ? tripAvgL100kmValue * 1.60934 / 3.78541 / 100 : tripAvgL100kmValue / 100) * (fuelPrice || 0)) | number:2 }} money/{{ unitDistanceUnit }}</span>
+      </td>
+    </tr>
+
     <tr ng-if="visible.tripReset">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip reset:
@@ -220,6 +242,17 @@
       <label><input type="checkbox" ng-model="visible.tripDistance"> Trip distance</label><br>
       <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
       <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
+      <label><input type="checkbox" ng-model="visible.costTotal"> Fuel cost total</label><br>
+      <label><input type="checkbox" ng-model="visible.costPerDistance"> Fuel cost per {{ unitDistanceUnit }}</label><br>
+      <label><input type="checkbox" ng-model="visible.tripCostTotal"> Trip cost total</label><br>
+      <label><input type="checkbox" ng-model="visible.tripCostPerDistance"> Trip cost per {{ unitDistanceUnit }}</label><br>
+      <label>Fuel price per {{ unitVolumeUnit }}:
+        <input type="number"
+               ng-model="fuelPrice"
+               ng-change="localStorage.setItem('okFuelEconomyFuelPrice', fuelPrice)"
+               step="0.01"
+               ng-attr-style="{{ 'margin-left:4px; width:60px;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">
+      </label><br>
       <div ng-attr-style="{{ 'position:relative;' + (useCustomStyles ? '' : '') }}">
         <label>Units:
           <span ng-click="unitMenuOpen = !unitMenuOpen"
