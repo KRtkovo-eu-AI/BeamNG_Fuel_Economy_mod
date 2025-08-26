@@ -120,7 +120,7 @@ describe('controller integration', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
 
@@ -155,7 +155,7 @@ describe('controller integration', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     const store = {};
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
@@ -189,7 +189,7 @@ describe('controller integration', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };
@@ -236,7 +236,7 @@ describe('controller integration', () => {
         return '';
       }
     };
-    global.bngApi = { engineLua: cmd => cmd.toLowerCase().includes('powertrain') ? '[{"energyStorageType":"electric"}]' : '' };
+    global.bngApi = {};
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };
@@ -247,7 +247,18 @@ describe('controller integration', () => {
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
     controllerFn({ debug: () => {} }, $scope);
 
-    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, batteryEnergy: 3.6e6, batteryEnergyCapacity: 7.2e6, trip: 0 } };
+    const streams = {
+      electrics: {
+        wheelspeed: 10,
+        airspeed: 10,
+        throttle_input: 0.5,
+        rpmTacho: 1000,
+        batteryEnergy: 3.6e6,
+        batteryEnergyCapacity: 7.2e6,
+        trip: 0
+      },
+      energyStorage: [{ energyStorageType: 'electric' }]
+    };
 
     now = 0;
     $scope.on_streamsUpdate(null, streams);
@@ -266,7 +277,7 @@ describe('controller integration', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };
@@ -298,7 +309,7 @@ describe('controller integration', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     const store = {};
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
     let now = 0;
@@ -345,7 +356,7 @@ describe('controller integration', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     const store = {
       okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 5, previousAvgTrip: 5 }),
       okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
@@ -378,7 +389,7 @@ describe('controller integration', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     const store = {
       okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0 }),
       okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
@@ -432,7 +443,7 @@ describe('visibility settings persistence', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     const store = {};
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
     global.performance = { now: () => 0 };

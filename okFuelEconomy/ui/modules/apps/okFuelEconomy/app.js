@@ -100,7 +100,7 @@ angular.module('beamng.apps')
     restrict: 'EA',
     scope: true,
     controller: ['$log', '$scope', function ($log, $scope) {
-      var streamsList = ['electrics', 'engineInfo'];
+      var streamsList = ['electrics', 'engineInfo', 'energyStorage'];
       StreamsManager.add(streamsList);
 
       $scope.$on('$destroy', function () {
@@ -146,21 +146,8 @@ angular.module('beamng.apps')
         $scope.settingsOpen = false;
       };
 
-      // Determine powertrain type once on init. Default to combustion.
+      // Determine powertrain type once stream data arrives. Default to combustion.
       $scope.isElectric = false;
-      try {
-        var devicesJson = bngApi.engineLua(
-          'local veh=be:getPlayerVehicle(0);' +
-          'if veh then ' +
-            'local pt=veh:getPowertrain();' +
-            'if pt then return jsonEncode(pt:getDevices()) end ' +
-          'end'
-        );
-        var devices = JSON.parse(devicesJson || '[]');
-        $scope.isElectric = devices.some(function (d) {
-          return (d.energyStorageType || '').toLowerCase() === 'electric';
-        });
-      } catch (e) { /* ignore */ }
 
       // UI outputs
       $scope.data1 = ''; // distance measured
@@ -263,6 +250,7 @@ angular.module('beamng.apps')
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
         engineWasRunning = false;
+        $scope.isElectric = false;
         resetInstantHistory();
         resetAvgHistory();
       }
@@ -293,6 +281,14 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
+          if (streams.energyStorage) {
+            var list = Array.isArray(streams.energyStorage)
+              ? streams.energyStorage
+              : Object.values(streams.energyStorage);
+            $scope.isElectric = list.some(function (d) {
+              return (d.energyStorageType || '').toLowerCase() === 'electric';
+            });
+          }
           if (!streams.electrics) return;
           if (!$scope.isElectric && !streams.engineInfo) return;
 
@@ -517,7 +513,12 @@ angular.module('beamng.apps')
           $scope.data7 = UiUnits.buildString($scope.isElectric ? 'energyConsumptionRate' : 'consumptionRate', overall_median, 1);
           $scope.data8 = UiUnits.buildString('distance', overall.distance, 1);
           $scope.data9 = rangeOverallMedianStr;
-          $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
+            try {
+              $scope.vehicleNameStr =
+                (bngApi.engineLua && bngApi.engineLua("be:getPlayerVehicle(0)")) || "";
+            } catch (e) {
+              $scope.vehicleNameStr = "";
+            }
           lastDistance_m = distance_m;
         });
       });
