@@ -62,6 +62,7 @@ describe('UI template styling', () => {
   it('renders fuel cost bindings without inline script', () => {
     assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('fuelPriceNotice'));
+    assert.ok(html.includes('fuel price and currency in fuelPrice.json'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ costTotal }}'));
@@ -70,15 +71,15 @@ describe('UI template styling', () => {
     assert.ok(html.includes('{{ tripCostPerDistance }}'));
   });
 
-  it('exposes fuelPrice and currency in app.json', () => {
-    const appConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'app.json');
-    const cfg = JSON.parse(fs.readFileSync(appConfigPath, 'utf8'));
+  it('exposes fuelPrice and currency in fuelPrice.json', () => {
+    const priceConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'fuelPrice.json');
+    const cfg = JSON.parse(fs.readFileSync(priceConfigPath, 'utf8'));
     assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'fuelPrice'));
     assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'currency'));
   });
 
 
-  it('loads fuelPrice from app.json via app.js', async () => {
+  it('loads fuelPrice from fuelPrice.json via app.js', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };

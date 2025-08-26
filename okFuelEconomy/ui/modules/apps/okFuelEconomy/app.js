@@ -215,7 +215,7 @@ angular.module('beamng.apps')
 
       $scope.fuelPriceValue = 0;
       $scope.currency = 'money';
-      $http.get('/ui/modules/apps/okFuelEconomy/app.json')
+      $http.get('/ui/modules/apps/okFuelEconomy/fuelPrice.json')
         .then(function (resp) {
           $scope.fuelPriceValue = parseFloat((resp.data || {}).fuelPrice) || 0;
           $scope.currency = (resp.data || {}).currency || 'money';
