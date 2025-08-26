@@ -351,8 +351,8 @@ angular.module('beamng.apps')
       var lastDistance_m = 0;
       var lastTime_ms = performance.now();
       var startFuel_l = null;
-      var tripStartFuel_l = null;
       var previousFuel_l = null;
+      var tripFuelUsed_l = 0;
       var lastFuelFlow_lps = 0; // last smoothed value
       var idleFuelFlow_lps = 0;
       var lastThrottle = 0;
@@ -371,13 +371,15 @@ angular.module('beamng.apps')
       var OVERALL_KEY = 'okFuelEconomyOverall';
       var MAX_ENTRIES = 5000; // pevný počet hodnot pro frontu
 
-      var overall = { queue: [], distance: 0 }; // fronta posledních průměrů + celková ujetá vzdálenost
+      var overall = { queue: [], distance: 0, fuelUsed: 0 }; // fronta posledních průměrů + celková ujetá vzdálenost a spotřebované palivo
       try {
           var saved = JSON.parse(localStorage.getItem(OVERALL_KEY));
           if (saved && Array.isArray(saved.queue)) {
               overall = saved;
+              if (!Number.isFinite(overall.fuelUsed)) overall.fuelUsed = 0;
           }
       } catch (e) { /* ignore */ }
+      tripFuelUsed_l = overall.fuelUsed || 0;
 
       function saveOverall() {
           try { localStorage.setItem(OVERALL_KEY, JSON.stringify(overall)); } catch (e) { /* ignore */ }
@@ -448,8 +450,9 @@ angular.module('beamng.apps')
         distance_m = 0;
         lastDistance_m = 0;
         startFuel_l = null;
-        tripStartFuel_l = null;
         previousFuel_l = null;
+        tripFuelUsed_l = 0;
+        overall.fuelUsed = 0;
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
         engineWasRunning = false;
@@ -465,12 +468,12 @@ angular.module('beamng.apps')
       // reset overall včetně vzdálenosti
       $scope.resetOverall = function () {
           $log.debug('<ok-fuel-economy> manual reset overall');
-          overall = { queue: [], distance: 0 };
+          overall = { queue: [], distance: 0, fuelUsed: 0 };
           saveOverall();
           avgHistory = { queue: [] };
           saveAvgHistory();
           resetInstantHistory();
-          tripStartFuel_l = previousFuel_l;
+          tripFuelUsed_l = 0;
           $scope.tripAvgL100km = formatConsumptionRate(0, $scope.unitMode, 1);
           $scope.tripAvgKmL = formatEfficiency(Infinity, $scope.unitMode, 2);
           $scope.tripAvgCost = '';
@@ -530,18 +533,19 @@ angular.module('beamng.apps')
           if (previousFuel_l === null) {
             previousFuel_l = currentFuel_l;
             distance_m = 0;
-          } 
+          }
 
           var fuel_used_l = startFuel_l - currentFuel_l;
           if (fuel_used_l >= capacity_l || fuel_used_l < 0) {
             fuel_used_l = 0;
             distance_m = 0;
           }
-          if (tripStartFuel_l === null) {
-            tripStartFuel_l = currentFuel_l;
+
+          var deltaTripFuel = previousFuel_l - currentFuel_l;
+          if (deltaTripFuel > 0) {
+            tripFuelUsed_l += deltaTripFuel;
+            overall.fuelUsed = tripFuelUsed_l;
           }
-          var tripFuelUsed_l = tripStartFuel_l - currentFuel_l;
-          if (tripFuelUsed_l < 0) tripFuelUsed_l = 0;
 
           if (distance_m === 0 && lastDistance_m > 0) {
             resetAvgHistory();
