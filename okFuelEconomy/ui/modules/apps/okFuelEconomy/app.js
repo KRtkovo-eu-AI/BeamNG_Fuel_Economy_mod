@@ -314,7 +314,7 @@ angular.module('beamng.apps')
       var lastInstantUpdate_ms = 0;
       var INSTANT_UPDATE_INTERVAL = 250;
       var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
-      var MAX_EFFICIENCY = 500; // [km/L] cap unrealistic efficiency
+      var MAX_EFFICIENCY = 100; // [km/L] cap unrealistic efficiency
 
       $scope.vehicleNameStr = "";
 
