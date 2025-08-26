@@ -278,10 +278,11 @@ angular.module('beamng.apps')
         tripRange: true,
         tripReset: true,
         costPrice: false,
-        costTotal: false,
-        costPerDistance: false,
-        tripCostTotal: false,
-        tripCostPerDistance: false
+        avgCostTotal: false,
+        avgCostPerDistance: false,
+        totalCost: false,
+        tripAvgCostTotal: false,
+        tripAvgCostPerDistance: false
       };
       try {
         var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
@@ -301,6 +302,10 @@ angular.module('beamng.apps')
             s.tripAvgL100km = s.tripAvgKmL = s.tripAvg;
             delete s.tripAvg;
           }
+          if ('costTotal' in s) { s.avgCostTotal = s.costTotal; delete s.costTotal; }
+          if ('costPerDistance' in s) { s.avgCostPerDistance = s.costPerDistance; delete s.costPerDistance; }
+          if ('tripCostTotal' in s) { s.tripAvgCostTotal = s.tripCostTotal; delete s.tripCostTotal; }
+          if ('tripCostPerDistance' in s) { s.tripAvgCostPerDistance = s.tripCostPerDistance; delete s.tripCostPerDistance; }
           Object.assign($scope.visible, s);
         }
       } catch (e) { /* ignore */ }
@@ -334,12 +339,14 @@ angular.module('beamng.apps')
       $scope.instantHistory = '';
       $scope.instantKmLHistory = '';
       $scope.costPrice = '';
-      $scope.costTotal = '';
-      $scope.costPerDistance = '';
-      $scope.tripCostTotal = '';
-      $scope.tripCostPerDistance = '';
+      $scope.avgCostTotal = '';
+      $scope.avgCostPerDistance = '';
+      $scope.totalCost = '';
+      $scope.tripAvgCostTotal = '';
+      $scope.tripAvgCostPerDistance = '';
 
       var distance_m = 0;
+      var avgCostDistance_m = 0;
       var lastDistance_m = 0;
       var lastTime_ms = performance.now();
       var startFuel_l = null;
@@ -437,6 +444,7 @@ angular.module('beamng.apps')
 
       function hardReset() {
         distance_m = 0;
+        avgCostDistance_m = 0;
         lastDistance_m = 0;
         startFuel_l = null;
         previousFuel_l = null;
@@ -460,6 +468,7 @@ angular.module('beamng.apps')
           avgHistory = { queue: [] };
           saveAvgHistory();
           resetInstantHistory();
+          avgCostDistance_m = 0;
           $scope.tripAvgL100km = formatConsumptionRate(0, $scope.unitMode, 1);
           $scope.tripAvgKmL = formatEfficiency(Infinity, $scope.unitMode, 2);
           $scope.data6 = formatDistance(0, $scope.unitMode, 1); // reset trip
@@ -665,6 +674,7 @@ angular.module('beamng.apps')
 
             if (shouldUpdateAvg) {
                 overall.previousAvgTrip = avg_l_per_100km_ok;
+                avgCostDistance_m += speed_mps * dt;
             } else {
                 // při stání a bez plynu → spotřebu necháme beze změny
                 avg_l_per_100km_ok = overall.previousAvgTrip;
@@ -698,23 +708,29 @@ angular.module('beamng.apps')
             $scope.fuelPriceValue.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.volume;
 
           var fuelUsedUnit = convertVolumeToUnit(fuel_used_l, $scope.unitMode);
-          var distanceUnit = convertDistanceToUnit(distance_m, $scope.unitMode);
-          var costTotalVal = fuelUsedUnit * $scope.fuelPriceValue;
-          $scope.costTotal = costTotalVal.toFixed(2) + ' ' + $scope.currency;
-          var costPerDistVal = distanceUnit > 0 ? costTotalVal / distanceUnit : 0;
-          $scope.costPerDistance =
-            costPerDistVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
+          var totalCostVal = fuelUsedUnit * $scope.fuelPriceValue;
+          $scope.totalCost = totalCostVal.toFixed(2) + ' ' + $scope.currency;
+
+          var avgFuelUsed_l = (avg_l_per_100km_ok / 100) * (avgCostDistance_m / 1000);
+          var avgFuelUsedUnit = convertVolumeToUnit(avgFuelUsed_l, $scope.unitMode);
+          var avgCostTotalVal = avgFuelUsedUnit * $scope.fuelPriceValue;
+          $scope.avgCostTotal = avgCostTotalVal.toFixed(2) + ' ' + $scope.currency;
+          var avgLitersPerKm = avg_l_per_100km_ok / 100;
+          var avgVolPerDistUnit = convertVolumePerDistance(avgLitersPerKm, $scope.unitMode);
+          var avgCostPerDistVal = avgVolPerDistUnit * $scope.fuelPriceValue;
+          $scope.avgCostPerDistance =
+            avgCostPerDistVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
 
           var tripDistance_m = overall.distance;
           var tripFuelUsed_l = (overall_median / 100) * (tripDistance_m / 1000);
           var tripFuelUsedUnit = convertVolumeToUnit(tripFuelUsed_l, $scope.unitMode);
-          var tripCostTotalVal = tripFuelUsedUnit * $scope.fuelPriceValue;
-          $scope.tripCostTotal = tripCostTotalVal.toFixed(2) + ' ' + $scope.currency;
-          var litersPerKm = overall_median / 100;
-          var volPerDistUnit = convertVolumePerDistance(litersPerKm, $scope.unitMode);
-          var tripCostPerDistVal = volPerDistUnit * $scope.fuelPriceValue;
-          $scope.tripCostPerDistance =
-            tripCostPerDistVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
+          var tripAvgCostTotalVal = tripFuelUsedUnit * $scope.fuelPriceValue;
+          $scope.tripAvgCostTotal = tripAvgCostTotalVal.toFixed(2) + ' ' + $scope.currency;
+          var tripLitersPerKm = overall_median / 100;
+          var tripVolPerDistUnit = convertVolumePerDistance(tripLitersPerKm, $scope.unitMode);
+          var tripAvgCostPerDistVal = tripVolPerDistUnit * $scope.fuelPriceValue;
+          $scope.tripAvgCostPerDistance =
+            tripAvgCostPerDistVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
 
           $scope.data1 = formatDistance(distance_m, $scope.unitMode, 1);
           $scope.fuelUsed = formatVolume(fuel_used_l, $scope.unitMode, 2);

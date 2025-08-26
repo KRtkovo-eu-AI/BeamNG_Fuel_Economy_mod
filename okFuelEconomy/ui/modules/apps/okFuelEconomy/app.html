@@ -42,14 +42,23 @@
       </td>
     </tr>
 
-    <tr ng-if="visible.costTotal || visible.costPerDistance">
+    <tr ng-if="visible.avgCostTotal || visible.avgCostPerDistance">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Fuel cost:
+        Average fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.costTotal">{{ costTotal }}</span>
-        <span ng-if="visible.costTotal && visible.costPerDistance"> | </span>
-        <span ng-if="visible.costPerDistance">{{ costPerDistance }}</span>
+        <span ng-if="visible.avgCostTotal">{{ avgCostTotal }}</span>
+        <span ng-if="visible.avgCostTotal && visible.avgCostPerDistance"> | </span>
+        <span ng-if="visible.avgCostPerDistance">{{ avgCostPerDistance }}</span>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.totalCost">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Total fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>{{ totalCost }}</span>
       </td>
     </tr>
 
@@ -181,14 +190,14 @@
       </td>
     </tr>
 
-    <tr ng-if="visible.tripCostTotal || visible.tripCostPerDistance">
+    <tr ng-if="visible.tripAvgCostTotal || visible.tripAvgCostPerDistance">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Trip cost:
+        Trip average fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.tripCostTotal">{{ tripCostTotal }}</span>
-        <span ng-if="visible.tripCostTotal && visible.tripCostPerDistance"> | </span>
-        <span ng-if="visible.tripCostPerDistance">{{ tripCostPerDistance }}</span>
+        <span ng-if="visible.tripAvgCostTotal">{{ tripAvgCostTotal }}</span>
+        <span ng-if="visible.tripAvgCostTotal && visible.tripAvgCostPerDistance"> | </span>
+        <span ng-if="visible.tripAvgCostPerDistance">{{ tripAvgCostPerDistance }}</span>
       </td>
     </tr>
 
@@ -252,10 +261,11 @@
       <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
       <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
       <label><input type="checkbox" ng-model="visible.costPrice"> Fuel price</label><br>
-      <label><input type="checkbox" ng-model="visible.costTotal"> Fuel cost total</label><br>
-      <label><input type="checkbox" ng-model="visible.costPerDistance"> Fuel cost per {{ unitDistanceUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.tripCostTotal"> Trip cost total</label><br>
-      <label><input type="checkbox" ng-model="visible.tripCostPerDistance"> Trip cost per {{ unitDistanceUnit }}</label><br>
+      <label><input type="checkbox" ng-model="visible.avgCostTotal"> Average fuel cost total</label><br>
+      <label><input type="checkbox" ng-model="visible.avgCostPerDistance"> Average fuel cost per {{ unitDistanceUnit }}</label><br>
+      <label><input type="checkbox" ng-model="visible.totalCost"> Total fuel cost</label><br>
+      <label><input type="checkbox" ng-model="visible.tripAvgCostTotal"> Trip average fuel cost total</label><br>
+      <label><input type="checkbox" ng-model="visible.tripAvgCostPerDistance"> Trip average fuel cost per {{ unitDistanceUnit }}</label><br>
       <p id="fuelPriceNotice"
          ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
         Set fuel price and currency in fuelPrice.json
