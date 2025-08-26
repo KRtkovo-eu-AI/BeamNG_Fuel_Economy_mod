@@ -42,14 +42,12 @@
       </td>
     </tr>
 
-    <tr ng-if="visible.avgCostTotal || visible.avgCostPerDistance">
+    <tr ng-if="visible.avgCost">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Average fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.avgCostTotal">{{ avgCostTotal }}</span>
-        <span ng-if="visible.avgCostTotal && visible.avgCostPerDistance"> | </span>
-        <span ng-if="visible.avgCostPerDistance">{{ avgCostPerDistance }}</span>
+        <span>{{ avgCost }}</span>
       </td>
     </tr>
 
@@ -190,14 +188,21 @@
       </td>
     </tr>
 
-    <tr ng-if="visible.tripAvgCostTotal || visible.tripAvgCostPerDistance">
+    <tr ng-if="visible.tripAvgCost">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip average fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.tripAvgCostTotal">{{ tripAvgCostTotal }}</span>
-        <span ng-if="visible.tripAvgCostTotal && visible.tripAvgCostPerDistance"> | </span>
-        <span ng-if="visible.tripAvgCostPerDistance">{{ tripAvgCostPerDistance }}</span>
+        <span>{{ tripAvgCost }}</span>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.tripTotalCost">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip total fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>{{ tripTotalCost }}</span>
       </td>
     </tr>
 
@@ -261,11 +266,10 @@
       <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
       <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
       <label><input type="checkbox" ng-model="visible.costPrice"> Fuel price</label><br>
-      <label><input type="checkbox" ng-model="visible.avgCostTotal"> Average fuel cost total</label><br>
-      <label><input type="checkbox" ng-model="visible.avgCostPerDistance"> Average fuel cost per {{ unitDistanceUnit }}</label><br>
+      <label><input type="checkbox" ng-model="visible.avgCost"> Average fuel cost per {{ unitDistanceUnit }}</label><br>
       <label><input type="checkbox" ng-model="visible.totalCost"> Total fuel cost</label><br>
-      <label><input type="checkbox" ng-model="visible.tripAvgCostTotal"> Trip average fuel cost total</label><br>
-      <label><input type="checkbox" ng-model="visible.tripAvgCostPerDistance"> Trip average fuel cost per {{ unitDistanceUnit }}</label><br>
+      <label><input type="checkbox" ng-model="visible.tripAvgCost"> Trip average fuel cost per {{ unitDistanceUnit }}</label><br>
+      <label><input type="checkbox" ng-model="visible.tripTotalCost"> Trip total fuel cost</label><br>
       <p id="fuelPriceNotice"
          ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
         Set fuel price and currency in fuelPrice.json

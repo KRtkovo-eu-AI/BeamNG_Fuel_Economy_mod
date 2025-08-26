@@ -65,11 +65,10 @@ describe('UI template styling', () => {
     assert.ok(html.includes('fuel price and currency in fuelPrice.json'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
-    assert.ok(html.includes('{{ avgCostTotal }}'));
-    assert.ok(html.includes('{{ avgCostPerDistance }}'));
+    assert.ok(html.includes('{{ avgCost }}'));
     assert.ok(html.includes('{{ totalCost }}'));
-    assert.ok(html.includes('{{ tripAvgCostTotal }}'));
-    assert.ok(html.includes('{{ tripAvgCostPerDistance }}'));
+    assert.ok(html.includes('{{ tripAvgCost }}'));
+    assert.ok(html.includes('{{ tripTotalCost }}'));
   });
 
   it('exposes fuelPrice and currency in fuelPrice.json', () => {
@@ -152,9 +151,10 @@ describe('UI template styling', () => {
     assert.ok(html.includes('ng-if="visible.instantLph || visible.instantL100km || visible.instantKmL"'));
     assert.ok(html.includes('ng-if="visible.tripAvgL100km || visible.tripAvgKmL"'));
     assert.ok(html.includes('ng-if="visible.instantGraph"'));
-    assert.ok(html.includes('ng-if="visible.avgCostTotal || visible.avgCostPerDistance"'));
-    assert.ok(html.includes('ng-if="visible.tripAvgCostTotal || visible.tripAvgCostPerDistance"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCostTotal','visible.avgCostPerDistance','visible.totalCost','visible.tripAvgCostTotal','visible.tripAvgCostPerDistance'];
+    assert.ok(html.includes('ng-if="visible.avgCost"'));
+    assert.ok(html.includes('ng-if="visible.tripAvgCost"'));
+    assert.ok(html.includes('ng-if="visible.tripTotalCost"'));
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripAvgCost','visible.tripTotalCost'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -178,11 +178,10 @@ describe('controller integration', () => {
     controllerFn({ debug: () => {} }, $scope, httpStub);
 
     assert.strictEqual($scope.visible.costPrice, false);
-    assert.strictEqual($scope.visible.avgCostTotal, false);
-    assert.strictEqual($scope.visible.avgCostPerDistance, false);
+    assert.strictEqual($scope.visible.avgCost, false);
     assert.strictEqual($scope.visible.totalCost, false);
-    assert.strictEqual($scope.visible.tripAvgCostTotal, false);
-    assert.strictEqual($scope.visible.tripAvgCostPerDistance, false);
+    assert.strictEqual($scope.visible.tripAvgCost, false);
+    assert.strictEqual($scope.visible.tripTotalCost, false);
   });
   it('computes fuel costs via controller', async () => {
     let directiveDef;
@@ -211,11 +210,10 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
 
     assert.strictEqual($scope.costPrice, '1.50 USD/L');
-    assert.strictEqual($scope.avgCostTotal, '3.00 USD');
-    assert.strictEqual($scope.avgCostPerDistance, '0.15 USD/km');
+    assert.strictEqual($scope.avgCost, '0.15 USD/km');
     assert.strictEqual($scope.totalCost, '3.00 USD');
-    assert.strictEqual($scope.tripAvgCostTotal, '3.00 USD');
-    assert.strictEqual($scope.tripAvgCostPerDistance, '0.15 USD/km');
+    assert.strictEqual($scope.tripAvgCost, '0.15 USD/km');
+    assert.strictEqual($scope.tripTotalCost, '3.00 USD');
   });
   it('populates data fields from stream updates', () => {
     let directiveDef;
