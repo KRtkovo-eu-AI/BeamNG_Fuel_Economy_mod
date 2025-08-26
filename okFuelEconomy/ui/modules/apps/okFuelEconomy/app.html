@@ -1,5 +1,5 @@
 <div class="bngApp"
-     ng-init="useCustomStyles=true; fuelPrice=0"
+     ng-init="useCustomStyles=true"
      ng-attr-style="{{ 'width:100%; height:100%; overflow:auto; position:relative;' + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:16px 16px,16px 16px; color:#aeeaff; font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
      layout="column">
 
@@ -14,7 +14,7 @@
         Traveled distance:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.distanceMeasured">Measured: {{ data1 }}</span>
+        <span ng-if="visible.distanceMeasured" id="distanceMeasuredDisplay">Measured: {{ data1 }}</span>
         <span ng-if="visible.distanceMeasured && visible.distanceEcu"> | </span>
         <span ng-if="visible.distanceEcu">From ECU: {{ data6 }}</span>
       </td>
@@ -25,7 +25,7 @@
         Fuel:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.fuelUsed">Used: {{ fuelUsed }}</span>
+        <span ng-if="visible.fuelUsed" id="fuelUsedDisplay">Used: {{ fuelUsed }}</span>
         <span ng-if="visible.fuelUsed && (visible.fuelLeft || visible.fuelCap)"> | </span>
         <span ng-if="visible.fuelLeft">Left: {{ fuelLeft }}</span>
         <span ng-if="visible.fuelLeft && visible.fuelCap"> | </span>
@@ -38,9 +38,9 @@
         Fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.costTotal">{{ ((unitMode === 'imperial' ? fuelUsedValue / 3.78541 : fuelUsedValue) * (fuelPrice || 0)) | number:2 }} money</span>
+        <span ng-if="visible.costTotal" id="fuelCostTotal"></span>
         <span ng-if="visible.costTotal && visible.costPerDistance"> | </span>
-        <span ng-if="visible.costPerDistance">{{ ((unitMode === 'imperial' ? fuelUsedValue / 3.78541 : fuelUsedValue) * (fuelPrice || 0)) / ((unitMode === 'imperial' ? distanceValue / 1609.34 : distanceValue / 1000) || 1) | number:2 }} money/{{ unitDistanceUnit }}</span>
+        <span ng-if="visible.costPerDistance" id="fuelCostPerDistance"></span>
       </td>
     </tr>
 
@@ -126,7 +126,7 @@
         Trip average consumption:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.tripAvgL100km">{{ tripAvgL100km }}</span>
+        <span ng-if="visible.tripAvgL100km" id="tripAvgDisplay">{{ tripAvgL100km }}</span>
         <span ng-if="visible.tripAvgL100km && visible.tripAvgKmL"> | </span>
         <span ng-if="visible.tripAvgKmL">{{ tripAvgKmL }}</span>
       </td>
@@ -159,7 +159,7 @@
         Trip distance:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        {{ data8 }}
+        <span id="tripDistanceDisplay">{{ data8 }}</span>
       </td>
     </tr>
 
@@ -177,9 +177,9 @@
         Trip cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.tripCostTotal">{{ ((unitMode === 'imperial' ? (tripAvgL100kmValue * tripDistanceValue / 100000) / 3.78541 : (tripAvgL100kmValue * tripDistanceValue / 100000)) * (fuelPrice || 0)) | number:2 }} money</span>
+        <span ng-if="visible.tripCostTotal" id="tripCostTotal"></span>
         <span ng-if="visible.tripCostTotal && visible.tripCostPerDistance"> | </span>
-        <span ng-if="visible.tripCostPerDistance">{{ ((unitMode === 'imperial' ? tripAvgL100kmValue * 1.60934 / 3.78541 / 100 : tripAvgL100kmValue / 100) * (fuelPrice || 0)) | number:2 }} money/{{ unitDistanceUnit }}</span>
+        <span ng-if="visible.tripCostPerDistance" id="tripCostPerDistance"></span>
       </td>
     </tr>
 
@@ -246,10 +246,11 @@
       <label><input type="checkbox" ng-model="visible.costPerDistance"> Fuel cost per {{ unitDistanceUnit }}</label><br>
       <label><input type="checkbox" ng-model="visible.tripCostTotal"> Trip cost total</label><br>
       <label><input type="checkbox" ng-model="visible.tripCostPerDistance"> Trip cost per {{ unitDistanceUnit }}</label><br>
-      <label>Fuel price per {{ unitVolumeUnit }}:
+      <label id="fuelPriceLabel">Fuel price:
         <input type="number"
-               ng-model="fuelPrice"
+               id="fuelPriceInput"
                step="0.01"
+               value="0"
                ng-attr-style="{{ 'margin-left:4px; width:60px;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">
       </label><br>
       <div ng-attr-style="{{ 'position:relative;' + (useCustomStyles ? '' : '') }}">
@@ -270,3 +271,50 @@
       </button>
   </div>
 </div>
+<script type="text/javascript">
+  (function () {
+    function parseNumber(str) {
+      return parseFloat((str || '').replace(/[^0-9.]/g, '')) || 0;
+    }
+    function parseUnit(str) {
+      var m = (str || '').match(/([a-zA-Z\/]+)$/);
+      return m ? m[1] : '';
+    }
+    function getText(id) {
+      var el = document.getElementById(id);
+      return el ? el.textContent : '';
+    }
+    function updateCosts() {
+      var price = parseFloat(document.getElementById('fuelPriceInput').value) || 0;
+      var fuelUsedStr = getText('fuelUsedDisplay');
+      var fuelUsed = parseNumber(fuelUsedStr);
+      var volUnit = parseUnit(fuelUsedStr);
+      var priceLabel = document.getElementById('fuelPriceLabel');
+      if (priceLabel) priceLabel.textContent = 'Fuel price per ' + volUnit + ':';
+      var costTotal = fuelUsed * price;
+      var totalEl = document.getElementById('fuelCostTotal');
+      if (totalEl) totalEl.textContent = costTotal.toFixed(2) + ' money';
+
+      var distStr = getText('distanceMeasuredDisplay');
+      var distVal = parseNumber(distStr);
+      var distUnit = parseUnit(distStr);
+      var perDist = distVal ? costTotal / distVal : 0;
+      var perDistEl = document.getElementById('fuelCostPerDistance');
+      if (perDistEl) perDistEl.textContent = perDist.toFixed(2) + ' money/' + distUnit;
+
+      var tripAvgStr = getText('tripAvgDisplay');
+      var tripAvg = parseNumber(tripAvgStr);
+      var tripDistStr = getText('tripDistanceDisplay');
+      var tripDist = parseNumber(tripDistStr);
+      var tripDistUnit = parseUnit(tripDistStr);
+      var consPerUnit = tripAvg / 100;
+      var tripTotalFuel = consPerUnit * tripDist;
+      var tripTotal = tripTotalFuel * price;
+      var tripTotalEl = document.getElementById('tripCostTotal');
+      if (tripTotalEl) tripTotalEl.textContent = tripTotal.toFixed(2) + ' money';
+      var tripPerDistEl = document.getElementById('tripCostPerDistance');
+      if (tripPerDistEl) tripPerDistEl.textContent = (consPerUnit * price).toFixed(2) + ' money/' + tripDistUnit;
+    }
+    setInterval(updateCosts, 500);
+  })();
+</script>

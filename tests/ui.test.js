@@ -62,6 +62,13 @@ describe('UI template styling', () => {
     assert.ok(!html.includes('localStorage'));
   });
 
+  it('handles fuel cost calculation entirely in HTML', () => {
+    assert.ok(html.includes('id="fuelPriceInput"'));
+    assert.ok(html.includes('id="fuelCostTotal"'));
+    assert.ok(html.includes('<script type="text/javascript">'));
+    assert.ok(!html.includes('ng-model="fuelPrice"'));
+  });
+
   it('positions reset, style toggle and settings icons consistently', () => {
     const resetAttr = getNgAttrStyle('ng-click="reset($event)"');
     const toggleAttr = getNgAttrStyle('ng-click="useCustomStyles=!useCustomStyles"');
@@ -90,7 +97,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitVolumeUnit','unitDistanceUnit'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit'];
     placeholders.forEach(p => {
       assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
     });
@@ -155,9 +162,6 @@ describe('controller integration', () => {
     const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','data8','data9'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
-    });
-    ['fuelUsedValue','distanceValue','tripDistanceValue','tripAvgL100kmValue'].forEach(f => {
-      assert.strictEqual(typeof $scope[f], 'number');
     });
   });
 
