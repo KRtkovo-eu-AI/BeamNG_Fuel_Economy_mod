@@ -117,13 +117,16 @@ angular.module('beamng.apps')
         fuelUsed: true,
         fuelLeft: true,
         fuelCap: true,
-        avg: true,
+        avgL100km: true,
+        avgKmL: true,
         avgGraph: true,
         instantLph: true,
         instantL100km: true,
+        instantKmL: true,
         instantGraph: true,
         range: true,
-        tripAvg: true,
+        tripAvgL100km: true,
+        tripAvgKmL: true,
         tripGraph: true,
         tripDistance: true,
         tripRange: true,
@@ -133,9 +136,19 @@ angular.module('beamng.apps')
         var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
         if (s && typeof s === 'object') {
           // backward compatibility for old "instant" flag
-          if ('instant' in s && !('instantLph' in s) && !('instantL100km' in s)) {
-            s.instantLph = s.instantL100km = s.instant;
+          if ('instant' in s && !('instantLph' in s) && !('instantL100km' in s) && !('instantKmL' in s)) {
+            s.instantLph = s.instantL100km = s.instantKmL = s.instant;
             delete s.instant;
+          }
+          // backward compatibility for old avg flag
+          if ('avg' in s && !('avgL100km' in s) && !('avgKmL' in s)) {
+            s.avgL100km = s.avgKmL = s.avg;
+            delete s.avg;
+          }
+          // backward compatibility for old tripAvg flag
+          if ('tripAvg' in s && !('tripAvgL100km' in s) && !('tripAvgKmL' in s)) {
+            s.tripAvgL100km = s.tripAvgKmL = s.tripAvg;
+            delete s.tripAvg;
           }
           Object.assign($scope.visible, s);
         }
@@ -152,11 +165,14 @@ angular.module('beamng.apps')
       $scope.fuelUsed = '';
       $scope.fuelLeft = '';
       $scope.fuelCap = '';
-      $scope.data3 = ''; // avg consumption
+      $scope.avgL100km = ''; // avg consumption L/100km
+      $scope.avgKmL = ''; // avg consumption km/L
       $scope.data4 = ''; // range
       $scope.instantLph = '';
       $scope.instantL100km = '';
-      $scope.data7 = ''; // overall average
+      $scope.instantKmL = '';
+      $scope.tripAvgL100km = ''; // overall average L/100km
+      $scope.tripAvgKmL = ''; // overall average km/L
       $scope.tripAvgHistory = '';
       $scope.avgHistory = '';
       $scope.instantHistory = '';
@@ -264,7 +280,8 @@ angular.module('beamng.apps')
           avgHistory = { queue: [] };
           saveAvgHistory();
           resetInstantHistory();
-          $scope.data7 = UiUnits.buildString('consumptionRate', 0, 1);
+          $scope.tripAvgL100km = UiUnits.buildString('consumptionRate', 0, 1);
+          $scope.tripAvgKmL = 'Infinity';
           $scope.data6 = UiUnits.buildString('distance', 0, 1); // reset trip
           $scope.tripAvgHistory = '';
           $scope.avgHistory = '';
@@ -367,9 +384,15 @@ angular.module('beamng.apps')
             : 0;
           if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
             $scope.instantLph = inst_l_per_h.toFixed(1) + ' L/h';
-            $scope.instantL100km = Number.isFinite(inst_l_per_100km)
-              ? inst_l_per_100km.toFixed(1) + ' L/100km'
-              : 'Infinity';
+            if (Number.isFinite(inst_l_per_100km)) {
+              $scope.instantL100km = inst_l_per_100km.toFixed(1) + ' L/100km';
+              $scope.instantKmL = inst_l_per_100km > 0
+                ? (100 / inst_l_per_100km).toFixed(2) + ' km/L'
+                : 'Infinity';
+            } else {
+              $scope.instantL100km = 'Infinity';
+              $scope.instantKmL = '0 km/L';
+            }
             lastInstantUpdate_ms = now_ms;
           }
 
@@ -488,10 +511,16 @@ angular.module('beamng.apps')
           $scope.fuelUsed = fuel_used_l.toFixed(2) + ' L';
           $scope.fuelLeft = UiUnits.buildString('volume', currentFuel_l, 2);
           $scope.fuelCap = UiUnits.buildString('volume', capacity_l, 1);
-          $scope.data3 = UiUnits.buildString('consumptionRate', avg_l_per_100km_ok, 1);
+          $scope.avgL100km = UiUnits.buildString('consumptionRate', avg_l_per_100km_ok, 1);
+          $scope.avgKmL = avg_l_per_100km_ok > 0
+            ? (100 / avg_l_per_100km_ok).toFixed(2) + ' km/L'
+            : 'Infinity';
           $scope.data4 = rangeStr;
           $scope.data6 = UiUnits.buildString('distance', trip_m, 1);
-          $scope.data7 = UiUnits.buildString('consumptionRate', overall_median, 1);
+          $scope.tripAvgL100km = UiUnits.buildString('consumptionRate', overall_median, 1);
+          $scope.tripAvgKmL = overall_median > 0
+            ? (100 / overall_median).toFixed(2) + ' km/L'
+            : 'Infinity';
           $scope.data8 = UiUnits.buildString('distance', overall.distance, 1);
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
