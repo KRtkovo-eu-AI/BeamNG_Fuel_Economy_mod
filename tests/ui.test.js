@@ -58,6 +58,10 @@ describe('UI template styling', () => {
     assert.ok(!styleTrue.includes("url('app.png')"));
   });
 
+  it('does not use localStorage in the template', () => {
+    assert.ok(!html.includes('localStorage'));
+  });
+
   it('positions reset, style toggle and settings icons consistently', () => {
     const resetAttr = getNgAttrStyle('ng-click="reset($event)"');
     const toggleAttr = getNgAttrStyle('ng-click="useCustomStyles=!useCustomStyles"');
