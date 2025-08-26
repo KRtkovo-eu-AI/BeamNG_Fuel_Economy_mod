@@ -314,6 +314,7 @@ angular.module('beamng.apps')
       var lastInstantUpdate_ms = 0;
       var INSTANT_UPDATE_INTERVAL = 250;
       var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
+      var MAX_EFFICIENCY = 100; // [km/L] cap unrealistic efficiency
 
       $scope.vehicleNameStr = "";
 
@@ -523,16 +524,23 @@ angular.module('beamng.apps')
           var inst_l_per_100km = engineRunning
             ? calculateInstantConsumption(fuelFlow_lps, speed_mps)
             : 0;
-          var eff = inst_l_per_100km > 0 ? 100 / inst_l_per_100km : Infinity;
+          var eff =
+            Number.isFinite(inst_l_per_100km) && inst_l_per_100km > 0
+              ? 100 / inst_l_per_100km
+              : MAX_EFFICIENCY;
+          eff = Math.min(eff, MAX_EFFICIENCY);
           if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
             $scope.instantLph = formatFlow(inst_l_per_h, $scope.unitMode, 1);
             if (Number.isFinite(inst_l_per_100km)) {
-              $scope.instantL100km = formatConsumptionRate(inst_l_per_100km, $scope.unitMode, 1);
-              $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
+              $scope.instantL100km = formatConsumptionRate(
+                inst_l_per_100km,
+                $scope.unitMode,
+                1
+              );
             } else {
               $scope.instantL100km = 'Infinity';
-              $scope.instantKmL = formatEfficiency(0, $scope.unitMode, 2);
             }
+            $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
             lastInstantUpdate_ms = now_ms;
           }
 
@@ -540,7 +548,7 @@ angular.module('beamng.apps')
             instantHistory.queue.push(inst_l_per_h);
             trimQueue(instantHistory.queue, INSTANT_MAX_ENTRIES);
             $scope.instantHistory = buildQueueGraphPoints(instantHistory.queue, 100, 40);
-            instantEffHistory.queue.push(Number.isFinite(eff) ? eff : 0);
+            instantEffHistory.queue.push(Number.isFinite(eff) ? eff : MAX_EFFICIENCY);
             trimQueue(instantEffHistory.queue, INSTANT_MAX_ENTRIES);
             $scope.instantKmLHistory = buildQueueGraphPoints(instantEffHistory.queue, 100, 40);
             if (!instantHistory.lastSaveTime) instantHistory.lastSaveTime = 0;

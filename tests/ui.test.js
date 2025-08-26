@@ -254,9 +254,94 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.instantLph, '0.0 L/h');
     assert.strictEqual($scope.instantL100km, '0.0 L/100km');
-    assert.strictEqual($scope.instantKmL, 'Infinity');
+    assert.strictEqual($scope.instantKmL, '100.00 km/L');
     assert.strictEqual($scope.instantHistory, '');
     assert.strictEqual($scope.instantKmLHistory, '');
+  });
+
+  it('caps instant efficiency when coasting', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+    now = 1000;
+    streams.engineInfo[11] = 49.99;
+    $scope.on_streamsUpdate(null, streams);
+
+    streams.electrics.throttle_input = 0;
+    for (let i = 0; i < 100; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+
+    const val = parseFloat($scope.instantKmL);
+    assert.notStrictEqual($scope.instantKmLHistory, '');
+    assert.ok(val <= 100, `instantKmL not capped: ${$scope.instantKmL}`);
+  });
+
+  it('maxes efficiency when idling at a standstill', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {};
+    global.localStorage = {
+      getItem: () => null,
+      setItem: (k, v) => {
+        store[k] = v;
+      }
+    };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+
+    now = 1000;
+    streams.engineInfo[11] = 49.99;
+    $scope.on_streamsUpdate(null, streams);
+
+    streams.electrics.wheelspeed = 0;
+    streams.electrics.airspeed = 0;
+    streams.electrics.throttle_input = 0;
+    streams.engineInfo[11] = 49.98;
+    now = 2000;
+    $scope.on_streamsUpdate(null, streams);
+
+    const eff = parseFloat($scope.instantKmL);
+    assert.ok(eff === 100, `expected 100 km/L, got ${$scope.instantKmL}`);
+
+    const saved = JSON.parse(store.okFuelEconomyInstantEffHistory);
+    const last = saved.queue[saved.queue.length - 1];
+    assert.strictEqual(last, 100);
   });
 
   it('resets instant history when vehicle changes', () => {
