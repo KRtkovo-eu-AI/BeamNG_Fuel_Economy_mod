@@ -9,6 +9,11 @@ local function registerHandler()
 
   log('D', 'okFuelEconomy', 'energyStorageStream initializing')
 
+  -- Make sure the built-in energyStorage extension is available
+  if extensions and extensions.load then
+    extensions.load('energyStorage')
+  end
+
   -- Locate the private 'streamsHandlers' table inside guistreams.lua
   local handlers
   local i = 1
@@ -29,13 +34,16 @@ local function registerHandler()
     -- The dedicated energyStorage extension exposes fuel tanks and batteries.
     -- Prefer it when available as the powertrain device list often omits
     -- these components.
-    local es = energyStorage
-    if not es and controller and controller.getController then
+    local es
+    if energyStorage then
+      es = energyStorage
+    elseif controller and controller.getController then
       es = controller.getController('energyStorage')
     end
 
     if es and es.getDevices then
-      local devices = es.getDevices() or {}
+      local ok, devices = pcall(es.getDevices, es)
+      devices = ok and devices or {}
       for _, dev in pairs(devices) do
         list[#list + 1] = {
           energyStorageType = dev.energyStorageType,
@@ -45,16 +53,21 @@ local function registerHandler()
       end
     else
       -- Fallback: try scanning the powertrain for energy storage devices.
-      local pt = powertrain
-      if not pt and controller and controller.getController then
+      local pt
+      if powertrain then
+        pt = powertrain
+      elseif controller and controller.getController then
         pt = controller.getController('powertrain')
-      end
-      if not pt and controller and controller.mainController then
+      elseif controller and controller.mainController then
         pt = controller.mainController.powertrain
       end
+
       if pt and pt.getDevices then
-        for _, dev in pairs(pt.getDevices() or {}) do
-          if dev.category == 'energyStorage' or dev.energyStorageType or dev.type == 'fuelTank' then
+        local ok, devices = pcall(pt.getDevices, pt)
+        devices = ok and devices or {}
+        for _, dev in pairs(devices) do
+          local t = string.lower(dev.energyStorageType or dev.type or dev.category or '')
+          if t:find('battery') or t:find('capacitor') or t:find('fuel') then
             list[#list + 1] = {
               energyStorageType = dev.energyStorageType,
               type = dev.type,
