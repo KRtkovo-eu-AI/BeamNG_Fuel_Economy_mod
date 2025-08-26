@@ -236,7 +236,7 @@ describe('controller integration', () => {
         return '';
       }
     };
-    global.bngApi = { engineLua: cmd => cmd.includes('powertrain') ? '[{"energyStorageType":"electric"}]' : '' };
+    global.bngApi = { engineLua: cmd => cmd.toLowerCase().includes('powertrain') ? '[{"energyStorageType":"electric"}]' : '' };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };

@@ -149,7 +149,13 @@ angular.module('beamng.apps')
       // Determine powertrain type once on init. Default to combustion.
       $scope.isElectric = false;
       try {
-        var devicesJson = bngApi.engineLua('return jsonEncode(powertrain.getDevices())');
+        var devicesJson = bngApi.engineLua(
+          'local veh=be:getPlayerVehicle(0);' +
+          'if veh then ' +
+            'local pt=veh:getPowertrain();' +
+            'if pt then return jsonEncode(pt:getDevices()) end ' +
+          'end'
+        );
         var devices = JSON.parse(devicesJson || '[]');
         $scope.isElectric = devices.some(function (d) {
           return (d.energyStorageType || '').toLowerCase() === 'electric';
