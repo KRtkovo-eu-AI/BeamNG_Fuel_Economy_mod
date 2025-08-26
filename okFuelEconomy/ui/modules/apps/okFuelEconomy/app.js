@@ -189,7 +189,18 @@ angular.module('beamng.apps')
       var SETTINGS_KEY = 'okFuelEconomyVisible';
       var UNIT_MODE_KEY = 'okFuelEconomyUnitMode';
       $scope.settingsOpen = false;
+      $scope.unitModeLabels = {
+        metric: 'Metric (L, km)',
+        imperial: 'Imperial (gal, mi)',
+        electric: 'Electric (kWh, km)'
+      };
+      $scope.unitMenuOpen = false;
       $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
+      $scope.setUnit = function (mode) {
+        $scope.unitMode = mode;
+        updateUnitLabels();
+        $scope.unitMenuOpen = false;
+      };
       function updateUnitLabels() {
         var lbls = getUnitLabels($scope.unitMode);
         $scope.unitConsumptionUnit = lbls.consumption;
@@ -197,7 +208,6 @@ angular.module('beamng.apps')
         $scope.unitFlowUnit = lbls.flow;
       }
       updateUnitLabels();
-      $scope.$watch('unitMode', updateUnitLabels);
       $scope.visible = {
         heading: true,
         distanceMeasured: true,
