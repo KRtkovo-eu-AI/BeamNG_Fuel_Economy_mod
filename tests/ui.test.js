@@ -170,7 +170,7 @@ describe('controller integration', () => {
       sentCommand &&
         sentCommand
           .toLowerCase()
-          .includes('queueluacommand("extensions.loadmodule(\\"vehicle/energystoragestream\\")")')
+          .includes('queueluacommand("extensions.load(\\"vehicle/energystoragestream\\")")')
     );
   });
 

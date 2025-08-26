@@ -1,7 +1,7 @@
 -- Register an extra GUI stream that reports energy storage devices
 -- so the OK Fuel Economy app can detect electric powertrains.
 
-local logged = false
+local lastHash
 
 local function registerHandler()
   local streamsMod = streams -- vehicle's existing guistreams module
@@ -37,7 +37,7 @@ local function registerHandler()
     if pt and pt.getDevices then
       local devices = pt.getDevices() or {}
       for _, dev in pairs(devices) do
-        if dev.category == 'energyStorage' or dev.energyStorageType or dev.type then
+        if dev.category == 'energyStorage' or dev.energyStorageType or dev.type == 'fuelTank' then
           list[#list + 1] = {
             energyStorageType = dev.energyStorageType,
             type = dev.type,
@@ -47,9 +47,13 @@ local function registerHandler()
       end
     end
 
-    if not logged then
+    local hash = ''
+    for _, dev in ipairs(list) do
+      hash = hash .. (dev.type or '') .. '|'
+    end
+    if hash ~= lastHash then
       log('D', 'okFuelEconomy', 'energyStorage devices: ' .. dumps(list))
-      logged = true
+      lastHash = hash
     end
 
     guihooks.queueStream('energyStorage', list)

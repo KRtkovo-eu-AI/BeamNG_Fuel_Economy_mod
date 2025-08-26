@@ -105,7 +105,7 @@ angular.module('beamng.apps')
 
       if (bngApi && bngApi.engineLua) {
         bngApi.engineLua(
-          'local v=be:getPlayerVehicle(0); if v then v:queueLuaCommand("extensions.loadModule(\\"vehicle/energyStorageStream\\")") end'
+          'local v=be:getPlayerVehicle(0); if v then v:queueLuaCommand("extensions.load(\\"vehicle/energyStorageStream\\")") end'
         );
         console.debug('[ok-fuel-economy] requested energyStorage stream');
       }
@@ -300,7 +300,7 @@ angular.module('beamng.apps')
                 t.includes('electric')
               );
             });
-            console.debug('[ok-fuel-economy] energyStorage', list, 'isElectric:', $scope.isElectric);
+            console.debug('[ok-fuel-economy] energyStorage', JSON.stringify(list), 'isElectric:', $scope.isElectric);
           }
           if (!streams.electrics) return;
           if (!$scope.isElectric && !streams.engineInfo) return;
