@@ -214,12 +214,15 @@ angular.module('beamng.apps')
       StreamsManager.add(streamsList);
 
       $scope.fuelPriceValue = 0;
+      $scope.currency = 'money';
       $http.get('/ui/modules/apps/okFuelEconomy/app.json')
         .then(function (resp) {
           $scope.fuelPriceValue = parseFloat((resp.data || {}).fuelPrice) || 0;
+          $scope.currency = (resp.data || {}).currency || 'money';
         })
         .catch(function () {
           $scope.fuelPriceValue = 0;
+          $scope.currency = 'money';
         });
 
       $scope.$on('$destroy', function () {
@@ -691,24 +694,27 @@ angular.module('beamng.apps')
                          : 'Infinity';
 
           var unitLabels = getUnitLabels($scope.unitMode);
-          $scope.costPrice = $scope.fuelPriceValue.toFixed(2) + ' money/' + unitLabels.volume;
+          $scope.costPrice =
+            $scope.fuelPriceValue.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.volume;
 
           var fuelUsedUnit = convertVolumeToUnit(fuel_used_l, $scope.unitMode);
           var distanceUnit = convertDistanceToUnit(distance_m, $scope.unitMode);
           var costTotalVal = fuelUsedUnit * $scope.fuelPriceValue;
-          $scope.costTotal = costTotalVal.toFixed(2) + ' money';
+          $scope.costTotal = costTotalVal.toFixed(2) + ' ' + $scope.currency;
           var costPerDistVal = distanceUnit > 0 ? costTotalVal / distanceUnit : 0;
-          $scope.costPerDistance = costPerDistVal.toFixed(2) + ' money/' + unitLabels.distance;
+          $scope.costPerDistance =
+            costPerDistVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
 
           var tripDistance_m = overall.distance;
           var tripFuelUsed_l = (overall_median / 100) * (tripDistance_m / 1000);
           var tripFuelUsedUnit = convertVolumeToUnit(tripFuelUsed_l, $scope.unitMode);
           var tripCostTotalVal = tripFuelUsedUnit * $scope.fuelPriceValue;
-          $scope.tripCostTotal = tripCostTotalVal.toFixed(2) + ' money';
+          $scope.tripCostTotal = tripCostTotalVal.toFixed(2) + ' ' + $scope.currency;
           var litersPerKm = overall_median / 100;
           var volPerDistUnit = convertVolumePerDistance(litersPerKm, $scope.unitMode);
           var tripCostPerDistVal = volPerDistUnit * $scope.fuelPriceValue;
-          $scope.tripCostPerDistance = tripCostPerDistVal.toFixed(2) + ' money/' + unitLabels.distance;
+          $scope.tripCostPerDistance =
+            tripCostPerDistVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
 
           $scope.data1 = formatDistance(distance_m, $scope.unitMode, 1);
           $scope.fuelUsed = formatVolume(fuel_used_l, $scope.unitMode, 2);

@@ -2,7 +2,7 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const httpStub = { get: () => Promise.resolve({ data: { fuelPrice: 0 } }) };
+const httpStub = { get: () => Promise.resolve({ data: { fuelPrice: 0, currency: 'money' } }) };
 
 const htmlPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'app.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
@@ -70,10 +70,11 @@ describe('UI template styling', () => {
     assert.ok(html.includes('{{ tripCostPerDistance }}'));
   });
 
-  it('exposes fuelPrice in app.json', () => {
+  it('exposes fuelPrice and currency in app.json', () => {
     const appConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'app.json');
     const cfg = JSON.parse(fs.readFileSync(appConfigPath, 'utf8'));
     assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'fuelPrice'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'currency'));
   });
 
 
@@ -85,7 +86,7 @@ describe('UI template styling', () => {
     global.bngApi = { engineLua: () => '' };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
-    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 2.25 } }) };
+    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 2.25, currency: 'CZK' } }) };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -95,6 +96,7 @@ describe('UI template styling', () => {
     await new Promise(resolve => setImmediate(resolve));
 
     assert.strictEqual($scope.fuelPriceValue, 2.25);
+    assert.strictEqual($scope.currency, 'CZK');
   });
 
   it('positions reset, style toggle and settings icons consistently', () => {
@@ -188,7 +190,7 @@ describe('controller integration', () => {
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 1.5 } }) };
+    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 1.5, currency: 'USD' } }) };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -205,11 +207,11 @@ describe('controller integration', () => {
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.costPrice, '1.50 money/L');
-    assert.strictEqual($scope.costTotal, '3.00 money');
-    assert.strictEqual($scope.costPerDistance, '0.15 money/km');
-    assert.strictEqual($scope.tripCostTotal, '3.00 money');
-    assert.strictEqual($scope.tripCostPerDistance, '0.15 money/km');
+    assert.strictEqual($scope.costPrice, '1.50 USD/L');
+    assert.strictEqual($scope.costTotal, '3.00 USD');
+    assert.strictEqual($scope.costPerDistance, '0.15 USD/km');
+    assert.strictEqual($scope.tripCostTotal, '3.00 USD');
+    assert.strictEqual($scope.tripCostPerDistance, '0.15 USD/km');
   });
   it('populates data fields from stream updates', () => {
     let directiveDef;

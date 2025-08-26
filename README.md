@@ -26,7 +26,7 @@ Data are gathered via `StreamsManager` from the *electrics* and *engineInfo* cha
 
 ## Fuel price configuration
 
-To enable fuel cost calculations, edit `okFuelEconomy/ui/modules/apps/okFuelEconomy/app.json` and set the `fuelPrice` value to the price of fuel per volume unit you use. The controller loads this value at runtime and computes total and per-distance costs when the relevant fields are enabled in settings.
+To enable fuel cost calculations, edit `okFuelEconomy/ui/modules/apps/okFuelEconomy/app.json` and set the `fuelPrice` value to the price of fuel per volume unit you use and optionally set the `currency` label (e.g. `USD`, `EUR`). The controller loads these values at runtime and computes total and per-distance costs when the relevant fields are enabled in settings.
 
 ## Tests
 
