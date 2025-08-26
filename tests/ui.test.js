@@ -281,7 +281,7 @@ describe('controller integration', () => {
         batteryEnergyCapacity: 7.2e6,
         trip: 0
       },
-      energyStorage: [{ energyStorageType: 'electric' }]
+      energyStorage: [{ energyStorageType: 'battery' }]
     };
 
     now = 0;

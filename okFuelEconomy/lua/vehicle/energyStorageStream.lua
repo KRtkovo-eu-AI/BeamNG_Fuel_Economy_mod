@@ -26,7 +26,10 @@ local function registerHandler()
     if powertrain and powertrain.getDevicesOfType then
       local devices = powertrain.getDevicesOfType('energyStorage') or {}
       for _, dev in pairs(devices) do
-        list[#list + 1] = { energyStorageType = dev.energyStorageType }
+        list[#list + 1] = {
+          energyStorageType = dev.energyStorageType,
+          type = dev.type
+        }
       end
     end
     if not logged then
