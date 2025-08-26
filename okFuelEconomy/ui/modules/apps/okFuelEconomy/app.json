@@ -10,8 +10,8 @@
 	  "top": "65px",
     "min-width": "50px",
     "min-height": "50px",
-    "width": "490px",
-    "height": "270px"
+    "width": "550px",
+    "height": "570px"
   },
   "types": [
     "ui.apps.categories.vehicle_info"
