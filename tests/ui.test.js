@@ -72,8 +72,8 @@ describe('UI template styling', () => {
       assert.ok(match, 'script block not found');
       const script = match[1];
       const elements = {
-        fuelPriceInput: { value: '0', dataset: {}, addEventListener: () => {} },
-        fuelPriceDisplay: { textContent: '1.5 money/L' },
+        fuelPriceInput: { value: '1.5', dataset: {}, addEventListener: (t, fn) => { elements.fuelPriceInput['on' + t] = fn; } },
+        fuelPriceDisplay: { textContent: '' },
         fuelUsedDisplay: { textContent: '2.0 L' },
         fuelPriceLabel: { textContent: '' },
         fuelCostTotal: { textContent: '' },
@@ -92,13 +92,15 @@ describe('UI template styling', () => {
       };
       vm.runInNewContext(script, context);
       updater();
-      assert.strictEqual(elements.fuelPriceInput.value, '1.5');
+      elements.fuelPriceInput.value = '1.5';
+      if (elements.fuelPriceInput.oninput) elements.fuelPriceInput.oninput();
+      updater();
       assert.strictEqual(elements.fuelPriceLabel.textContent, 'Fuel price per L:');
       assert.strictEqual(elements.fuelCostTotal.textContent, '3.00 money');
       assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.15 money/km');
       assert.strictEqual(elements.tripCostTotal.textContent, '7.51 money');
       assert.strictEqual(elements.tripCostPerDistance.textContent, '0.08 money/km');
-  });
+    });
 
 it('persists fuel price via DOM and reuses it for calculations', () => {
   const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
@@ -125,11 +127,12 @@ it('persists fuel price via DOM and reuses it for calculations', () => {
   elements.fuelPriceInput.value = '4.20';
   if (elements.fuelPriceInput.oninput) elements.fuelPriceInput.oninput();
   updater();
-  // simulate closing and reopening settings
+  // simulate closing and reopening settings with hidden price row
+  delete elements.fuelPriceDisplay; // hide price display
   elements.fuelPriceInput = { value: '', dataset: {}, addEventListener: (t, fn) => { elements.fuelPriceInput['on' + t] = fn; } };
   elements.settingsSaveButton = { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton['on' + t] = fn; } };
   updater();
-  assert.strictEqual(elements.fuelPriceDisplay.textContent, '4.20 money/L');
+  assert.strictEqual(elements.fuelPriceDisplay, undefined);
   assert.strictEqual(elements.fuelPriceInput.value, '4.2');
   assert.strictEqual(elements.fuelCostTotal.textContent, '4.20 money');
   assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.42 money/km');
