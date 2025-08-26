@@ -296,6 +296,54 @@ describe('controller integration', () => {
     assert.ok(val <= 100, `instantKmL not capped: ${$scope.instantKmL}`);
   });
 
+  it('maxes efficiency when idling at a standstill', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {};
+    global.localStorage = {
+      getItem: () => null,
+      setItem: (k, v) => {
+        store[k] = v;
+      }
+    };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+
+    now = 1000;
+    streams.engineInfo[11] = 49.99;
+    $scope.on_streamsUpdate(null, streams);
+
+    streams.electrics.wheelspeed = 0;
+    streams.electrics.airspeed = 0;
+    streams.electrics.throttle_input = 0;
+    streams.engineInfo[11] = 49.98;
+    now = 2000;
+    $scope.on_streamsUpdate(null, streams);
+
+    const eff = parseFloat($scope.instantKmL);
+    assert.ok(eff === 100, `expected 100 km/L, got ${$scope.instantKmL}`);
+
+    const saved = JSON.parse(store.okFuelEconomyInstantEffHistory);
+    const last = saved.queue[saved.queue.length - 1];
+    assert.strictEqual(last, 100);
+  });
+
   it('resets instant history when vehicle changes', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

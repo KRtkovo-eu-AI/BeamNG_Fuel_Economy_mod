@@ -524,17 +524,23 @@ angular.module('beamng.apps')
           var inst_l_per_100km = engineRunning
             ? calculateInstantConsumption(fuelFlow_lps, speed_mps)
             : 0;
-          var eff = inst_l_per_100km > 0 ? 100 / inst_l_per_100km : MAX_EFFICIENCY;
+          var eff =
+            Number.isFinite(inst_l_per_100km) && inst_l_per_100km > 0
+              ? 100 / inst_l_per_100km
+              : MAX_EFFICIENCY;
           eff = Math.min(eff, MAX_EFFICIENCY);
           if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
             $scope.instantLph = formatFlow(inst_l_per_h, $scope.unitMode, 1);
             if (Number.isFinite(inst_l_per_100km)) {
-              $scope.instantL100km = formatConsumptionRate(inst_l_per_100km, $scope.unitMode, 1);
-              $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
+              $scope.instantL100km = formatConsumptionRate(
+                inst_l_per_100km,
+                $scope.unitMode,
+                1
+              );
             } else {
               $scope.instantL100km = 'Infinity';
-              $scope.instantKmL = formatEfficiency(0, $scope.unitMode, 2);
             }
+            $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
             lastInstantUpdate_ms = now_ms;
           }
 
