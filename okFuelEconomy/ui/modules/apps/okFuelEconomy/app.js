@@ -80,6 +80,78 @@ function buildQueueGraphPoints(queue, width, height) {
     .join(' ');
 }
 
+const KM_PER_MILE = 1.60934;
+const LITERS_PER_GALLON = 3.78541;
+
+function getUnitLabels(mode) {
+  switch (mode) {
+    case 'imperial':
+      return {
+        distance: 'mi',
+        volume: 'gal',
+        consumption: 'gal/100mi',
+        efficiency: 'mi/gal',
+        flow: 'gal/h'
+      };
+    case 'electric':
+      return {
+        distance: 'km',
+        volume: 'kWh',
+        consumption: 'kWh/100km',
+        efficiency: 'km/kWh',
+        flow: 'kW'
+      };
+    default:
+      return {
+        distance: 'km',
+        volume: 'L',
+        consumption: 'L/100km',
+        efficiency: 'km/L',
+        flow: 'L/h'
+      };
+  }
+}
+
+function formatDistance(meters, mode, decimals) {
+  if (!Number.isFinite(meters)) return 'Infinity';
+  const unit = getUnitLabels(mode).distance;
+  let value = meters / 1000;
+  if (mode === 'imperial') value = meters / (KM_PER_MILE * 1000) ;
+  return value.toFixed(decimals) + ' ' + unit;
+}
+
+function formatVolume(liters, mode, decimals) {
+  if (!Number.isFinite(liters)) return 'Infinity';
+  const unit = getUnitLabels(mode).volume;
+  let value = liters;
+  if (mode === 'imperial') value = liters / LITERS_PER_GALLON;
+  return value.toFixed(decimals) + ' ' + unit;
+}
+
+function formatConsumptionRate(lPer100km, mode, decimals) {
+  if (!Number.isFinite(lPer100km)) return 'Infinity';
+  const unit = getUnitLabels(mode).consumption;
+  let value = lPer100km;
+  if (mode === 'imperial') value = lPer100km / LITERS_PER_GALLON * KM_PER_MILE;
+  return value.toFixed(decimals) + ' ' + unit;
+}
+
+function formatEfficiency(kmPerL, mode, decimals) {
+  if (!Number.isFinite(kmPerL)) return 'Infinity';
+  const unit = getUnitLabels(mode).efficiency;
+  let value = kmPerL;
+  if (mode === 'imperial') value = kmPerL / KM_PER_MILE * LITERS_PER_GALLON;
+  return value.toFixed(decimals) + ' ' + unit;
+}
+
+function formatFlow(lPerHour, mode, decimals) {
+  if (!Number.isFinite(lPerHour)) return 'Infinity';
+  const unit = getUnitLabels(mode).flow;
+  let value = lPerHour;
+  if (mode === 'imperial') value = lPerHour / LITERS_PER_GALLON;
+  return value.toFixed(decimals) + ' ' + unit;
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     calculateFuelFlow,
@@ -88,7 +160,13 @@ if (typeof module !== 'undefined') {
     trimQueue,
     calculateRange,
     buildQueueGraphPoints,
-    resolveSpeed
+    resolveSpeed,
+    getUnitLabels,
+    formatDistance,
+    formatVolume,
+    formatConsumptionRate,
+    formatEfficiency,
+    formatFlow
   };
 }
 
@@ -109,7 +187,17 @@ angular.module('beamng.apps')
 
       // Settings for visible fields
       var SETTINGS_KEY = 'okFuelEconomyVisible';
+      var UNIT_MODE_KEY = 'okFuelEconomyUnitMode';
       $scope.settingsOpen = false;
+      $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
+      function updateUnitLabels() {
+        var lbls = getUnitLabels($scope.unitMode);
+        $scope.unitConsumptionUnit = lbls.consumption;
+        $scope.unitEfficiencyUnit = lbls.efficiency;
+        $scope.unitFlowUnit = lbls.flow;
+      }
+      updateUnitLabels();
+      $scope.$watch('unitMode', updateUnitLabels);
       $scope.visible = {
         heading: true,
         distanceMeasured: true,
@@ -155,7 +243,10 @@ angular.module('beamng.apps')
       } catch (e) { /* ignore */ }
 
       $scope.saveSettings = function () {
-        try { localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible)); } catch (e) { /* ignore */ }
+        try {
+          localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible));
+          localStorage.setItem(UNIT_MODE_KEY, $scope.unitMode);
+        } catch (e) { /* ignore */ }
         $scope.settingsOpen = false;
       };
 
@@ -280,9 +371,9 @@ angular.module('beamng.apps')
           avgHistory = { queue: [] };
           saveAvgHistory();
           resetInstantHistory();
-          $scope.tripAvgL100km = UiUnits.buildString('consumptionRate', 0, 1);
-          $scope.tripAvgKmL = 'Infinity';
-          $scope.data6 = UiUnits.buildString('distance', 0, 1); // reset trip
+          $scope.tripAvgL100km = formatConsumptionRate(0, $scope.unitMode, 1);
+          $scope.tripAvgKmL = formatEfficiency(Infinity, $scope.unitMode, 2);
+          $scope.data6 = formatDistance(0, $scope.unitMode, 1); // reset trip
           $scope.tripAvgHistory = '';
           $scope.avgHistory = '';
       };
@@ -383,15 +474,14 @@ angular.module('beamng.apps')
             ? calculateInstantConsumption(fuelFlow_lps, speed_mps)
             : 0;
           if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
-            $scope.instantLph = inst_l_per_h.toFixed(1) + ' L/h';
+            $scope.instantLph = formatFlow(inst_l_per_h, $scope.unitMode, 1);
             if (Number.isFinite(inst_l_per_100km)) {
-              $scope.instantL100km = inst_l_per_100km.toFixed(1) + ' L/100km';
-              $scope.instantKmL = inst_l_per_100km > 0
-                ? (100 / inst_l_per_100km).toFixed(2) + ' km/L'
-                : 'Infinity';
+              $scope.instantL100km = formatConsumptionRate(inst_l_per_100km, $scope.unitMode, 1);
+              var eff = inst_l_per_100km > 0 ? 100 / inst_l_per_100km : Infinity;
+              $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
             } else {
               $scope.instantL100km = 'Infinity';
-              $scope.instantKmL = '0 km/L';
+              $scope.instantKmL = formatEfficiency(0, $scope.unitMode, 2);
             }
             lastInstantUpdate_ms = now_ms;
           }
@@ -499,29 +589,33 @@ angular.module('beamng.apps')
 
           var rangeVal = calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED);
           var rangeStr = Number.isFinite(rangeVal)
-                         ? UiUnits.buildString('distance', rangeVal, 0)
+                         ? formatDistance(rangeVal, $scope.unitMode, 0)
                          : 'Infinity';
 
           var rangeOverallMedianVal = calculateRange(currentFuel_l, overall_median, speed_mps, EPS_SPEED);
           var rangeOverallMedianStr = Number.isFinite(rangeOverallMedianVal)
-                         ? UiUnits.buildString('distance', rangeOverallMedianVal, 0)
+                         ? formatDistance(rangeOverallMedianVal, $scope.unitMode, 0)
                          : 'Infinity';
 
-          $scope.data1 = UiUnits.buildString('distance', distance_m, 1);
-          $scope.fuelUsed = fuel_used_l.toFixed(2) + ' L';
-          $scope.fuelLeft = UiUnits.buildString('volume', currentFuel_l, 2);
-          $scope.fuelCap = UiUnits.buildString('volume', capacity_l, 1);
-          $scope.avgL100km = UiUnits.buildString('consumptionRate', avg_l_per_100km_ok, 1);
-          $scope.avgKmL = avg_l_per_100km_ok > 0
-            ? (100 / avg_l_per_100km_ok).toFixed(2) + ' km/L'
-            : 'Infinity';
+          $scope.data1 = formatDistance(distance_m, $scope.unitMode, 1);
+          $scope.fuelUsed = formatVolume(fuel_used_l, $scope.unitMode, 2);
+          $scope.fuelLeft = formatVolume(currentFuel_l, $scope.unitMode, 2);
+          $scope.fuelCap = formatVolume(capacity_l, $scope.unitMode, 1);
+          $scope.avgL100km = formatConsumptionRate(avg_l_per_100km_ok, $scope.unitMode, 1);
+          $scope.avgKmL = formatEfficiency(
+            avg_l_per_100km_ok > 0 ? 100 / avg_l_per_100km_ok : Infinity,
+            $scope.unitMode,
+            2
+          );
           $scope.data4 = rangeStr;
-          $scope.data6 = UiUnits.buildString('distance', trip_m, 1);
-          $scope.tripAvgL100km = UiUnits.buildString('consumptionRate', overall_median, 1);
-          $scope.tripAvgKmL = overall_median > 0
-            ? (100 / overall_median).toFixed(2) + ' km/L'
-            : 'Infinity';
-          $scope.data8 = UiUnits.buildString('distance', overall.distance, 1);
+          $scope.data6 = formatDistance(trip_m, $scope.unitMode, 1);
+          $scope.tripAvgL100km = formatConsumptionRate(overall_median, $scope.unitMode, 1);
+          $scope.tripAvgKmL = formatEfficiency(
+            overall_median > 0 ? 100 / overall_median : Infinity,
+            $scope.unitMode,
+            2
+          );
+          $scope.data8 = formatDistance(overall.distance, $scope.unitMode, 1);
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
           lastDistance_m = distance_m;

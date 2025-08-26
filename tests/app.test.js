@@ -11,7 +11,12 @@ const {
   trimQueue,
   calculateRange,
   buildQueueGraphPoints,
-  resolveSpeed
+  resolveSpeed,
+  formatDistance,
+  formatVolume,
+  formatConsumptionRate,
+  formatEfficiency,
+  formatFlow
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('app.js utility functions', () => {
@@ -161,6 +166,27 @@ describe('app.js utility functions', () => {
     it('falls back to wheel speed when airspeed missing', () => {
       const s = resolveSpeed(7, undefined, EPS_SPEED);
       assert.strictEqual(s, 7);
+    });
+  });
+
+  describe('unit formatting', () => {
+    it('formats metric distance', () => {
+      assert.strictEqual(formatDistance(1000, 'metric', 1), '1.0 km');
+    });
+    it('formats imperial volume', () => {
+      assert.strictEqual(formatVolume(3.78541, 'imperial', 2), '1.00 gal');
+    });
+    it('formats electric consumption', () => {
+      assert.strictEqual(
+        formatConsumptionRate(10, 'electric', 1),
+        '10.0 kWh/100km'
+      );
+    });
+    it('formats imperial efficiency', () => {
+      assert.strictEqual(formatEfficiency(10, 'imperial', 2), '23.52 mi/gal');
+    });
+    it('formats flow in kW', () => {
+      assert.strictEqual(formatFlow(5, 'electric', 1), '5.0 kW');
     });
   });
 });
