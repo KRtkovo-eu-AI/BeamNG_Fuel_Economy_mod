@@ -256,13 +256,10 @@
       <label><input type="checkbox" ng-model="visible.costPerDistance"> Fuel cost per {{ unitDistanceUnit }}</label><br>
       <label><input type="checkbox" ng-model="visible.tripCostTotal"> Trip cost total</label><br>
       <label><input type="checkbox" ng-model="visible.tripCostPerDistance"> Trip cost per {{ unitDistanceUnit }}</label><br>
-      <label id="fuelPriceLabel">Fuel price:
-        <input type="number"
-               id="fuelPriceInput"
-               step="0.01"
-               value="0"
-               ng-attr-style="{{ 'margin-left:4px; width:60px;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">
-      </label><br>
+      <p id="fuelPriceNotice"
+         ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
+        Set fuel price in app.json
+      </p>
       <div ng-attr-style="{{ 'position:relative;' + (useCustomStyles ? '' : '') }}">
         <label>Units:
           <span ng-click="unitMenuOpen = !unitMenuOpen"
@@ -283,6 +280,8 @@
     <script type="text/javascript">
       (function () {
         var volUnit = '';
+        var price = 0;
+        fetch('app.json').then(function(r){ return r.json(); }).then(function(cfg){ price = parseFloat(cfg.fuelPrice) || 0; }).catch(function(){ price = 0; });
         function parseNumber(str) {
           return parseFloat((str || '').replace(/[^0-9.]/g, '')) || 0;
         }
@@ -294,33 +293,10 @@
           var el = document.getElementById(id);
           return el ? el.textContent : '';
         }
-        function bindControls() {
-          var priceInput = document.getElementById('fuelPriceInput');
-          if (priceInput && !priceInput.dataset.bound) {
-            var priceDisplay = document.getElementById('fuelPriceDisplay');
-            priceInput.value = parseNumber(getText('fuelPriceDisplay')).toString();
-            var updateDisplay = function () {
-              var val = parseFloat(priceInput.value) || 0;
-              if (priceDisplay) {
-                priceDisplay.textContent = val.toFixed(2) + ' money/' + volUnit;
-              }
-            };
-            priceInput.addEventListener('input', updateDisplay);
-            priceInput.addEventListener('change', updateDisplay);
-            var saveBtn = document.getElementById('settingsSaveButton');
-            if (saveBtn && !saveBtn.dataset.bound) {
-              saveBtn.addEventListener('click', updateDisplay);
-              saveBtn.dataset.bound = '1';
-            }
-            priceInput.dataset.bound = '1';
-          }
-        }
         function updateCosts() {
-          bindControls();
           volUnit = parseUnit(getText('fuelUsedDisplay'));
-          var priceLabel = document.getElementById('fuelPriceLabel');
-          if (priceLabel) priceLabel.textContent = 'Fuel price per ' + volUnit + ':';
-          var price = parseNumber(getText('fuelPriceDisplay'));
+          var priceDisplay = document.getElementById('fuelPriceDisplay');
+          if (priceDisplay) priceDisplay.textContent = price.toFixed(2) + ' money/' + volUnit;
           var fuelUsedStr = getText('fuelUsedDisplay');
           var fuelUsed = parseNumber(fuelUsedStr);
           var costTotal = fuelUsed * price;

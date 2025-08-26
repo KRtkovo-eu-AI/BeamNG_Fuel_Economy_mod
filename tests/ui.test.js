@@ -60,82 +60,53 @@ describe('UI template styling', () => {
   });
 
   it('handles fuel cost calculation entirely in HTML', () => {
-      assert.ok(html.includes('id="fuelPriceInput"'));
-      assert.ok(html.includes('id="fuelPriceDisplay"'));
-      assert.ok(html.includes('id="fuelCostTotal"'));
+    assert.ok(html.includes('fetch('));
+    assert.ok(html.includes('id="fuelPriceDisplay"'));
+    assert.ok(html.includes('id="fuelCostTotal"'));
+    assert.ok(!html.includes('id="fuelPriceInput"'));
+    assert.ok(html.includes('fuelPriceNotice'));
     assert.ok(html.includes('<script type="text/javascript">'));
     assert.ok(!html.includes('ng-model="fuelPrice"'));
   });
 
-  it('computes fuel costs in the embedded script', () => {
-      const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
-      assert.ok(match, 'script block not found');
-      const script = match[1];
-      const elements = {
-        fuelPriceInput: { value: '1.5', dataset: {}, addEventListener: (t, fn) => { elements.fuelPriceInput['on' + t] = fn; } },
-        fuelPriceDisplay: { textContent: '' },
-        fuelUsedDisplay: { textContent: '2.0 L' },
-        fuelPriceLabel: { textContent: '' },
-        fuelCostTotal: { textContent: '' },
-        distanceMeasuredDisplay: { textContent: '20 km' },
-        fuelCostPerDistance: { textContent: '' },
-        tripAvgDisplay: { textContent: '5.0 L/100km' },
-        tripDistanceDisplay: { textContent: '100 km' },
-        tripCostTotal: { textContent: '' },
-        tripCostPerDistance: { textContent: '' },
-        settingsSaveButton: { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton['on' + t] = fn; } }
-      };
-      const fakeDocument = { getElementById: id => elements[id] || null };
-      let updater;
-      const context = {
-        document: fakeDocument,
-        setInterval: fn => { updater = fn; }
-      };
-      vm.runInNewContext(script, context);
-      updater();
-      elements.fuelPriceInput.value = '1.5';
-      if (elements.fuelPriceInput.oninput) elements.fuelPriceInput.oninput();
-      updater();
-      assert.strictEqual(elements.fuelPriceLabel.textContent, 'Fuel price per L:');
-      assert.strictEqual(elements.fuelCostTotal.textContent, '3.00 money');
-      assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.15 money/km');
-      assert.strictEqual(elements.tripCostTotal.textContent, '7.51 money');
-      assert.strictEqual(elements.tripCostPerDistance.textContent, '0.08 money/km');
-    });
+  it('exposes fuelPrice in app.json', () => {
+    const appConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'app.json');
+    const cfg = JSON.parse(fs.readFileSync(appConfigPath, 'utf8'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'fuelPrice'));
+  });
 
-it('persists fuel price via DOM and reuses it for calculations', () => {
-  const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
-  const script = match[1];
-  const elements = {
-    fuelPriceInput: { value: '0', dataset: {}, addEventListener: (t, fn) => { elements.fuelPriceInput['on' + t] = fn; } },
-    fuelPriceDisplay: { textContent: '' },
-    fuelPriceLabel: { textContent: '' },
-    fuelCostTotal: { textContent: '' },
-    distanceMeasuredDisplay: { textContent: '10 km' },
-    fuelCostPerDistance: { textContent: '' },
-    fuelUsedDisplay: { textContent: '1 L' },
-    tripAvgDisplay: { textContent: '5 L/100km' },
-    tripDistanceDisplay: { textContent: '100 km' },
-    tripCostTotal: { textContent: '' },
-    tripCostPerDistance: { textContent: '' },
-    settingsSaveButton: { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton['on' + t] = fn; } }
-  };
-  const fakeDocument = { getElementById: id => elements[id] || null };
-  let updater;
-  const context = { document: fakeDocument, setInterval: fn => { updater = fn; } };
-  vm.runInNewContext(script, context);
-  updater();
-  elements.fuelPriceInput.value = '4.20';
-  if (elements.fuelPriceInput.oninput) elements.fuelPriceInput.oninput();
-  updater();
-  // simulate closing and reopening settings
-  elements.fuelPriceInput = { value: '', dataset: {}, addEventListener: (t, fn) => { elements.fuelPriceInput['on' + t] = fn; } };
-  elements.settingsSaveButton = { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton['on' + t] = fn; } };
-  updater();
-  assert.strictEqual(elements.fuelPriceInput.value, '4.2');
-  assert.strictEqual(elements.fuelCostTotal.textContent, '4.20 money');
-  assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.42 money/km');
-});
+  it('computes fuel costs from fuelPrice in app.json', async () => {
+    const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
+    assert.ok(match, 'script block not found');
+    const script = match[1]
+      .replace('var price = 0;', 'var price = 1.5;')
+      .replace(/fetch\('app.json'\)[\s\S]*?catch\([^)]*\);/, '');
+    const elements = {
+      fuelPriceDisplay: { textContent: '' },
+      fuelUsedDisplay: { textContent: '2.0 L' },
+      fuelCostTotal: { textContent: '' },
+      distanceMeasuredDisplay: { textContent: '20 km' },
+      fuelCostPerDistance: { textContent: '' },
+      tripAvgDisplay: { textContent: '5.0 L/100km' },
+      tripDistanceDisplay: { textContent: '100 km' },
+      tripCostTotal: { textContent: '' },
+      tripCostPerDistance: { textContent: '' }
+    };
+    const fakeDocument = { getElementById: id => elements[id] || null };
+    let updater;
+    const context = {
+      document: fakeDocument,
+      setInterval: fn => { updater = fn; },
+      fetch: () => ({ then: () => ({ then: () => ({ catch: () => {} }) }) })
+    };
+    vm.runInNewContext(script, context);
+    updater();
+    assert.strictEqual(elements.fuelPriceDisplay.textContent, '1.50 money/L');
+    assert.strictEqual(elements.fuelCostTotal.textContent, '3.00 money');
+    assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.15 money/km');
+    assert.strictEqual(elements.tripCostTotal.textContent, '7.51 money');
+    assert.strictEqual(elements.tripCostPerDistance.textContent, '0.08 money/km');
+  });
 
   it('positions reset, style toggle and settings icons consistently', () => {
     const resetAttr = getNgAttrStyle('ng-click="reset($event)"');
