@@ -9,9 +9,16 @@ const {
   calculateInstantConsumption,
   smoothFuelFlow,
   trimQueue,
+  calculateMedian,
+  calculateAverageConsumption,
   calculateRange,
   buildQueueGraphPoints,
-  resolveSpeed
+  resolveSpeed,
+  formatDistance,
+  formatVolume,
+  formatConsumptionRate,
+  formatEfficiency,
+  formatFlow
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('app.js utility functions', () => {
@@ -66,6 +73,29 @@ describe('app.js utility functions', () => {
     });
   });
 
+  describe('calculateMedian', () => {
+    it('handles empty queues', () => {
+      assert.strictEqual(calculateMedian([]), 0);
+    });
+    it('computes median for odd and even counts', () => {
+      assert.strictEqual(calculateMedian([1, 3, 2]), 2);
+      assert.strictEqual(calculateMedian([1, 2, 3, 4]), 2.5);
+    });
+  });
+
+  describe('calculateAverageConsumption', () => {
+    it('computes L/100km from fuel and distance', () => {
+      assert.strictEqual(calculateAverageConsumption(5, 100000), 5);
+    });
+    it('handles zero distance', () => {
+      assert.strictEqual(calculateAverageConsumption(5, 0), 0);
+    });
+    it('formats realistic averages without rounding to zero', () => {
+      const avg = calculateAverageConsumption(6, 100000);
+      assert.strictEqual(formatConsumptionRate(avg, 'metric', 1), '6.0 L/100km');
+    });
+  });
+
   describe('smoothFuelFlow', () => {
     const EPS_SPEED = 0.005;
     it('retains last flow when throttle applied but fuel reading static', () => {
@@ -109,7 +139,7 @@ describe('app.js utility functions', () => {
   describe('calculateRange', () => {
     const EPS_SPEED = 0.005;
     it('computes finite range when consuming fuel', () => {
-      assert.strictEqual(calculateRange(10, 5, 1, EPS_SPEED), 2);
+      assert.strictEqual(calculateRange(1, 5, 1, EPS_SPEED), 20000);
     });
     it('computes infinite range when moving without consumption', () => {
       assert.strictEqual(calculateRange(10, 0, 1, EPS_SPEED), Infinity);
@@ -161,6 +191,27 @@ describe('app.js utility functions', () => {
     it('falls back to wheel speed when airspeed missing', () => {
       const s = resolveSpeed(7, undefined, EPS_SPEED);
       assert.strictEqual(s, 7);
+    });
+  });
+
+  describe('unit formatting', () => {
+    it('formats metric distance', () => {
+      assert.strictEqual(formatDistance(1000, 'metric', 1), '1.0 km');
+    });
+    it('formats imperial volume', () => {
+      assert.strictEqual(formatVolume(3.78541, 'imperial', 2), '1.00 gal');
+    });
+    it('formats electric consumption', () => {
+      assert.strictEqual(
+        formatConsumptionRate(10, 'electric', 1),
+        '10.0 kWh/100km'
+      );
+    });
+    it('formats imperial efficiency', () => {
+      assert.strictEqual(formatEfficiency(10, 'imperial', 2), '23.52 mi/gal');
+    });
+    it('formats flow in kW', () => {
+      assert.strictEqual(formatFlow(5, 'electric', 1), '5.0 kW');
     });
   });
 });
