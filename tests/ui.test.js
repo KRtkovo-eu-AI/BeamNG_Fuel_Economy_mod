@@ -2,6 +2,7 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 const fs = require('fs');
 const path = require('path');
+const vm = require('node:vm');
 
 const htmlPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'app.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
@@ -67,6 +68,37 @@ describe('UI template styling', () => {
     assert.ok(html.includes('id="fuelCostTotal"'));
     assert.ok(html.includes('<script type="text/javascript">'));
     assert.ok(!html.includes('ng-model="fuelPrice"'));
+  });
+
+  it('computes fuel costs in the embedded script', () => {
+    const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
+    assert.ok(match, 'script block not found');
+    const script = match[1];
+    const elements = {
+      fuelPriceInput: { value: '1.5' },
+      fuelUsedDisplay: { textContent: '2.0 L' },
+      fuelPriceLabel: { textContent: '' },
+      fuelCostTotal: { textContent: '' },
+      distanceMeasuredDisplay: { textContent: '20 km' },
+      fuelCostPerDistance: { textContent: '' },
+      tripAvgDisplay: { textContent: '5.0 L/100km' },
+      tripDistanceDisplay: { textContent: '100 km' },
+      tripCostTotal: { textContent: '' },
+      tripCostPerDistance: { textContent: '' },
+    };
+    const fakeDocument = { getElementById: id => elements[id] || null };
+    let updater;
+    const context = {
+      document: fakeDocument,
+      setInterval: fn => { updater = fn; }
+    };
+    vm.runInNewContext(script, context);
+    updater();
+    assert.strictEqual(elements.fuelPriceLabel.textContent, 'Fuel price per L:');
+    assert.strictEqual(elements.fuelCostTotal.textContent, '3.00 money');
+    assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.15 money/km');
+    assert.strictEqual(elements.tripCostTotal.textContent, '7.51 money');
+    assert.strictEqual(elements.tripCostPerDistance.textContent, '0.08 money/km');
   });
 
   it('positions reset, style toggle and settings icons consistently', () => {
