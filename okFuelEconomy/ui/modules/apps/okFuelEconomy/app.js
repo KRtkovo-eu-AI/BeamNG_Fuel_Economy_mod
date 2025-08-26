@@ -233,14 +233,17 @@ angular.module('beamng.apps')
         avgL100km: true,
         avgKmL: true,
         avgGraph: true,
+        avgKmLGraph: true,
         instantLph: true,
         instantL100km: true,
         instantKmL: true,
         instantGraph: true,
+        instantKmLGraph: true,
         range: true,
         tripAvgL100km: true,
         tripAvgKmL: true,
         tripGraph: true,
+        tripKmLGraph: true,
         tripDistance: true,
         tripRange: true,
         tripReset: true
@@ -290,8 +293,11 @@ angular.module('beamng.apps')
       $scope.tripAvgL100km = ''; // overall average L/100km
       $scope.tripAvgKmL = ''; // overall average km/L
       $scope.tripAvgHistory = '';
+      $scope.tripAvgKmLHistory = '';
       $scope.avgHistory = '';
+      $scope.avgKmLHistory = '';
       $scope.instantHistory = '';
+      $scope.instantKmLHistory = '';
 
       var distance_m = 0;
       var lastDistance_m = 0;
@@ -345,6 +351,7 @@ angular.module('beamng.apps')
 
       // --------- Instant history persistence (NEW) ----------
       var INST_KEY = 'okFuelEconomyInstantHistory';
+      var INST_EFF_KEY = 'okFuelEconomyInstantEffHistory';
       var INSTANT_MAX_ENTRIES = 1000;
 
       var instantHistory = { queue: [] };
@@ -355,20 +362,36 @@ angular.module('beamng.apps')
           }
       } catch (e) { /* ignore */ }
 
+      var instantEffHistory = { queue: [] };
+      try {
+          var savedInstEff = JSON.parse(localStorage.getItem(INST_EFF_KEY));
+          if (savedInstEff && Array.isArray(savedInstEff.queue)) {
+              instantEffHistory = savedInstEff;
+          }
+      } catch (e) { /* ignore */ }
+
       function saveInstantHistory() {
           try { localStorage.setItem(INST_KEY, JSON.stringify(instantHistory)); } catch (e) { /* ignore */ }
       }
 
+      function saveInstantEffHistory() {
+          try { localStorage.setItem(INST_EFF_KEY, JSON.stringify(instantEffHistory)); } catch (e) { /* ignore */ }
+      }
+
       function resetInstantHistory() {
           instantHistory = { queue: [] };
+          instantEffHistory = { queue: [] };
           saveInstantHistory();
+          saveInstantEffHistory();
           $scope.instantHistory = '';
+          $scope.instantKmLHistory = '';
       }
 
       function resetAvgHistory() {
           avgHistory = { queue: [] };
           saveAvgHistory();
           $scope.avgHistory = '';
+          $scope.avgKmLHistory = '';
       }
 
       function hardReset() {
@@ -400,7 +423,9 @@ angular.module('beamng.apps')
           $scope.tripAvgKmL = formatEfficiency(Infinity, $scope.unitMode, 2);
           $scope.data6 = formatDistance(0, $scope.unitMode, 1); // reset trip
           $scope.tripAvgHistory = '';
+          $scope.tripAvgKmLHistory = '';
           $scope.avgHistory = '';
+          $scope.avgKmLHistory = '';
       };
 
       $scope.$on('VehicleFocusChanged', function () {
@@ -498,11 +523,11 @@ angular.module('beamng.apps')
           var inst_l_per_100km = engineRunning
             ? calculateInstantConsumption(fuelFlow_lps, speed_mps)
             : 0;
+          var eff = inst_l_per_100km > 0 ? 100 / inst_l_per_100km : Infinity;
           if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
             $scope.instantLph = formatFlow(inst_l_per_h, $scope.unitMode, 1);
             if (Number.isFinite(inst_l_per_100km)) {
               $scope.instantL100km = formatConsumptionRate(inst_l_per_100km, $scope.unitMode, 1);
-              var eff = inst_l_per_100km > 0 ? 100 / inst_l_per_100km : Infinity;
               $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
             } else {
               $scope.instantL100km = 'Infinity';
@@ -515,10 +540,18 @@ angular.module('beamng.apps')
             instantHistory.queue.push(inst_l_per_h);
             trimQueue(instantHistory.queue, INSTANT_MAX_ENTRIES);
             $scope.instantHistory = buildQueueGraphPoints(instantHistory.queue, 100, 40);
+            instantEffHistory.queue.push(Number.isFinite(eff) ? eff : 0);
+            trimQueue(instantEffHistory.queue, INSTANT_MAX_ENTRIES);
+            $scope.instantKmLHistory = buildQueueGraphPoints(instantEffHistory.queue, 100, 40);
             if (!instantHistory.lastSaveTime) instantHistory.lastSaveTime = 0;
             if (now_ms - instantHistory.lastSaveTime >= 100) {
               saveInstantHistory();
               instantHistory.lastSaveTime = now_ms;
+            }
+            if (!instantEffHistory.lastSaveTime) instantEffHistory.lastSaveTime = 0;
+            if (now_ms - instantEffHistory.lastSaveTime >= 100) {
+              saveInstantEffHistory();
+              instantEffHistory.lastSaveTime = now_ms;
             }
           }
 
@@ -565,6 +598,7 @@ angular.module('beamng.apps')
           // Use the median of the recorded averages for trip stats and graphs
           var overall_median = calculateMedian(overall.queue);
           $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
+          $scope.tripAvgKmLHistory = buildQueueGraphPoints(overall.queue.map(function(v){ return v > 0 ? 100 / v : 0; }), 100, 40);
 
           // ---------- Average Consumption rules (prevent increasing while stopped) ----------
           if (engineRunning) {
@@ -592,6 +626,7 @@ angular.module('beamng.apps')
                 avgHistory.queue.push(avg_l_per_100km_ok);
                 trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
                 $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
+                $scope.avgKmLHistory = buildQueueGraphPoints(avgHistory.queue.map(function(v){ return v > 0 ? 100 / v : 0; }), 100, 40);
                 if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
                 if (now_ms - avgHistory.lastSaveTime >= 100) {
                     saveAvgHistory();

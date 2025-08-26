@@ -86,7 +86,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','data6','tripAvgL100km','tripAvgKmL','data8','data9'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9'];
     placeholders.forEach(p => {
       assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
     });
@@ -109,7 +109,7 @@ describe('UI template styling', () => {
     assert.ok(html.includes('ng-if="visible.instantLph || visible.instantL100km || visible.instantKmL"'));
     assert.ok(html.includes('ng-if="visible.tripAvgL100km || visible.tripAvgKmL"'));
     assert.ok(html.includes('ng-if="visible.instantGraph"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.tripAvgL100km','visible.tripAvgKmL'];
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -146,7 +146,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 49.9;
     $scope.on_streamsUpdate(null, streams);
 
-    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','data6','tripAvgL100km','tripAvgKmL','data8','data9'];
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','data8','data9'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
@@ -178,6 +178,7 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.tripAvgL100km, '600.0 L/100km');
     assert.notStrictEqual($scope.tripAvgHistory, '');
+    assert.notStrictEqual($scope.tripAvgKmLHistory, '');
     assert.notStrictEqual($scope.tripAvgL100km, $scope.avgL100km);
   });
 
@@ -242,6 +243,7 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
     assert.notStrictEqual($scope.instantLph, '0.0 L/h');
     assert.notStrictEqual($scope.instantHistory, '');
+    assert.notStrictEqual($scope.instantKmLHistory, '');
 
     streams.electrics.rpmTacho = 0;
     streams.electrics.throttle_input = 0;
@@ -254,6 +256,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.instantL100km, '0.0 L/100km');
     assert.strictEqual($scope.instantKmL, 'Infinity');
     assert.strictEqual($scope.instantHistory, '');
+    assert.strictEqual($scope.instantKmLHistory, '');
   });
 
   it('resets instant history when vehicle changes', () => {
@@ -282,10 +285,12 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 49.99;
     $scope.on_streamsUpdate(null, streams);
     assert.notStrictEqual($scope.instantHistory, '');
+    assert.notStrictEqual($scope.instantKmLHistory, '');
 
     $scope.on_VehicleFocusChanged();
 
     assert.strictEqual($scope.instantHistory, '');
+    assert.strictEqual($scope.instantKmLHistory, '');
   });
 
   it('resets avg history when measured distance resets', () => {
@@ -318,6 +323,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 49.99; // consume another 0.005 L
     $scope.on_streamsUpdate(null, streams);
     assert.notStrictEqual($scope.avgHistory, '');
+    assert.notStrictEqual($scope.avgKmLHistory, '');
 
     const overallBefore = JSON.parse(store.okFuelEconomyOverall);
     const avgBefore = JSON.parse(store.okFuelEconomyAvgHistory);
@@ -329,6 +335,7 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
 
     assert.strictEqual($scope.avgHistory, '');
+    assert.strictEqual($scope.avgKmLHistory, '');
     const avgAfter = JSON.parse(store.okFuelEconomyAvgHistory);
     const overallAfter = JSON.parse(store.okFuelEconomyOverall);
     assert.equal(avgAfter.queue.length, 0);
