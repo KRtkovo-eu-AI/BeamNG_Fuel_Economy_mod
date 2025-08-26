@@ -168,6 +168,7 @@ angular.module('beamng.apps')
       var lastFuelFlow_lps = 0; // last smoothed value
       var idleFuelFlow_lps = 0;
       var lastThrottle = 0;
+      var engineWasRunning = false;
 
       var lastCapacity_l = null;
       var EPS_SPEED = 0.005; // [m/s] ignore noise
@@ -225,12 +226,20 @@ angular.module('beamng.apps')
           try { localStorage.setItem(INST_KEY, JSON.stringify(instantHistory)); } catch (e) { /* ignore */ }
       }
 
+      function resetInstantHistory() {
+          instantHistory = { queue: [] };
+          saveInstantHistory();
+          $scope.instantHistory = '';
+      }
+
       function hardReset() {
         distance_m = 0;
         startFuel_l = null;
         previousFuel_l = null;
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
+        engineWasRunning = false;
+        resetInstantHistory();
       }
 
       $scope.reset = function () {
@@ -245,19 +254,16 @@ angular.module('beamng.apps')
           saveOverall();
           avgHistory = { queue: [] };
           saveAvgHistory();
-          instantHistory = { queue: [] };
-          saveInstantHistory();
+          resetInstantHistory();
           $scope.data7 = UiUnits.buildString('consumptionRate', 0, 1);
           $scope.data6 = UiUnits.buildString('distance', 0, 1); // reset trip
           $scope.tripAvgHistory = '';
           $scope.avgHistory = '';
-          $scope.instantHistory = '';
       };
 
       $scope.$on('VehicleFocusChanged', function () {
         $log.debug('<ok-fuel-economy> vehicle changed -> reset trip');
         hardReset();
-        $scope.vehicleNameStr = "";
       });
 
       $scope.$on('streamsUpdate', function (event, streams) {
@@ -280,6 +286,10 @@ angular.module('beamng.apps')
           var throttle = streams.electrics.throttle_input || 0;
           var rpm = streams.electrics.rpmTacho || 0;
           var engineRunning = rpm > 0;
+          if (!engineRunning && engineWasRunning) {
+            resetInstantHistory();
+          }
+          engineWasRunning = engineRunning;
           if (!engineRunning) {
             idleFuelFlow_lps = 0;
           }
