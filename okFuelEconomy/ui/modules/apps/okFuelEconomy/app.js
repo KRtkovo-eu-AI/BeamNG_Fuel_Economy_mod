@@ -47,9 +47,14 @@ function trimQueue(queue, maxEntries) {
   }
 }
 
+function calculateAverageConsumption(fuelUsed_l, distance_m) {
+  if (distance_m <= 0) return 0;
+  return (fuelUsed_l / distance_m) * 100000;
+}
+
 function calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED) {
   if (avg_l_per_100km_ok > 0) {
-    return currentFuel_l / avg_l_per_100km_ok;
+    return (currentFuel_l / avg_l_per_100km_ok) * 100000;
   }
   return speed_mps > EPS_SPEED ? Infinity : 0;
 }
@@ -158,6 +163,7 @@ if (typeof module !== 'undefined') {
     calculateInstantConsumption,
     smoothFuelFlow,
     trimQueue,
+    calculateAverageConsumption,
     calculateRange,
     buildQueueGraphPoints,
     resolveSpeed,
@@ -450,7 +456,7 @@ angular.module('beamng.apps')
 
           distance_m += speed_mps * dt;
 
-          var avg_l_per_100km_ok = (fuel_used_l / (distance_m * 10)) * 10;
+          var avg_l_per_100km_ok = calculateAverageConsumption(fuel_used_l, distance_m);
           if (!Number.isFinite(avg_l_per_100km_ok) || avg_l_per_100km_ok > MAX_CONSUMPTION) {
             avg_l_per_100km_ok = 0;
           }

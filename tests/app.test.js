@@ -9,6 +9,7 @@ const {
   calculateInstantConsumption,
   smoothFuelFlow,
   trimQueue,
+  calculateAverageConsumption,
   calculateRange,
   buildQueueGraphPoints,
   resolveSpeed,
@@ -71,6 +72,19 @@ describe('app.js utility functions', () => {
     });
   });
 
+  describe('calculateAverageConsumption', () => {
+    it('computes L/100km from fuel and distance', () => {
+      assert.strictEqual(calculateAverageConsumption(5, 100000), 5);
+    });
+    it('handles zero distance', () => {
+      assert.strictEqual(calculateAverageConsumption(5, 0), 0);
+    });
+    it('formats realistic averages without rounding to zero', () => {
+      const avg = calculateAverageConsumption(6, 100000);
+      assert.strictEqual(formatConsumptionRate(avg, 'metric', 1), '6.0 L/100km');
+    });
+  });
+
   describe('smoothFuelFlow', () => {
     const EPS_SPEED = 0.005;
     it('retains last flow when throttle applied but fuel reading static', () => {
@@ -114,7 +128,7 @@ describe('app.js utility functions', () => {
   describe('calculateRange', () => {
     const EPS_SPEED = 0.005;
     it('computes finite range when consuming fuel', () => {
-      assert.strictEqual(calculateRange(10, 5, 1, EPS_SPEED), 2);
+      assert.strictEqual(calculateRange(1, 5, 1, EPS_SPEED), 20000);
     });
     it('computes infinite range when moving without consumption', () => {
       assert.strictEqual(calculateRange(10, 0, 1, EPS_SPEED), Infinity);

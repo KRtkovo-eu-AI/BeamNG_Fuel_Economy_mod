@@ -283,10 +283,10 @@ describe('controller integration', () => {
     now = 0;
     $scope.on_streamsUpdate(null, streams);
     now = 1000;
-    streams.engineInfo[11] = 49.5;
+    streams.engineInfo[11] = 49.995; // consume 0.005 L over 10 m
     $scope.on_streamsUpdate(null, streams);
     now = 2000;
-    streams.engineInfo[11] = 49;
+    streams.engineInfo[11] = 49.99; // consume another 0.005 L
     $scope.on_streamsUpdate(null, streams);
     assert.notStrictEqual($scope.avgHistory, '');
 
