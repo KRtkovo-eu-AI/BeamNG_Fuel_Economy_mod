@@ -256,6 +256,53 @@ describe('controller integration', () => {
     assert.strictEqual($scope.instantHistory, '');
   });
 
+  it('resets avg history when measured distance resets', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {};
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+    now = 1000;
+    streams.engineInfo[11] = 49.5;
+    $scope.on_streamsUpdate(null, streams);
+    now = 2000;
+    streams.engineInfo[11] = 49;
+    $scope.on_streamsUpdate(null, streams);
+    assert.notStrictEqual($scope.avgHistory, '');
+
+    const overallBefore = JSON.parse(store.okFuelEconomyOverall);
+    const avgBefore = JSON.parse(store.okFuelEconomyAvgHistory);
+    assert.ok(overallBefore.queue.length > 0);
+    assert.ok(avgBefore.queue.length > 1);
+
+    streams.engineInfo[11] = 60; // fuel reset -> distance reset
+    now = 3000;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.avgHistory, '');
+    const avgAfter = JSON.parse(store.okFuelEconomyAvgHistory);
+    const overallAfter = JSON.parse(store.okFuelEconomyOverall);
+    assert.equal(avgAfter.queue.length, 0);
+    assert.equal(overallAfter.queue.length, overallBefore.queue.length);
+  });
+
   it('skips history updates when engine is off', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

@@ -162,6 +162,7 @@ angular.module('beamng.apps')
       $scope.instantHistory = '';
 
       var distance_m = 0;
+      var lastDistance_m = 0;
       var lastTime_ms = performance.now();
       var startFuel_l = null;
       var previousFuel_l = null;
@@ -232,14 +233,22 @@ angular.module('beamng.apps')
           $scope.instantHistory = '';
       }
 
+      function resetAvgHistory() {
+          avgHistory = { queue: [] };
+          saveAvgHistory();
+          $scope.avgHistory = '';
+      }
+
       function hardReset() {
         distance_m = 0;
+        lastDistance_m = 0;
         startFuel_l = null;
         previousFuel_l = null;
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
         engineWasRunning = false;
         resetInstantHistory();
+        resetAvgHistory();
       }
 
       $scope.reset = function () {
@@ -315,6 +324,10 @@ angular.module('beamng.apps')
           if (fuel_used_l >= capacity_l || fuel_used_l < 0) {
             fuel_used_l = 0;
             distance_m = 0;
+          }
+
+          if (distance_m === 0 && lastDistance_m > 0) {
+            resetAvgHistory();
           }
 
           distance_m += speed_mps * dt;
@@ -482,6 +495,7 @@ angular.module('beamng.apps')
           $scope.data8 = UiUnits.buildString('distance', overall.distance, 1);
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
+          lastDistance_m = distance_m;
         });
       });
     }]
