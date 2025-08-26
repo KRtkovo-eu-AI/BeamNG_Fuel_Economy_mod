@@ -152,6 +152,34 @@ describe('controller integration', () => {
     });
   });
 
+  it('computes trip average from overall history', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
+    streams.engineInfo[11] = 50; streams.engineInfo[12] = 60;
+
+    $scope.on_streamsUpdate(null, streams);
+    streams.engineInfo[11] = 49.9;
+    $scope.on_streamsUpdate(null, streams);
+    streams.engineInfo[11] = 49.8;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.tripAvgL100km, '500.0 L/100km');
+    assert.notStrictEqual($scope.tripAvgHistory, '');
+  });
+
   it('throttles instant consumption updates', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
