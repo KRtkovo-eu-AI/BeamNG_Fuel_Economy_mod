@@ -72,7 +72,7 @@ describe('UI template styling', () => {
       assert.ok(match, 'script block not found');
       const script = match[1];
       const elements = {
-        fuelPriceInput: { value: '0', dataset: {} },
+        fuelPriceInput: { value: '0', dataset: {}, addEventListener: () => {} },
         fuelPriceDisplay: { textContent: '1.5 money/L' },
         fuelUsedDisplay: { textContent: '2.0 L' },
         fuelPriceLabel: { textContent: '' },
@@ -104,9 +104,8 @@ it('persists fuel price via DOM and reuses it for calculations', () => {
   const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
   const script = match[1];
   const elements = {
-    fuelPriceInput: { value: '0', dataset: {} },
+    fuelPriceInput: { value: '0', dataset: {}, addEventListener: (t, fn) => { elements.fuelPriceInput['on' + t] = fn; } },
     fuelPriceDisplay: { textContent: '' },
-    settingsSaveButton: { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton.click = fn; } },
     fuelPriceLabel: { textContent: '' },
     fuelCostTotal: { textContent: '' },
     distanceMeasuredDisplay: { textContent: '10 km' },
@@ -115,7 +114,8 @@ it('persists fuel price via DOM and reuses it for calculations', () => {
     tripAvgDisplay: { textContent: '5 L/100km' },
     tripDistanceDisplay: { textContent: '100 km' },
     tripCostTotal: { textContent: '' },
-    tripCostPerDistance: { textContent: '' }
+    tripCostPerDistance: { textContent: '' },
+    settingsSaveButton: { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton['on' + t] = fn; } }
   };
   const fakeDocument = { getElementById: id => elements[id] || null };
   let updater;
@@ -123,10 +123,11 @@ it('persists fuel price via DOM and reuses it for calculations', () => {
   vm.runInNewContext(script, context);
   updater();
   elements.fuelPriceInput.value = '4.20';
-  elements.settingsSaveButton.click();
+  if (elements.fuelPriceInput.oninput) elements.fuelPriceInput.oninput();
   updater();
   // simulate closing and reopening settings
-  elements.fuelPriceInput = { value: '', dataset: {} };
+  elements.fuelPriceInput = { value: '', dataset: {}, addEventListener: (t, fn) => { elements.fuelPriceInput['on' + t] = fn; } };
+  elements.settingsSaveButton = { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton['on' + t] = fn; } };
   updater();
   assert.strictEqual(elements.fuelPriceDisplay.textContent, '4.20 money/L');
   assert.strictEqual(elements.fuelPriceInput.value, '4.2');
@@ -187,7 +188,7 @@ it('persists fuel price via DOM and reuses it for calculations', () => {
     assert.ok(html.includes('ng-if="visible.instantGraph"'));
     assert.ok(html.includes('ng-if="visible.costTotal || visible.costPerDistance"'));
     assert.ok(html.includes('ng-if="visible.tripCostTotal || visible.tripCostPerDistance"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costTotal','visible.costPerDistance','visible.tripCostTotal','visible.tripCostPerDistance'];
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.costTotal','visible.costPerDistance','visible.tripCostTotal','visible.tripCostPerDistance'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -210,6 +211,7 @@ describe('controller integration', () => {
     const $scope = { $on: () => {}, $evalAsync: fn => fn() };
     controllerFn({ debug: () => {} }, $scope);
 
+    assert.strictEqual($scope.visible.costPrice, false);
     assert.strictEqual($scope.visible.costTotal, false);
     assert.strictEqual($scope.visible.costPerDistance, false);
     assert.strictEqual($scope.visible.tripCostTotal, false);

@@ -296,18 +296,21 @@
         function bindControls() {
           var priceInput = document.getElementById('fuelPriceInput');
           if (priceInput && !priceInput.dataset.bound) {
-            priceInput.value = parseNumber(getText('fuelPriceDisplay')).toString();
-            priceInput.dataset.bound = '1';
-          }
-          var saveBtn = document.getElementById('settingsSaveButton');
-          if (saveBtn && !saveBtn.dataset.bound) {
-            saveBtn.addEventListener('click', function () {
-              var val = parseFloat(document.getElementById('fuelPriceInput').value) || 0;
+            var updateDisplay = function () {
+              var val = parseFloat(priceInput.value) || 0;
               var volUnit = parseUnit(getText('fuelUsedDisplay'));
               var disp = document.getElementById('fuelPriceDisplay');
               if (disp) disp.textContent = val.toFixed(2) + ' money/' + volUnit;
-            });
-            saveBtn.dataset.bound = '1';
+            };
+            priceInput.value = parseNumber(getText('fuelPriceDisplay')).toString();
+            priceInput.addEventListener('input', updateDisplay);
+            priceInput.addEventListener('change', updateDisplay);
+            var saveBtn = document.getElementById('settingsSaveButton');
+            if (saveBtn && !saveBtn.dataset.bound) {
+              saveBtn.addEventListener('click', updateDisplay);
+              saveBtn.dataset.bound = '1';
+            }
+            priceInput.dataset.bound = '1';
           }
         }
         function updateCosts() {
