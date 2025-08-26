@@ -3,6 +3,7 @@ const { describe, it } = require('node:test');
 const fs = require('fs');
 const path = require('path');
 const vm = require('node:vm');
+const httpStub = { get: () => Promise.resolve({ data: { fuelPrice: 0 } }) };
 
 const htmlPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'app.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
@@ -60,7 +61,7 @@ describe('UI template styling', () => {
   });
 
   it('handles fuel cost calculation entirely in HTML', () => {
-    assert.ok(html.includes('fetch('));
+    assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('id="fuelPriceDisplay"'));
     assert.ok(html.includes('id="fuelCostTotal"'));
     assert.ok(!html.includes('id="fuelPriceInput"'));
@@ -78,9 +79,7 @@ describe('UI template styling', () => {
   it('computes fuel costs from fuelPrice in app.json', async () => {
     const match = html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
     assert.ok(match, 'script block not found');
-    const script = match[1]
-      .replace('var price = 0;', 'var price = 1.5;')
-      .replace(/fetch\('app.json'\)[\s\S]*?catch\([^)]*\);/, '');
+    const script = match[1];
     const elements = {
       fuelPriceDisplay: { textContent: '' },
       fuelUsedDisplay: { textContent: '2.0 L' },
@@ -97,7 +96,7 @@ describe('UI template styling', () => {
     const context = {
       document: fakeDocument,
       setInterval: fn => { updater = fn; },
-      fetch: () => ({ then: () => ({ then: () => ({ catch: () => {} }) }) })
+      window: { initialFuelPrice: 1.5 }
     };
     vm.runInNewContext(script, context);
     updater();
@@ -106,6 +105,27 @@ describe('UI template styling', () => {
     assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.15 money/km');
     assert.strictEqual(elements.tripCostTotal.textContent, '7.51 money');
     assert.strictEqual(elements.tripCostPerDistance.textContent, '0.08 money/km');
+  });
+
+  it('loads fuelPrice from app.json via app.js', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    global.window = {};
+    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 2.25 } }) };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope, $http);
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.strictEqual(global.window.initialFuelPrice, 2.25);
   });
 
   it('positions reset, style toggle and settings icons consistently', () => {
@@ -180,9 +200,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: () => {}, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     assert.strictEqual($scope.visible.costPrice, false);
     assert.strictEqual($scope.visible.costTotal, false);
@@ -201,12 +221,12 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = {
       $on: (name, cb) => { $scope['on_' + name] = cb; },
       $evalAsync: fn => fn()
     };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = {
       engineInfo: Array(15).fill(0),
@@ -241,9 +261,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, trip: 0, throttle_input: 0, rpmTacho: 0 } };
     streams.engineInfo[11] = 50; streams.engineInfo[12] = 60;
@@ -268,9 +288,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 5, throttle_input: 0 } };
     streams.engineInfo[11] = 50;
@@ -301,9 +321,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -344,9 +364,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -387,9 +407,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -429,9 +449,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -464,9 +484,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -516,9 +536,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -549,9 +569,9 @@ describe('controller integration', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -599,10 +619,10 @@ describe('visibility settings persistence', () => {
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[2];
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
 
     const $scope = { $on: () => {} };
-    controllerFn({ debug: () => {} }, $scope);
+    controllerFn({ debug: () => {} }, $scope, httpStub);
 
     assert.equal($scope.visible.heading, true);
     $scope.visible.heading = false;
@@ -617,7 +637,7 @@ describe('visibility settings persistence', () => {
     assert.ok(store.okFuelEconomyVisible.includes('"instantGraph":false'));
 
     const $scope2 = { $on: () => {} };
-    controllerFn({ debug: () => {} }, $scope2);
+    controllerFn({ debug: () => {} }, $scope2, httpStub);
     assert.equal($scope2.visible.heading, false);
     assert.equal($scope2.visible.fuelLeft, false);
     assert.equal($scope2.visible.instantLph, false);

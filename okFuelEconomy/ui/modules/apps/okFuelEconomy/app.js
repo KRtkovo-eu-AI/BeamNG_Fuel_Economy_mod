@@ -192,9 +192,18 @@ angular.module('beamng.apps')
     replace: true,
     restrict: 'EA',
     scope: true,
-    controller: ['$log', '$scope', function ($log, $scope) {
+    controller: ['$log', '$scope', '$http', function ($log, $scope, $http) {
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
+
+      var root = typeof window !== 'undefined' ? window : global;
+      $http.get('/ui/modules/apps/okFuelEconomy/app.json')
+        .then(function (resp) {
+          root.initialFuelPrice = parseFloat((resp.data || {}).fuelPrice) || 0;
+        })
+        .catch(function () {
+          root.initialFuelPrice = 0;
+        });
 
       $scope.$on('$destroy', function () {
         StreamsManager.remove(streamsList);

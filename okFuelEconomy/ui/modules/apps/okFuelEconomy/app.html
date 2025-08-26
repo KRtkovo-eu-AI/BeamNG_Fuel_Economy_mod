@@ -279,9 +279,6 @@
   </div>
     <script type="text/javascript">
       (function () {
-        var volUnit = '';
-        var price = 0;
-        fetch('app.json').then(function(r){ return r.json(); }).then(function(cfg){ price = parseFloat(cfg.fuelPrice) || 0; }).catch(function(){ price = 0; });
         function parseNumber(str) {
           return parseFloat((str || '').replace(/[^0-9.]/g, '')) || 0;
         }
@@ -294,7 +291,8 @@
           return el ? el.textContent : '';
         }
         function updateCosts() {
-          volUnit = parseUnit(getText('fuelUsedDisplay'));
+          var volUnit = parseUnit(getText('fuelUsedDisplay'));
+          var price = (window.initialFuelPrice || 0);
           var priceDisplay = document.getElementById('fuelPriceDisplay');
           if (priceDisplay) priceDisplay.textContent = price.toFixed(2) + ' money/' + volUnit;
           var fuelUsedStr = getText('fuelUsedDisplay');
