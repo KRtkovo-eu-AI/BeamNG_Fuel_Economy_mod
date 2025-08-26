@@ -104,7 +104,10 @@ angular.module('beamng.apps')
       StreamsManager.add(streamsList);
 
       if (bngApi && bngApi.engineLua) {
-        bngApi.engineLua('extensions.loadModule("vehicle/energyStorageStream")');
+        bngApi.engineLua(
+          'local v=be:getPlayerVehicle(0); if v then v:queueLuaCommand("extensions.loadModule(\\"vehicle/energyStorageStream\\")") end'
+        );
+        console.debug('[ok-fuel-economy] requested energyStorage stream');
       }
 
       $scope.$on('$destroy', function () {
@@ -292,6 +295,7 @@ angular.module('beamng.apps')
             $scope.isElectric = list.some(function (d) {
               return (d.energyStorageType || '').toLowerCase() === 'electric';
             });
+            console.debug('[ok-fuel-economy] energyStorage', list, 'isElectric:', $scope.isElectric);
           }
           if (!streams.electrics) return;
           if (!$scope.isElectric && !streams.engineInfo) return;

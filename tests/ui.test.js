@@ -150,6 +150,30 @@ describe('controller integration', () => {
     });
   });
 
+  it('loads energyStorage stream in vehicle Lua context', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    let sentCommand;
+    global.bngApi = { engineLua: cmd => { sentCommand = cmd; } };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[2];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    assert.ok(
+      sentCommand &&
+        sentCommand
+          .toLowerCase()
+          .includes('queueluacommand("extensions.loadmodule(\\"vehicle/energystoragestream\\")")')
+    );
+  });
+
   it('throttles instant consumption updates', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
