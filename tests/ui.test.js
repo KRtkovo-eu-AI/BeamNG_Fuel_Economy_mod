@@ -83,6 +83,7 @@ describe('UI template styling', () => {
         tripDistanceDisplay: { textContent: '100 km' },
         tripCostTotal: { textContent: '' },
         tripCostPerDistance: { textContent: '' },
+        settingsSaveButton: { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton['on' + t] = fn; } }
       };
       const fakeDocument = { getElementById: id => elements[id] || null };
       let updater;
@@ -127,12 +128,10 @@ it('persists fuel price via DOM and reuses it for calculations', () => {
   elements.fuelPriceInput.value = '4.20';
   if (elements.fuelPriceInput.oninput) elements.fuelPriceInput.oninput();
   updater();
-  // simulate closing and reopening settings with hidden price row
-  delete elements.fuelPriceDisplay; // hide price display
+  // simulate closing and reopening settings
   elements.fuelPriceInput = { value: '', dataset: {}, addEventListener: (t, fn) => { elements.fuelPriceInput['on' + t] = fn; } };
   elements.settingsSaveButton = { dataset: {}, addEventListener: (t, fn) => { elements.settingsSaveButton['on' + t] = fn; } };
   updater();
-  assert.strictEqual(elements.fuelPriceDisplay, undefined);
   assert.strictEqual(elements.fuelPriceInput.value, '4.2');
   assert.strictEqual(elements.fuelCostTotal.textContent, '4.20 money');
   assert.strictEqual(elements.fuelCostPerDistance.textContent, '0.42 money/km');

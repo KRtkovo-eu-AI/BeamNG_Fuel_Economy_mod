@@ -33,7 +33,7 @@
       </td>
     </tr>
 
-    <tr ng-if="visible.costPrice">
+    <tr ng-show="visible.costPrice">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Fuel price:
       </td>
@@ -282,7 +282,7 @@
   </div>
     <script type="text/javascript">
       (function () {
-        var fuelPrice = 0;
+        var volUnit = '';
         function parseNumber(str) {
           return parseFloat((str || '').replace(/[^0-9.]/g, '')) || 0;
         }
@@ -297,10 +297,14 @@
         function bindControls() {
           var priceInput = document.getElementById('fuelPriceInput');
           if (priceInput && !priceInput.dataset.bound) {
+            var priceDisplay = document.getElementById('fuelPriceDisplay');
+            priceInput.value = parseNumber(getText('fuelPriceDisplay')).toString();
             var updateDisplay = function () {
-              fuelPrice = parseFloat(priceInput.value) || 0;
+              var val = parseFloat(priceInput.value) || 0;
+              if (priceDisplay) {
+                priceDisplay.textContent = val.toFixed(2) + ' money/' + volUnit;
+              }
             };
-            priceInput.value = fuelPrice.toString();
             priceInput.addEventListener('input', updateDisplay);
             priceInput.addEventListener('change', updateDisplay);
             var saveBtn = document.getElementById('settingsSaveButton');
@@ -313,14 +317,13 @@
         }
         function updateCosts() {
           bindControls();
-          var volUnit = parseUnit(getText('fuelUsedDisplay'));
+          volUnit = parseUnit(getText('fuelUsedDisplay'));
           var priceLabel = document.getElementById('fuelPriceLabel');
           if (priceLabel) priceLabel.textContent = 'Fuel price per ' + volUnit + ':';
-          var priceDisplay = document.getElementById('fuelPriceDisplay');
-          if (priceDisplay) priceDisplay.textContent = fuelPrice.toFixed(2) + ' money/' + volUnit;
+          var price = parseNumber(getText('fuelPriceDisplay'));
           var fuelUsedStr = getText('fuelUsedDisplay');
           var fuelUsed = parseNumber(fuelUsedStr);
-          var costTotal = fuelUsed * fuelPrice;
+          var costTotal = fuelUsed * price;
           var totalEl = document.getElementById('fuelCostTotal');
           if (totalEl) totalEl.textContent = costTotal.toFixed(2) + ' money';
 
@@ -338,11 +341,11 @@
           var tripDistUnit = parseUnit(tripDistStr);
           var consPerUnit = tripAvg / 100;
           var tripTotalFuel = consPerUnit * tripDist;
-          var tripTotal = tripTotalFuel * fuelPrice;
+          var tripTotal = tripTotalFuel * price;
           var tripTotalEl = document.getElementById('tripCostTotal');
           if (tripTotalEl) tripTotalEl.textContent = tripTotal.toFixed(2) + ' money';
           var tripPerDistEl = document.getElementById('tripCostPerDistance');
-          if (tripPerDistEl) tripPerDistEl.textContent = (consPerUnit * fuelPrice).toFixed(2) + ' money/' + tripDistUnit;
+          if (tripPerDistEl) tripPerDistEl.textContent = (consPerUnit * price).toFixed(2) + ' money/' + tripDistUnit;
         }
         setInterval(updateCosts, 500);
       })();
