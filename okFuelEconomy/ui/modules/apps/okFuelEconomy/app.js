@@ -103,6 +103,10 @@ angular.module('beamng.apps')
       var streamsList = ['electrics', 'engineInfo', 'energyStorage'];
       StreamsManager.add(streamsList);
 
+      if (bngApi && bngApi.engineLua) {
+        bngApi.engineLua('extensions.loadModule("vehicle/energyStorageStream")');
+      }
+
       $scope.$on('$destroy', function () {
         StreamsManager.remove(streamsList);
       });
