@@ -62,7 +62,8 @@ describe('UI template styling', () => {
   it('renders fuel cost bindings without inline script', () => {
     assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('fuelPriceNotice'));
-    assert.ok(html.includes('fuel price and currency in fuelPrice.json'));
+    assert.ok(html.includes('fuel price and currency in'));
+    assert.ok(html.includes('fuelPrice.json'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ avgCost }}'));
