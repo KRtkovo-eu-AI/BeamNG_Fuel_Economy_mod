@@ -100,6 +100,41 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.currency, 'CZK');
   });
 
+  it('defaults fuel price when fuelPrice.json is missing', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+    const $http = { get: () => Promise.reject(new Error('missing')) };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope, $http);
+    await new Promise(resolve => setImmediate(resolve));
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+    streams.engineInfo[11] = 58;
+    now = 100000;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.fuelPriceValue, 0);
+    assert.strictEqual($scope.currency, 'money');
+    assert.strictEqual($scope.costPrice, '0.00 money/L');
+    assert.strictEqual($scope.avgCost, '0.00 money/km');
+    assert.strictEqual($scope.totalCost, '0.00 money');
+    assert.strictEqual($scope.tripAvgCost, '0.00 money/km');
+    assert.strictEqual($scope.tripTotalCost, '0.00 money');
+  });
+
   it('positions reset, style toggle and settings icons consistently', () => {
     const resetAttr = getNgAttrStyle('ng-click="reset($event)"');
     const toggleAttr = getNgAttrStyle('ng-click="useCustomStyles=!useCustomStyles"');
