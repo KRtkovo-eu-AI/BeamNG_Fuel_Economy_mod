@@ -193,7 +193,9 @@
         Trip average fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span>{{ tripAvgCost }}</span>
+        <span>Liquid: {{ tripAvgCostLiquid }}</span>
+        <span> | </span>
+        <span>Electric: {{ tripAvgCostElectric }}</span>
       </td>
     </tr>
 
@@ -202,7 +204,9 @@
         Trip total fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span>{{ tripTotalCost }}</span>
+        <span>Liquid: {{ tripTotalCostLiquid }}</span>
+        <span> | </span>
+        <span>Electric: {{ tripTotalCostElectric }}</span>
       </td>
     </tr>
 
@@ -272,7 +276,7 @@
       <label><input type="checkbox" ng-model="visible.tripTotalCost"> Trip total fuel cost</label><br>
       <p id="fuelPriceNotice"
          ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
-        Set fuel price and currency in
+        Set fuel prices and currency in
         <a href=""
            ng-click="openFuelPriceHelp($event)"
            ng-attr-style="{{ useCustomStyles ? ' color:#aeeaff;' : '' }}">fuelPrice.json</a>
@@ -282,7 +286,7 @@
         <p ng-attr-style="{{ 'margin:0 0 8px;' + (useCustomStyles ? '' : '') }}">
           To enable fuel cost calculations, edit
           <strong>krtektm_FuelEconomy.zip/<wbr>ui/<wbr>modules/<wbr>apps/<wbr>okFuelEconomy/<wbr>fuelPrice.json</strong>
-          and set the <strong>fuelPrice</strong> value to the price of fuel per volume unit you use
+          and set the <strong>liquidFuelPrice</strong> and <strong>electricityPrice</strong> values to the prices of fuel per volume unit you use
           and optionally set the <strong>currency</strong> label (e.g. <strong>$</strong>, <strong>€</strong>).
         </p>
         <button type="button"
