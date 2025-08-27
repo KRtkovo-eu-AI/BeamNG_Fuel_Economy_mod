@@ -63,7 +63,7 @@ describe('UI template styling', () => {
     assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('fuelPriceNotice'));
     assert.ok(html.includes('fuel price and currency in'));
-    assert.ok(html.includes('ng-click="openFuelPriceConfig()"'));
+    assert.ok(html.includes('ng-click="openFuelPriceConfig($event)"'));
     assert.ok(html.includes('>fuelPrice.json</a>'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
@@ -232,7 +232,9 @@ describe('fuel price config link', () => {
     const $scope = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope, $http);
 
-    $scope.openFuelPriceConfig();
+    let prevented = false;
+    const ev = { preventDefault: () => { prevented = true; }, stopPropagation: () => {} };
+    $scope.openFuelPriceConfig(ev);
 
     const cfg = path.join(beamBase, '0.99', 'mods', 'unpacked', 'krtektm_FuelEconomy',
       'ui', 'modules', 'apps', 'okFuelEconomy', 'fuelPrice.json');
@@ -241,6 +243,8 @@ describe('fuel price config link', () => {
       { fuelPrice: 0, currency: 'money' });
     assert.strictEqual(spawnArgs[0], 'explorer');
     assert.deepStrictEqual(spawnArgs[1], ['/select,', cfg.replace(/\//g, '\\')]);
+
+    assert.ok(prevented);
 
     cp.spawn = origSpawn;
     Object.defineProperty(process, 'platform', { value: origPlatform });

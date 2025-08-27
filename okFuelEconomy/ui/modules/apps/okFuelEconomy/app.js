@@ -328,7 +328,9 @@ angular.module('beamng.apps')
         $scope.settingsOpen = false;
       };
 
-      $scope.openFuelPriceConfig = function () {
+      $scope.openFuelPriceConfig = function (ev) {
+        if (ev && typeof ev.preventDefault === 'function') ev.preventDefault();
+        if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
         if (!fs || !path || !spawn) return;
         try {
           var base = process.env.LOCALAPPDATA || process.env.APPDATA;
