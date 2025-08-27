@@ -2,7 +2,7 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const httpStub = { get: () => Promise.resolve({ data: { fuelPrice: 0, currency: 'money' } }) };
+const httpStub = { get: () => Promise.resolve({ data: { liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' } }) };
 
 const htmlPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'app.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
@@ -62,14 +62,16 @@ describe('UI template styling', () => {
   it('renders fuel cost bindings without inline script', () => {
     assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('fuelPriceNotice'));
-    assert.ok(html.includes('fuel price and currency in'));
+    assert.ok(html.includes('fuel prices and currency in'));
     assert.ok(html.includes('fuelPrice.json'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ avgCost }}'));
     assert.ok(html.includes('{{ totalCost }}'));
-    assert.ok(html.includes('{{ tripAvgCost }}'));
-    assert.ok(html.includes('{{ tripTotalCost }}'));
+    assert.ok(html.includes('{{ tripAvgCostLiquid }}'));
+    assert.ok(html.includes('{{ tripAvgCostElectric }}'));
+    assert.ok(html.includes('{{ tripTotalCostLiquid }}'));
+    assert.ok(html.includes('{{ tripTotalCostElectric }}'));
   });
 
   it('toggles fuel price help dialog via controller functions', async () => {
@@ -95,15 +97,16 @@ describe('UI template styling', () => {
     assert.equal($scope.fuelPriceHelpOpen, false);
   });
 
-  it('exposes fuelPrice and currency in fuelPrice.json', () => {
+  it('exposes fuel prices and currency in fuelPrice.json', () => {
     const priceConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'fuelPrice.json');
     const cfg = JSON.parse(fs.readFileSync(priceConfigPath, 'utf8'));
-    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'fuelPrice'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'liquidFuelPrice'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'electricityPrice'));
     assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'currency'));
   });
 
 
-  it('loads fuelPrice from fuelPrice.json via app.js', async () => {
+  it('loads fuel prices from fuelPrice.json via app.js', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
@@ -111,7 +114,7 @@ describe('UI template styling', () => {
     global.bngApi = { engineLua: () => '' };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
-    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 2.25, currency: 'CZK' } }) };
+    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 2.25, electricityPrice: 0.5, currency: 'CZK' } }) };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -120,7 +123,8 @@ describe('UI template styling', () => {
     controllerFn({ debug: () => {} }, $scope, $http);
     await new Promise(resolve => setImmediate(resolve));
 
-    assert.strictEqual($scope.fuelPriceValue, 2.25);
+    assert.strictEqual($scope.liquidFuelPriceValue, 2.25);
+    assert.strictEqual($scope.electricityPriceValue, 0.5);
     assert.strictEqual($scope.currency, 'CZK');
   });
 
@@ -150,13 +154,16 @@ describe('UI template styling', () => {
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.fuelPriceValue, 0);
+    assert.strictEqual($scope.liquidFuelPriceValue, 0);
+    assert.strictEqual($scope.electricityPriceValue, 0);
     assert.strictEqual($scope.currency, 'money');
     assert.strictEqual($scope.costPrice, '0.00 money/L');
     assert.strictEqual($scope.avgCost, '0.00 money/km');
     assert.strictEqual($scope.totalCost, '0.00 money');
-    assert.strictEqual($scope.tripAvgCost, '0.00 money/km');
-    assert.strictEqual($scope.tripTotalCost, '0.00 money');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.00 money/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.00 money/km');
+    assert.strictEqual($scope.tripTotalCostLiquid, '0.00 money');
+    assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
   });
 
   it('positions reset, style toggle and settings icons consistently', () => {
@@ -251,7 +258,7 @@ describe('controller integration', () => {
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 1.5, currency: 'USD' } }) };
+    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' } }) };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -271,8 +278,20 @@ describe('controller integration', () => {
     assert.strictEqual($scope.costPrice, '1.50 USD/L');
     assert.strictEqual($scope.avgCost, '0.15 USD/km');
     assert.strictEqual($scope.totalCost, '3.00 USD');
-    assert.strictEqual($scope.tripAvgCost, '0.15 USD/km');
-    assert.strictEqual($scope.tripTotalCost, '3.00 USD');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
+    assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
+
+    $scope.setUnit('electric');
+    $scope.on_streamsUpdate(null, streams);
+    assert.strictEqual($scope.costPrice, '0.50 USD/kWh');
+    assert.strictEqual($scope.avgCost, '0.05 USD/km');
+    assert.strictEqual($scope.totalCost, '1.00 USD');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
+    assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
   });
 
   it('tracks trip fuel usage for total cost', async () => {
@@ -288,7 +307,7 @@ describe('controller integration', () => {
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 1.5, currency: 'USD' } }) };
+    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' } }) };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -308,12 +327,14 @@ describe('controller integration', () => {
 
     const stored = JSON.parse(store.okFuelEconomyOverall);
     assert.ok(Math.abs(stored.fuelUsed - 2) < 1e-6);
-    assert.strictEqual($scope.tripTotalCost, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
 
     $scope.resetOverall();
     const storedAfter = JSON.parse(store.okFuelEconomyOverall);
     assert.strictEqual(storedAfter.fuelUsed, 0);
-    assert.strictEqual($scope.tripTotalCost, '');
+    assert.strictEqual($scope.tripTotalCostLiquid, '');
+    assert.strictEqual($scope.tripTotalCostElectric, '');
   });
 
   it('retains trip total cost across vehicle changes', async () => {
@@ -329,7 +350,7 @@ describe('controller integration', () => {
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 1.5, currency: 'USD' } }) };
+    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' } }) };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -347,12 +368,14 @@ describe('controller integration', () => {
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.tripTotalCost, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
 
     streams.engineInfo[11] = 70; streams.engineInfo[12] = 90;
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
-    assert.strictEqual($scope.tripTotalCost, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
 
     $scope.on_VehicleFocusChanged();
 
@@ -363,7 +386,8 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 69;
     now = 300000;
     $scope.on_streamsUpdate(null, streams);
-    assert.strictEqual($scope.tripTotalCost, '4.50 USD');
+    assert.strictEqual($scope.tripTotalCostLiquid, '4.50 USD');
+    assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
 
     const stored = JSON.parse(store.okFuelEconomyOverall);
     assert.ok(Math.abs(stored.fuelUsed - 3) < 1e-6);
@@ -382,7 +406,7 @@ describe('controller integration', () => {
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 32.5, currency: 'money' } }) };
+    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 32.5, electricityPrice: 0, currency: 'money' } }) };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -400,7 +424,8 @@ describe('controller integration', () => {
     now = 1000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.tripTotalCost, '32.50 money');
+    assert.strictEqual($scope.tripTotalCostLiquid, '32.50 money');
+    assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
 
     streams.electrics.rpmTacho = 0;
     streams.electrics.throttle_input = 0;
@@ -408,7 +433,8 @@ describe('controller integration', () => {
     now = 2000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.tripTotalCost, '32.50 money');
+    assert.strictEqual($scope.tripTotalCostLiquid, '32.50 money');
+    assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
   });
   it('populates data fields from stream updates', () => {
     let directiveDef;
