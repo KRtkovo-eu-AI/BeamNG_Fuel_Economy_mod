@@ -407,6 +407,61 @@ describe('controller integration', () => {
     assert.ok(Math.abs(stored.fuelUsed - 3) < 1e-6);
   });
 
+  it('restores trip totals after controller reload', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: (t, v, p) => (v.toFixed ? v.toFixed(p) : String(v)) };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsed: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' } }) };
+
+    function loadController() {
+      let def;
+      global.angular = { module: () => ({ directive: (name, arr) => { def = arr[0](); } }) };
+      global.StreamsManager = { add: () => {}, remove: () => {} };
+      global.UiUnits = { buildString: (t, v, p) => (v.toFixed ? v.toFixed(p) : String(v)) };
+      global.bngApi = { engineLua: () => '' };
+      delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+      require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+      const ctrl = def.controller[def.controller.length - 1];
+      const scope = { $on: (name, cb) => { scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+      ctrl({ debug: () => {} }, scope, $http);
+      return scope;
+    }
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+
+    let $scope = loadController();
+    await new Promise(resolve => setImmediate(resolve));
+    now = 0; $scope.on_streamsUpdate(null, streams);
+    streams.engineInfo[11] = 58; now = 100000; $scope.on_streamsUpdate(null, streams);
+    assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+
+    let stored = JSON.parse(store.okFuelEconomyOverall);
+    assert.strictEqual(stored.tripCostLiquid, 3);
+    assert.ok(stored.tripDistanceLiquid > 0);
+
+    streams.engineInfo[11] = 58; now = 0; // reset time for reload
+    $scope = loadController();
+    await new Promise(resolve => setImmediate(resolve));
+    $scope.on_streamsUpdate(null, streams);
+    assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+
+    streams.engineInfo[11] = 57; now = 100000; $scope.on_streamsUpdate(null, streams);
+    assert.strictEqual($scope.tripTotalCostLiquid, '4.50 USD');
+
+    stored = JSON.parse(store.okFuelEconomyOverall);
+    assert.strictEqual(stored.tripCostLiquid, 4.5);
+  });
+
   it('ignores zero fuel reading when engine stops', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

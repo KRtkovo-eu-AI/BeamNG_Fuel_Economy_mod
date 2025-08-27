@@ -390,15 +390,23 @@ angular.module('beamng.apps')
       var OVERALL_KEY = 'okFuelEconomyOverall';
       var MAX_ENTRIES = 5000; // pevný počet hodnot pro frontu
 
-      var overall = { queue: [], distance: 0, fuelUsed: 0 }; // fronta posledních průměrů + celková ujetá vzdálenost a spotřebované palivo
+      var overall = { queue: [], distance: 0, fuelUsed: 0, tripCostLiquid: 0, tripCostElectric: 0, tripDistanceLiquid: 0, tripDistanceElectric: 0 }; // fronta posledních průměrů + celková ujetá vzdálenost a spotřebované palivo
       try {
           var saved = JSON.parse(localStorage.getItem(OVERALL_KEY));
           if (saved && Array.isArray(saved.queue)) {
               overall = saved;
               if (!Number.isFinite(overall.fuelUsed)) overall.fuelUsed = 0;
+              if (!Number.isFinite(overall.tripCostLiquid)) overall.tripCostLiquid = 0;
+              if (!Number.isFinite(overall.tripCostElectric)) overall.tripCostElectric = 0;
+              if (!Number.isFinite(overall.tripDistanceLiquid)) overall.tripDistanceLiquid = 0;
+              if (!Number.isFinite(overall.tripDistanceElectric)) overall.tripDistanceElectric = 0;
           }
       } catch (e) { /* ignore */ }
       tripFuelUsed_l = overall.fuelUsed || 0;
+      tripCostLiquid = overall.tripCostLiquid || 0;
+      tripCostElectric = overall.tripCostElectric || 0;
+      tripDistanceLiquid_m = overall.tripDistanceLiquid || 0;
+      tripDistanceElectric_m = overall.tripDistanceElectric || 0;
 
       function saveOverall() {
           try { localStorage.setItem(OVERALL_KEY, JSON.stringify(overall)); } catch (e) { /* ignore */ }
@@ -478,10 +486,11 @@ angular.module('beamng.apps')
           tripDistanceLiquid_m = 0;
           tripDistanceElectric_m = 0;
           overall.fuelUsed = 0;
-          tripCostLiquid = 0;
-          tripCostElectric = 0;
-          tripDistanceLiquid_m = 0;
-          tripDistanceElectric_m = 0;
+          overall.tripCostLiquid = 0;
+          overall.tripCostElectric = 0;
+          overall.tripDistanceLiquid = 0;
+          overall.tripDistanceElectric = 0;
+          saveOverall();
         }
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
@@ -498,12 +507,16 @@ angular.module('beamng.apps')
       // reset overall včetně vzdálenosti
       $scope.resetOverall = function () {
           $log.debug('<ok-fuel-economy> manual reset overall');
-          overall = { queue: [], distance: 0, fuelUsed: 0 };
+          overall = { queue: [], distance: 0, fuelUsed: 0, tripCostLiquid: 0, tripCostElectric: 0, tripDistanceLiquid: 0, tripDistanceElectric: 0 };
           saveOverall();
           avgHistory = { queue: [] };
           saveAvgHistory();
           resetInstantHistory();
           tripFuelUsed_l = 0;
+          tripCostLiquid = 0;
+          tripCostElectric = 0;
+          tripDistanceLiquid_m = 0;
+          tripDistanceElectric_m = 0;
           $scope.tripAvgL100km = formatConsumptionRate(0, $scope.unitMode, 1);
           $scope.tripAvgKmL = formatEfficiency(Infinity, $scope.unitMode, 2);
           $scope.tripAvgCostLiquid = '';
@@ -594,6 +607,14 @@ angular.module('beamng.apps')
               } else {
                 tripDistanceLiquid_m += deltaDistance;
               }
+            }
+            overall.tripCostLiquid = tripCostLiquid;
+            overall.tripCostElectric = tripCostElectric;
+            overall.tripDistanceLiquid = tripDistanceLiquid_m;
+            overall.tripDistanceElectric = tripDistanceElectric_m;
+            if (now_ms - (overall.lastCostSaveTime || 0) >= 100) {
+              saveOverall();
+              overall.lastCostSaveTime = now_ms;
             }
           }
 
