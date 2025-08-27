@@ -279,7 +279,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.avgCost, '0.15 USD/km');
     assert.strictEqual($scope.totalCost, '3.00 USD');
     assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
-    assert.strictEqual($scope.tripAvgCostElectric, '0.00 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
 
@@ -306,6 +306,45 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '6.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
+  });
+
+  it('keeps trip average cost steady while stationary', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' } }) };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope, $http);
+    await new Promise(resolve => setImmediate(resolve));
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+    streams.engineInfo[11] = 58;
+    now = 100000;
+    $scope.on_streamsUpdate(null, streams);
+
+    const liquidBefore = $scope.tripAvgCostLiquid;
+    const electricBefore = $scope.tripAvgCostElectric;
+
+    streams.electrics.wheelspeed = 0;
+    streams.electrics.throttle_input = 0;
+    streams.engineInfo[11] = 57;
+    now = 200000;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.tripAvgCostLiquid, liquidBefore);
+    assert.strictEqual($scope.tripAvgCostElectric, electricBefore);
   });
 
   it('subtracts electric trip cost when regenerating', async () => {

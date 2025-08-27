@@ -809,10 +809,10 @@ angular.module('beamng.apps')
           $scope.avgCost =
             avgCostVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
 
-          var tripDistanceLiquidUnit = convertDistanceToUnit(tripDistanceLiquid_m, $scope.unitMode);
-          var tripDistanceElectricUnit = convertDistanceToUnit(tripDistanceElectric_m, $scope.unitMode);
-          var tripAvgCostLiquidVal = tripDistanceLiquidUnit > 0 ? tripCostLiquid / tripDistanceLiquidUnit : 0;
-          var tripAvgCostElectricVal = tripDistanceElectricUnit > 0 ? tripCostElectric / tripDistanceElectricUnit : 0;
+          var medianLitersPerKm = overall_median / 100;
+          var medianVolPerDistUnit = convertVolumePerDistance(medianLitersPerKm, $scope.unitMode);
+          var tripAvgCostLiquidVal = medianVolPerDistUnit * $scope.liquidFuelPriceValue;
+          var tripAvgCostElectricVal = medianVolPerDistUnit * $scope.electricityPriceValue;
           $scope.tripAvgCostLiquid =
             tripAvgCostLiquidVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
           $scope.tripAvgCostElectric =
