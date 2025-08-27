@@ -62,13 +62,37 @@ describe('UI template styling', () => {
   it('renders fuel cost bindings without inline script', () => {
     assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('fuelPriceNotice'));
-    assert.ok(html.includes('fuel price and currency in fuelPrice.json'));
+    assert.ok(html.includes('fuel price and currency in'));
+    assert.ok(html.includes('fuelPrice.json'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ avgCost }}'));
     assert.ok(html.includes('{{ totalCost }}'));
     assert.ok(html.includes('{{ tripAvgCost }}'));
     assert.ok(html.includes('{{ tripTotalCost }}'));
+  });
+
+  it('toggles fuel price help dialog via controller functions', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    const $http = { get: () => Promise.resolve({ data: {} }) };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope, $http);
+
+    assert.equal($scope.fuelPriceHelpOpen, false);
+    $scope.openFuelPriceHelp({ preventDefault() {} });
+    assert.equal($scope.fuelPriceHelpOpen, true);
+    $scope.closeFuelPriceHelp();
+    assert.equal($scope.fuelPriceHelpOpen, false);
   });
 
   it('exposes fuelPrice and currency in fuelPrice.json', () => {
