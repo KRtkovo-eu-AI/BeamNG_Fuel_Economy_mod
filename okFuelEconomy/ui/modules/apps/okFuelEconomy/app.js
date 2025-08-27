@@ -368,6 +368,10 @@ angular.module('beamng.apps')
       var startFuel_l = null;
       var previousFuel_l = null;
       var tripFuelUsed_l = 0;
+      var tripCostLiquid = 0;
+      var tripCostElectric = 0;
+      var tripDistanceLiquid_m = 0;
+      var tripDistanceElectric_m = 0;
       var lastFuelFlow_lps = 0; // last smoothed value
       var idleFuelFlow_lps = 0;
       var lastThrottle = 0;
@@ -469,7 +473,15 @@ angular.module('beamng.apps')
         lastCapacity_l = null;
         if (!preserveTripFuel) {
           tripFuelUsed_l = 0;
+          tripCostLiquid = 0;
+          tripCostElectric = 0;
+          tripDistanceLiquid_m = 0;
+          tripDistanceElectric_m = 0;
           overall.fuelUsed = 0;
+          tripCostLiquid = 0;
+          tripCostElectric = 0;
+          tripDistanceLiquid_m = 0;
+          tripDistanceElectric_m = 0;
         }
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
@@ -523,6 +535,7 @@ angular.module('beamng.apps')
             streams.electrics.airspeed,
             EPS_SPEED
           );
+          var deltaDistance = speed_mps * dt;
           var trip_m = streams.electrics.trip || 0;
 
           var currentFuel_l = streams.engineInfo[11];
@@ -568,6 +581,19 @@ angular.module('beamng.apps')
             if (deltaTripFuel > 0 && deltaTripFuel < capacity_l) {
               tripFuelUsed_l += deltaTripFuel;
               overall.fuelUsed = tripFuelUsed_l;
+              var deltaFuelUnit = convertVolumeToUnit(deltaTripFuel, $scope.unitMode);
+              if ($scope.unitMode === 'electric') {
+                tripCostElectric += deltaFuelUnit * $scope.electricityPriceValue;
+              } else {
+                tripCostLiquid += deltaFuelUnit * $scope.liquidFuelPriceValue;
+              }
+            }
+            if (speed_mps > EPS_SPEED) {
+              if ($scope.unitMode === 'electric') {
+                tripDistanceElectric_m += deltaDistance;
+              } else {
+                tripDistanceLiquid_m += deltaDistance;
+              }
             }
           }
 
@@ -575,7 +601,7 @@ angular.module('beamng.apps')
             resetAvgHistory();
           }
 
-          distance_m += speed_mps * dt;
+          distance_m += deltaDistance;
 
           var avg_l_per_100km_ok = calculateAverageConsumption(fuel_used_l, distance_m);
           if (!Number.isFinite(avg_l_per_100km_ok) || avg_l_per_100km_ok > MAX_CONSUMPTION) {
@@ -651,7 +677,6 @@ angular.module('beamng.apps')
 
           // ---------- Overall update (NEW) ----------
           if (engineRunning) {
-            var deltaDistance = speed_mps * dt;
             if (!overall.previousAvg) overall.previousAvg = 0;
 
             var shouldPush = false;
@@ -757,25 +782,18 @@ angular.module('beamng.apps')
           $scope.avgCost =
             avgCostVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
 
-          var tripLitersPerKm = overall_median / 100;
-          var tripVolPerDistUnit = convertVolumePerDistance(tripLitersPerKm, $scope.unitMode);
-          var tripAvgCostLiquidVal =
-            tripVolPerDistUnit * $scope.liquidFuelPriceValue;
-          var tripAvgCostElectricVal =
-            tripVolPerDistUnit * $scope.electricityPriceValue;
+          var tripDistanceLiquidUnit = convertDistanceToUnit(tripDistanceLiquid_m, $scope.unitMode);
+          var tripDistanceElectricUnit = convertDistanceToUnit(tripDistanceElectric_m, $scope.unitMode);
+          var tripAvgCostLiquidVal = tripDistanceLiquidUnit > 0 ? tripCostLiquid / tripDistanceLiquidUnit : 0;
+          var tripAvgCostElectricVal = tripDistanceElectricUnit > 0 ? tripCostElectric / tripDistanceElectricUnit : 0;
           $scope.tripAvgCostLiquid =
             tripAvgCostLiquidVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
           $scope.tripAvgCostElectric =
             tripAvgCostElectricVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
-          var tripFuelUsedUnit = convertVolumeToUnit(tripFuelUsed_l, $scope.unitMode);
-          var tripTotalCostLiquidVal =
-            tripFuelUsedUnit * $scope.liquidFuelPriceValue;
-          var tripTotalCostElectricVal =
-            tripFuelUsedUnit * $scope.electricityPriceValue;
           $scope.tripTotalCostLiquid =
-            tripTotalCostLiquidVal.toFixed(2) + ' ' + $scope.currency;
+            tripCostLiquid.toFixed(2) + ' ' + $scope.currency;
           $scope.tripTotalCostElectric =
-            tripTotalCostElectricVal.toFixed(2) + ' ' + $scope.currency;
+            tripCostElectric.toFixed(2) + ' ' + $scope.currency;
 
           $scope.data1 = formatDistance(distance_m, $scope.unitMode, 1);
           $scope.fuelUsed = formatVolume(fuel_used_l, $scope.unitMode, 2);

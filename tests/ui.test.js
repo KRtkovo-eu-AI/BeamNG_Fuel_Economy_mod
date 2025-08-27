@@ -68,10 +68,10 @@ describe('UI template styling', () => {
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ avgCost }}'));
     assert.ok(html.includes('{{ totalCost }}'));
-    assert.ok(html.includes('{{ tripAvgCostLiquid }}'));
-    assert.ok(html.includes('{{ tripAvgCostElectric }}'));
-    assert.ok(html.includes('{{ tripTotalCostLiquid }}'));
-    assert.ok(html.includes('{{ tripTotalCostElectric }}'));
+    assert.ok(html.includes('Liquid: {{ tripAvgCostLiquid }}'));
+    assert.ok(html.includes('Electric: {{ tripAvgCostElectric }}'));
+    assert.ok(html.includes('Liquid: {{ tripTotalCostLiquid }}'));
+    assert.ok(html.includes('Electric: {{ tripTotalCostElectric }}'));
   });
 
   it('toggles fuel price help dialog via controller functions', async () => {
@@ -279,18 +279,32 @@ describe('controller integration', () => {
     assert.strictEqual($scope.avgCost, '0.15 USD/km');
     assert.strictEqual($scope.totalCost, '3.00 USD');
     assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.00 USD/km');
+    assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
+
+    $scope.setUnit('electric');
+    streams.engineInfo[11] = 56;
+    now = 200000;
+    $scope.on_streamsUpdate(null, streams);
+    assert.strictEqual($scope.costPrice, '0.50 USD/kWh');
+    assert.strictEqual($scope.avgCost, '0.05 USD/km');
+    assert.strictEqual($scope.totalCost, '2.00 USD');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
     assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
 
-    $scope.setUnit('electric');
+    $scope.setUnit('metric');
+    streams.engineInfo[11] = 54;
+    now = 300000;
     $scope.on_streamsUpdate(null, streams);
-    assert.strictEqual($scope.costPrice, '0.50 USD/kWh');
-    assert.strictEqual($scope.avgCost, '0.05 USD/km');
-    assert.strictEqual($scope.totalCost, '1.00 USD');
+    assert.strictEqual($scope.costPrice, '1.50 USD/L');
+    assert.strictEqual($scope.avgCost, '0.15 USD/km');
+    assert.strictEqual($scope.totalCost, '9.00 USD');
     assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
     assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
-    assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+    assert.strictEqual($scope.tripTotalCostLiquid, '6.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
   });
 
