@@ -14,7 +14,7 @@
         Traveled distance:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.distanceMeasured">Measured: {{ data1 }}</span>
+        <span ng-if="visible.distanceMeasured" id="distanceMeasuredDisplay">Measured: {{ data1 }}</span>
         <span ng-if="visible.distanceMeasured && visible.distanceEcu"> | </span>
         <span ng-if="visible.distanceEcu">From ECU: {{ data6 }}</span>
       </td>
@@ -25,11 +25,38 @@
         Fuel:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.fuelUsed">Used: {{ fuelUsed }}</span>
+        <span ng-if="visible.fuelUsed" id="fuelUsedDisplay">Used: {{ fuelUsed }}</span>
         <span ng-if="visible.fuelUsed && (visible.fuelLeft || visible.fuelCap)"> | </span>
         <span ng-if="visible.fuelLeft">Left: {{ fuelLeft }}</span>
         <span ng-if="visible.fuelLeft && visible.fuelCap"> | </span>
         <span ng-if="visible.fuelCap">Capacity: {{ fuelCap }}</span>
+      </td>
+    </tr>
+
+    <tr ng-show="visible.costPrice">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Fuel price:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>{{ costPrice }}</span>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.avgCost">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Average fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>{{ avgCost }}</span>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.totalCost">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Total fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>{{ totalCost }}</span>
       </td>
     </tr>
 
@@ -115,7 +142,7 @@
         Trip average consumption:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.tripAvgL100km">{{ tripAvgL100km }}</span>
+        <span ng-if="visible.tripAvgL100km" id="tripAvgDisplay">{{ tripAvgL100km }}</span>
         <span ng-if="visible.tripAvgL100km && visible.tripAvgKmL"> | </span>
         <span ng-if="visible.tripAvgKmL">{{ tripAvgKmL }}</span>
       </td>
@@ -148,7 +175,7 @@
         Trip distance:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        {{ data8 }}
+        <span id="tripDistanceDisplay">{{ data8 }}</span>
       </td>
     </tr>
 
@@ -158,6 +185,24 @@
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         {{ data9 }}
+      </td>
+    </tr>
+
+    <tr ng-if="visible.tripAvgCost">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip average fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>{{ tripAvgCost }}</span>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.tripTotalCost">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip total fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>{{ tripTotalCost }}</span>
       </td>
     </tr>
 
@@ -220,6 +265,15 @@
       <label><input type="checkbox" ng-model="visible.tripDistance"> Trip distance</label><br>
       <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
       <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
+      <label><input type="checkbox" ng-model="visible.costPrice"> Fuel price</label><br>
+      <label><input type="checkbox" ng-model="visible.avgCost"> Average fuel cost per {{ unitDistanceUnit }}</label><br>
+      <label><input type="checkbox" ng-model="visible.totalCost"> Total fuel cost</label><br>
+      <label><input type="checkbox" ng-model="visible.tripAvgCost"> Trip average fuel cost per {{ unitDistanceUnit }}</label><br>
+      <label><input type="checkbox" ng-model="visible.tripTotalCost"> Trip total fuel cost</label><br>
+      <p id="fuelPriceNotice"
+         ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
+        Set fuel price and currency in fuelPrice.json
+      </p>
       <div ng-attr-style="{{ 'position:relative;' + (useCustomStyles ? '' : '') }}">
         <label>Units:
           <span ng-click="unitMenuOpen = !unitMenuOpen"
@@ -232,7 +286,7 @@
               ng-attr-style="{{ 'padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' background:rgba(0,200,255,0.15);' : '') }}">{{ label }}</li>
         </ul>
       </div><br>
-      <button ng-click="saveSettings()"
+      <button id="settingsSaveButton" ng-click="saveSettings()"
               ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">
         <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
       </button>

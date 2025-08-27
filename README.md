@@ -20,8 +20,14 @@ This repository contains a UI mod for BeamNG.drive that displays fuel economy in
 - Efficiency history graphs for instant, average and trip consumption with toggleable visibility and custom style support.
 - Hide or show heading and individual data points through an in-app settings dialog that remembers user choices.
 - Switch between the default BeamNG style and a custom neon-themed look.
+- Optional fuel cost calculator showing average, trip average and total costs (both overall and trip) driven by a price set in `fuelPrice.json`.
 
 Data are gathered via `StreamsManager` from the *electrics* and *engineInfo* channels. All calculations are performed client-side using helper functions like `calculateFuelFlow`, `calculateInstantConsumption`, `calculateRange` and `trimQueue`.
+
+## Fuel price configuration
+
+To enable fuel cost calculations, edit `okFuelEconomy/ui/modules/apps/okFuelEconomy/fuelPrice.json` and set the `fuelPrice` value to the price of fuel per volume unit you use and optionally set the `currency` label (e.g. `USD`, `EUR`). The controller loads these values at runtime and computes average cost per distance, trip average cost per distance, total fuel cost and trip total fuel cost when the relevant fields are enabled in settings.
+If the file is missing, the widget falls back to a price of `0` and a currency label of `money` so the calculator still operates.
 
 ## Tests
 
