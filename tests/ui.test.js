@@ -462,7 +462,7 @@ describe('controller integration', () => {
     assert.strictEqual(stored.tripCostLiquid, 4.5);
   });
 
-  it('ignores zero fuel reading when engine stops', async () => {
+  it('avoids spurious tank drop when engine shuts off', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
@@ -496,10 +496,18 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostLiquid, '32.50 money');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
 
-    streams.electrics.rpmTacho = 0;
+    streams.electrics.rpmTacho = 500;
     streams.electrics.throttle_input = 0;
     streams.engineInfo[11] = 0;
     now = 2000;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.tripTotalCostLiquid, '32.50 money');
+    assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
+
+    streams.electrics.rpmTacho = 0;
+    streams.engineInfo[11] = 0;
+    now = 3000;
     $scope.on_streamsUpdate(null, streams);
 
     assert.strictEqual($scope.tripTotalCostLiquid, '32.50 money');

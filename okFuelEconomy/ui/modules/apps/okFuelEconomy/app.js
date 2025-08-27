@@ -581,6 +581,10 @@ angular.module('beamng.apps')
             distance_m = 0;
           }
 
+          if (currentFuel_l <= 0 && previousFuel_l > 0.1) {
+            currentFuel_l = previousFuel_l;
+          }
+
           var fuel_used_l = startFuel_l - currentFuel_l;
           if (fuel_used_l >= capacity_l || fuel_used_l < 0) {
             startFuel_l = currentFuel_l;
