@@ -525,7 +525,7 @@ angular.module('beamng.apps')
 
           if (lastCapacity_l !== null && capacity_l !== lastCapacity_l) {
             $log.debug('<ok-fuel-economy> capacity changed -> reset trip');
-            hardReset();
+            hardReset(true);
           }
           lastCapacity_l = capacity_l;
 

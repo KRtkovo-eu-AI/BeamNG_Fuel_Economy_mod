@@ -290,11 +290,16 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.tripTotalCost, '3.00 USD');
 
-    $scope.on_VehicleFocusChanged();
     streams.engineInfo[11] = 70; streams.engineInfo[12] = 90;
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCost, '3.00 USD');
+
+    $scope.on_VehicleFocusChanged();
+
+    streams.engineInfo[11] = 70;
+    now = 250000;
+    $scope.on_streamsUpdate(null, streams);
 
     streams.engineInfo[11] = 69;
     now = 300000;
