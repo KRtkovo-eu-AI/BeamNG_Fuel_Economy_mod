@@ -446,13 +446,16 @@ angular.module('beamng.apps')
           $scope.avgKmLHistory = '';
       }
 
-      function hardReset() {
+      function hardReset(preserveTripFuel) {
         distance_m = 0;
         lastDistance_m = 0;
         startFuel_l = null;
         previousFuel_l = null;
-        tripFuelUsed_l = 0;
-        overall.fuelUsed = 0;
+        lastCapacity_l = null;
+        if (!preserveTripFuel) {
+          tripFuelUsed_l = 0;
+          overall.fuelUsed = 0;
+        }
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
         engineWasRunning = false;
@@ -462,7 +465,7 @@ angular.module('beamng.apps')
 
       $scope.reset = function () {
         $log.debug('<ok-fuel-economy> manual reset');
-        hardReset();
+        hardReset(false);
       };
 
       // reset overall včetně vzdálenosti
@@ -487,7 +490,7 @@ angular.module('beamng.apps')
 
       $scope.$on('VehicleFocusChanged', function () {
         $log.debug('<ok-fuel-economy> vehicle changed -> reset trip');
-        hardReset();
+        hardReset(true);
       });
 
       $scope.$on('streamsUpdate', function (event, streams) {
