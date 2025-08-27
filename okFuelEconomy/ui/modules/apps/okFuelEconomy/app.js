@@ -526,7 +526,7 @@ angular.module('beamng.apps')
           }
           lastCapacity_l = capacity_l;
 
-          if (startFuel_l === null || startFuel_l === 0) {
+          if (startFuel_l === null) {
             startFuel_l = currentFuel_l;
             distance_m = 0;
           }
@@ -537,14 +537,18 @@ angular.module('beamng.apps')
 
           var fuel_used_l = startFuel_l - currentFuel_l;
           if (fuel_used_l >= capacity_l || fuel_used_l < 0) {
+            startFuel_l = currentFuel_l;
+            previousFuel_l = currentFuel_l;
             fuel_used_l = 0;
             distance_m = 0;
           }
 
-          var deltaTripFuel = previousFuel_l - currentFuel_l;
-          if (deltaTripFuel > 0) {
-            tripFuelUsed_l += deltaTripFuel;
-            overall.fuelUsed = tripFuelUsed_l;
+          if (engineRunning) {
+            var deltaTripFuel = previousFuel_l - currentFuel_l;
+            if (deltaTripFuel > 0 && deltaTripFuel < capacity_l) {
+              tripFuelUsed_l += deltaTripFuel;
+              overall.fuelUsed = tripFuelUsed_l;
+            }
           }
 
           if (distance_m === 0 && lastDistance_m > 0) {
