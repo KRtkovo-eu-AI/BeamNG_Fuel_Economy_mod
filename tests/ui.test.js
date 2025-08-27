@@ -72,6 +72,29 @@ describe('UI template styling', () => {
     assert.ok(html.includes('{{ tripTotalCost }}'));
   });
 
+  it('toggles fuel price help dialog via controller functions', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    const $http = { get: () => Promise.resolve({ data: {} }) };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope, $http);
+
+    assert.equal($scope.fuelPriceHelpOpen, false);
+    $scope.openFuelPriceHelp({ preventDefault() {} });
+    assert.equal($scope.fuelPriceHelpOpen, true);
+    $scope.closeFuelPriceHelp();
+    assert.equal($scope.fuelPriceHelpOpen, false);
+  });
+
   it('exposes fuelPrice and currency in fuelPrice.json', () => {
     const priceConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'fuelPrice.json');
     const cfg = JSON.parse(fs.readFileSync(priceConfigPath, 'utf8'));

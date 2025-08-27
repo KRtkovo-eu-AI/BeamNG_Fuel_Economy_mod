@@ -274,7 +274,7 @@
          ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
         Set fuel price and currency in
         <a href=""
-           ng-click="fuelPriceHelpOpen = true"
+           ng-click="openFuelPriceHelp($event)"
            ng-attr-style="{{ useCustomStyles ? ' color:#aeeaff;' : '' }}">fuelPrice.json</a>
       </p>
       <div ng-if="fuelPriceHelpOpen"
@@ -287,7 +287,8 @@
           average cost per distance, trip average cost per distance, total fuel cost and trip total fuel cost when the relevant fields are enabled in settings.
           If the file is missing, the widget falls back to a price of <code>0</code> and a currency label of <code>money</code> so the calculator still operates.
         </p>
-        <button ng-click="fuelPriceHelpOpen = false"
+        <button type="button"
+                ng-click="closeFuelPriceHelp()"
                 ng-attr-style="{{ 'font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">OK</button>
       </div>
       <div ng-attr-style="{{ 'position:relative;' + (useCustomStyles ? '' : '') }}">
