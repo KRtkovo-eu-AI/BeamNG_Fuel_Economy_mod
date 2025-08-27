@@ -595,13 +595,15 @@ angular.module('beamng.apps')
 
           if (engineRunning) {
             var deltaTripFuel = previousFuel_l - currentFuel_l;
-            if (deltaTripFuel > 0 && deltaTripFuel < capacity_l) {
-              tripFuelUsed_l += deltaTripFuel;
-              overall.fuelUsed = tripFuelUsed_l;
+            if (Math.abs(deltaTripFuel) < capacity_l) {
+              if (deltaTripFuel > 0) {
+                tripFuelUsed_l += deltaTripFuel;
+                overall.fuelUsed = tripFuelUsed_l;
+              }
               var deltaFuelUnit = convertVolumeToUnit(deltaTripFuel, $scope.unitMode);
               if ($scope.unitMode === 'electric') {
                 tripCostElectric += deltaFuelUnit * $scope.electricityPriceValue;
-              } else {
+              } else if (deltaTripFuel > 0) {
                 tripCostLiquid += deltaFuelUnit * $scope.liquidFuelPriceValue;
               }
             }
