@@ -62,7 +62,9 @@ describe('UI template styling', () => {
   it('renders fuel cost bindings without inline script', () => {
     assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('fuelPriceNotice'));
-    assert.ok(html.includes('fuel price and currency in fuelPrice.json'));
+    assert.ok(html.includes('fuel price and currency in'));
+    assert.ok(html.includes('ng-click="openFuelPriceConfig()"'));
+    assert.ok(html.includes('>fuelPrice.json</a>'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ avgCost }}'));
@@ -193,6 +195,56 @@ describe('UI template styling', () => {
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
+  });
+});
+
+describe('fuel price config link', () => {
+  it('creates config file and opens Explorer', () => {
+    const os = require('os');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fuel-'));
+    const beamBase = path.join(tmp, 'BeamNG.drive');
+    fs.mkdirSync(path.join(beamBase, '0.35'), { recursive: true });
+    fs.mkdirSync(path.join(beamBase, '0.99'), { recursive: true });
+
+    const origEnv = process.env.LOCALAPPDATA;
+    process.env.LOCALAPPDATA = tmp;
+
+    const cp = require('child_process');
+    const origSpawn = cp.spawn;
+    let spawnArgs;
+    cp.spawn = (...args) => { spawnArgs = args; return { on: () => {} }; };
+
+    const origPlatform = process.platform;
+    Object.defineProperty(process, 'platform', { value: 'win32', configurable: true });
+
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (n, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    const $http = { get: () => Promise.resolve({ data: { fuelPrice: 1, currency: 'USD' } }) };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope, $http);
+
+    $scope.openFuelPriceConfig();
+
+    const cfg = path.join(beamBase, '0.99', 'mods', 'unpacked', 'krtektm_FuelEconomy',
+      'ui', 'modules', 'apps', 'okFuelEconomy', 'fuelPrice.json');
+    assert.ok(fs.existsSync(cfg));
+    assert.deepStrictEqual(JSON.parse(fs.readFileSync(cfg, 'utf8')),
+      { fuelPrice: 0, currency: 'money' });
+    assert.strictEqual(spawnArgs[0], 'explorer');
+    assert.deepStrictEqual(spawnArgs[1], ['/select,', cfg.replace(/\//g, '\\')]);
+
+    cp.spawn = origSpawn;
+    Object.defineProperty(process, 'platform', { value: origPlatform });
+    process.env.LOCALAPPDATA = origEnv;
   });
 });
 

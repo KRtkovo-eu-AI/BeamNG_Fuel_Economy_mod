@@ -272,7 +272,9 @@
       <label><input type="checkbox" ng-model="visible.tripTotalCost"> Trip total fuel cost</label><br>
       <p id="fuelPriceNotice"
          ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
-        Set fuel price and currency in fuelPrice.json
+        Set fuel price and currency in
+        <a href="" ng-click="openFuelPriceConfig()"
+           ng-attr-style="{{ useCustomStyles ? ' color:#aeeaff;' : '' }}">fuelPrice.json</a>
       </p>
       <div ng-attr-style="{{ 'position:relative;' + (useCustomStyles ? '' : '') }}">
         <label>Units:

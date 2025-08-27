@@ -1,3 +1,10 @@
+var fs, path, spawn;
+try {
+  fs = require('fs');
+  path = require('path');
+  spawn = require('child_process').spawn;
+} catch (e) { fs = path = spawn = null; }
+
 function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
   if (dtSeconds <= 0 || previousFuel === null) return 0;
   return (previousFuel - currentFuel) / dtSeconds; // L/s
@@ -319,6 +326,34 @@ angular.module('beamng.apps')
           localStorage.setItem(UNIT_MODE_KEY, $scope.unitMode);
         } catch (e) { /* ignore */ }
         $scope.settingsOpen = false;
+      };
+
+      $scope.openFuelPriceConfig = function () {
+        if (!fs || !path || !spawn) return;
+        try {
+          var base = process.env.LOCALAPPDATA || process.env.APPDATA;
+          if (!base) return;
+          var beamDir = path.join(base, 'BeamNG.drive');
+          var versions = [];
+          try {
+            versions = fs.readdirSync(beamDir, { withFileTypes: true })
+              .filter(function (d) { return d.isDirectory(); })
+              .map(function (d) { return d.name; })
+              .filter(function (n) { return /^\d/.test(n); })
+              .sort(function (a, b) { return parseFloat(b) - parseFloat(a); });
+          } catch (e) { return; }
+          if (versions.length === 0) return;
+          var targetDir = path.join(beamDir, versions[0], 'mods', 'unpacked',
+            'krtektm_FuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy');
+          fs.mkdirSync(targetDir, { recursive: true });
+          var cfgPath = path.join(targetDir, 'fuelPrice.json');
+          if (!fs.existsSync(cfgPath)) {
+            fs.writeFileSync(cfgPath, JSON.stringify({ fuelPrice: 0, currency: 'money' }, null, 2));
+          }
+          if (process.platform === 'win32') {
+            spawn('explorer', ['/select,', cfgPath.replace(/\//g, '\\')]);
+          }
+        } catch (e) { /* ignore */ }
       };
 
       // UI outputs
