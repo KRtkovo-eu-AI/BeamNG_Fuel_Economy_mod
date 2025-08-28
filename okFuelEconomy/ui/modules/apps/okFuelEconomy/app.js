@@ -21,6 +21,10 @@ function smoothFuelFlow(
   idleFuelFlow_lps,
   EPS_SPEED
 ) {
+  if (fuelFlow_lps < 0) {
+    // Negative flow means energy is being returned (regen) – use directly.
+    return fuelFlow_lps;
+  }
   if (fuelFlow_lps > 0 && throttle > 0.05) {
     // A fresh reading while throttle is applied – use it directly.
     return fuelFlow_lps;
