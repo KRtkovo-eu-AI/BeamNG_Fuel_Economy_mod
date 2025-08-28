@@ -134,6 +134,14 @@ describe('app.js utility functions', () => {
       assert.ok(flow1 < last);
       assert.ok(flow2 < flow1);
     });
+    it('passes through negative flow for regeneration', () => {
+      const res = smoothFuelFlow(-0.01, 10, 0, 0, 0, EPS_SPEED);
+      assert.strictEqual(res, -0.01);
+    });
+    it('reports zero flow for stationary electric vehicles', () => {
+      const res = smoothFuelFlow(0.01, 0, 0, 0.01, 0.005, EPS_SPEED, true);
+      assert.strictEqual(res, 0);
+    });
   });
 
   describe('calculateRange', () => {

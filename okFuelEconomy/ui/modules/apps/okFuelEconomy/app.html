@@ -188,6 +188,17 @@
       </td>
     </tr>
 
+    <tr ng-if="visible.tripFuelUsed">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip fuel used:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>Liquid: {{ tripFuelUsedLiquid }}</span>
+        <span> | </span>
+        <span>Electric: {{ tripFuelUsedElectric }}</span>
+      </td>
+    </tr>
+
     <tr ng-if="visible.tripAvgCost">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip average fuel cost:
@@ -268,6 +279,7 @@
       <label><input type="checkbox" ng-model="visible.tripKmLGraph"> Trip average {{ unitEfficiencyUnit }} history</label><br>
       <label><input type="checkbox" ng-model="visible.tripDistance"> Trip distance</label><br>
       <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
+      <label><input type="checkbox" ng-model="visible.tripFuelUsed"> Trip fuel used</label><br>
       <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
       <label><input type="checkbox" ng-model="visible.costPrice"> Fuel price</label><br>
       <label><input type="checkbox" ng-model="visible.avgCost"> Average fuel cost per {{ unitDistanceUnit }}</label><br>

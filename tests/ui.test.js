@@ -72,6 +72,8 @@ describe('UI template styling', () => {
     assert.ok(html.includes('Electric: {{ tripAvgCostElectric }}'));
     assert.ok(html.includes('Liquid: {{ tripTotalCostLiquid }}'));
     assert.ok(html.includes('Electric: {{ tripTotalCostElectric }}'));
+    assert.ok(html.includes('Liquid: {{ tripFuelUsedLiquid }}'));
+    assert.ok(html.includes('Electric: {{ tripFuelUsedElectric }}'));
   });
 
   it('toggles fuel price help dialog via controller functions', async () => {
@@ -194,7 +196,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric'];
     placeholders.forEach(p => {
       assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
     });
@@ -218,9 +220,10 @@ describe('UI template styling', () => {
     assert.ok(html.includes('ng-if="visible.tripAvgL100km || visible.tripAvgKmL"'));
     assert.ok(html.includes('ng-if="visible.instantGraph"'));
     assert.ok(html.includes('ng-if="visible.avgCost"'));
+    assert.ok(html.includes('ng-if="visible.tripFuelUsed"'));
     assert.ok(html.includes('ng-if="visible.tripAvgCost"'));
     assert.ok(html.includes('ng-if="visible.tripTotalCost"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripAvgCost','visible.tripTotalCost'];
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripFuelUsed','visible.tripAvgCost','visible.tripTotalCost'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -246,6 +249,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.visible.costPrice, false);
     assert.strictEqual($scope.visible.avgCost, false);
     assert.strictEqual($scope.visible.totalCost, false);
+    assert.strictEqual($scope.visible.tripFuelUsed, false);
     assert.strictEqual($scope.visible.tripAvgCost, false);
     assert.strictEqual($scope.visible.tripTotalCost, false);
   });
@@ -282,6 +286,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
+    assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
 
     $scope.setUnit('electric');
     streams.engineInfo[11] = 56;
@@ -294,6 +300,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
+    assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
 
     $scope.setUnit('metric');
     streams.engineInfo[11] = 54;
@@ -306,6 +314,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '6.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '4.00 L');
+    assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
   });
 
   it('keeps trip average cost steady while stationary', async () => {
@@ -376,12 +386,16 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
     assert.strictEqual($scope.tripTotalCostLiquid, '0.00 USD');
+    assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '0.00 L');
 
     streams.engineInfo[11] = 59;
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostElectric, '0.50 USD');
     assert.strictEqual($scope.tripTotalCostLiquid, '0.00 USD');
+    assert.strictEqual($scope.tripFuelUsedElectric, '1.00 kWh');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '0.00 L');
   });
 
   it('tracks trip fuel usage for total cost', async () => {
@@ -391,7 +405,7 @@ describe('controller integration', () => {
     global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
     global.bngApi = { engineLua: () => '' };
     const store = {
-      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsed: 0 }),
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
       okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
     };
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
@@ -416,15 +430,20 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
 
     const stored = JSON.parse(store.okFuelEconomyOverall);
-    assert.ok(Math.abs(stored.fuelUsed - 2) < 1e-6);
+    assert.ok(Math.abs(stored.fuelUsedLiquid - 2) < 1e-6);
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
+    assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
 
     $scope.resetOverall();
     const storedAfter = JSON.parse(store.okFuelEconomyOverall);
-    assert.strictEqual(storedAfter.fuelUsed, 0);
+    assert.strictEqual(storedAfter.fuelUsedLiquid, 0);
+    assert.strictEqual(storedAfter.fuelUsedElectric, 0);
     assert.strictEqual($scope.tripTotalCostLiquid, '');
     assert.strictEqual($scope.tripTotalCostElectric, '');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '');
+    assert.strictEqual($scope.tripFuelUsedElectric, '');
   });
 
   it('retains trip total cost across vehicle changes', async () => {
@@ -434,7 +453,7 @@ describe('controller integration', () => {
     global.UiUnits = { buildString: (t, v, p) => (v.toFixed ? v.toFixed(p) : String(v)) };
     global.bngApi = { engineLua: () => '' };
     const store = {
-      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsed: 0 }),
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
       okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
     };
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
@@ -460,12 +479,16 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
+    assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
 
     streams.engineInfo[11] = 70; streams.engineInfo[12] = 90;
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
+    assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
 
     $scope.on_VehicleFocusChanged();
 
@@ -478,9 +501,11 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '4.50 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '3.00 L');
+    assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
 
     const stored = JSON.parse(store.okFuelEconomyOverall);
-    assert.ok(Math.abs(stored.fuelUsed - 3) < 1e-6);
+    assert.ok(Math.abs(stored.fuelUsedLiquid - 3) < 1e-6);
   });
 
   it('restores trip totals after controller reload', async () => {
@@ -490,7 +515,7 @@ describe('controller integration', () => {
     global.UiUnits = { buildString: (t, v, p) => (v.toFixed ? v.toFixed(p) : String(v)) };
     global.bngApi = { engineLua: () => '' };
     const store = {
-      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsed: 0 }),
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
       okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
     };
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
@@ -520,6 +545,7 @@ describe('controller integration', () => {
     now = 0; $scope.on_streamsUpdate(null, streams);
     streams.engineInfo[11] = 58; now = 100000; $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
 
     let stored = JSON.parse(store.okFuelEconomyOverall);
     assert.strictEqual(stored.tripCostLiquid, 3);
@@ -530,12 +556,15 @@ describe('controller integration', () => {
     await new Promise(resolve => setImmediate(resolve));
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
 
     streams.engineInfo[11] = 57; now = 100000; $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '4.50 USD');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '3.00 L');
 
     stored = JSON.parse(store.okFuelEconomyOverall);
     assert.strictEqual(stored.tripCostLiquid, 4.5);
+    assert.ok(Math.abs(stored.fuelUsedLiquid - 3) < 1e-6);
   });
 
   it('avoids spurious tank drop when engine shuts off', async () => {
@@ -545,7 +574,7 @@ describe('controller integration', () => {
     global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
     global.bngApi = { engineLua: () => '' };
     const store = {
-      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsed: 0 }),
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
       okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
     };
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
@@ -632,7 +661,7 @@ describe('controller integration', () => {
     global.bngApi = { engineLua: () => '' };
     global.localStorage = {
       getItem: key => key === 'okFuelEconomyOverall'
-        ? JSON.stringify({ queue: [400, 600, 800], distance: 123, fuelUsed: 0 })
+        ? JSON.stringify({ queue: [400, 600, 800], distance: 123, fuelUsedLiquid: 0, fuelUsedElectric: 0 })
         : null,
       setItem: () => {}
     };
@@ -906,7 +935,7 @@ describe('controller integration', () => {
     global.UiUnits = { buildString: () => '' };
     global.bngApi = { engineLua: () => '' };
     const store = {
-      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 5, previousAvgTrip: 5, fuelUsed: 0 }),
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 5, previousAvgTrip: 5, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
       okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
     };
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
@@ -939,7 +968,7 @@ describe('controller integration', () => {
     global.UiUnits = { buildString: () => '' };
     global.bngApi = { engineLua: () => '' };
     const store = {
-      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsed: 0 }),
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
       okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
     };
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
