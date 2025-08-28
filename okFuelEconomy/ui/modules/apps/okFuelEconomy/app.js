@@ -19,8 +19,13 @@ function smoothFuelFlow(
   throttle,
   lastFuelFlow_lps,
   idleFuelFlow_lps,
-  EPS_SPEED
+  EPS_SPEED,
+  isElectric
 ) {
+  if (isElectric && speed_mps <= EPS_SPEED && throttle <= 0.05) {
+    // Electric drivetrains consume no power when stationary.
+    return 0;
+  }
   if (fuelFlow_lps < 0) {
     // Negative flow means energy is being returned (regen) – use directly.
     return fuelFlow_lps;
@@ -643,7 +648,12 @@ angular.module('beamng.apps')
             previousFuel_l = currentFuel_l;
           }
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
-          if (speed_mps <= EPS_SPEED && throttle <= 0.05 && rawFuelFlow_lps > 0) {
+          if (
+            $scope.unitMode !== 'electric' &&
+            speed_mps <= EPS_SPEED &&
+            throttle <= 0.05 &&
+            rawFuelFlow_lps > 0
+          ) {
             idleFuelFlow_lps = rawFuelFlow_lps;
           }
           var fuelFlow_lps = smoothFuelFlow(
@@ -652,7 +662,8 @@ angular.module('beamng.apps')
             throttle,
             lastFuelFlow_lps,
             idleFuelFlow_lps,
-            EPS_SPEED
+            EPS_SPEED,
+            $scope.unitMode === 'electric'
           );
           if (!engineRunning) {
             fuelFlow_lps = 0;

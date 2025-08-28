@@ -138,6 +138,10 @@ describe('app.js utility functions', () => {
       const res = smoothFuelFlow(-0.01, 10, 0, 0, 0, EPS_SPEED);
       assert.strictEqual(res, -0.01);
     });
+    it('reports zero flow for stationary electric vehicles', () => {
+      const res = smoothFuelFlow(0.01, 0, 0, 0.01, 0.005, EPS_SPEED, true);
+      assert.strictEqual(res, 0);
+    });
   });
 
   describe('calculateRange', () => {
