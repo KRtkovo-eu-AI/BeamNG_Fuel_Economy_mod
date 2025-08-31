@@ -26,7 +26,7 @@ describe('extended drive simulations', () => {
       { name: 'summer', duration: 100, speed: 25, flow: 0.0025 },
       // desert sand
       { name: 'desert', duration: 100, speed: 8, flow: 0.0035 },
-      // city stop-and-go (zero speed -> infinite consumption per 100km)
+      // city stop-and-go (zero speed -> zero consumption per 100km)
       { name: 'city', duration: 100, speed: 0, flow: 0.001 },
       // sport mode
       { name: 'sport', duration: 100, speed: 30, flow: 0.004 },
@@ -49,7 +49,7 @@ describe('extended drive simulations', () => {
         const inst = calculateInstantConsumption(flow, seg.speed);
 
         if (seg.speed === 0) {
-          assert.strictEqual(inst, Infinity);
+          assert.strictEqual(inst, 0);
         } else {
           assert.ok(Number.isFinite(inst));
         }

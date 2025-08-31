@@ -44,10 +44,16 @@ describe('app.js utility functions', () => {
         0.002 / 20 * 100000
       );
     });
-    it('handles zero speed', () => {
+    it('returns zero for stationary vehicle', () => {
       assert.strictEqual(
         calculateInstantConsumption(0.001, 0),
-        Infinity
+        0
+      );
+    });
+    it('treats very low speeds as stationary', () => {
+      assert.strictEqual(
+        calculateInstantConsumption(0.001, 0.002),
+        0
       );
     });
     it('propagates negative fuel flow', () => {

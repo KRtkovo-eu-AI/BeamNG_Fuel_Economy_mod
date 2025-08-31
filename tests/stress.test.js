@@ -73,7 +73,7 @@ function runCycle() {
       }
       const inst = calculateInstantConsumption(flow, seg.speed);
       if (seg.speed === 0) {
-        assert.strictEqual(inst, Infinity);
+        assert.strictEqual(inst, 0);
       } else {
         assert.ok(Number.isFinite(inst));
       }
@@ -145,7 +145,7 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
     const inst = calculateInstantConsumption(flowRate, speed);
 
     if (speed === 0) {
-      assert.strictEqual(inst, Infinity);
+      assert.strictEqual(inst, 0);
     } else {
       assert.ok(Number.isFinite(inst));
     }

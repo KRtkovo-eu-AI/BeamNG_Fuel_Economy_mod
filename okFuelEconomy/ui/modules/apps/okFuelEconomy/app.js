@@ -1,11 +1,18 @@
+// Treat speeds below this threshold as stationary when computing instant
+// consumption. This avoids dividing by very small numbers when the vehicle is
+// stopped or barely moving, which previously produced Infinity or extremely
+// large L/100km values.
+var EPS_SPEED = 0.005; // [m/s]
+
 function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
   if (dtSeconds <= 0 || previousFuel === null) return 0;
   return (previousFuel - currentFuel) / dtSeconds; // L/s
 }
 
 function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
-  if (speed_mps === 0) return Infinity;
-  return (fuelFlow_lps / speed_mps) * 100000;
+  var speed = Math.abs(speed_mps);
+  if (speed <= EPS_SPEED) return 0;
+  return (fuelFlow_lps / speed) * 100000;
 }
 
 // Resolve the fuel flow when sensor readings are static.
@@ -391,7 +398,6 @@ angular.module('beamng.apps')
       var engineWasRunning = false;
 
       var lastCapacity_l = null;
-      var EPS_SPEED = 0.005; // [m/s] ignore noise
       var lastInstantUpdate_ms = 0;
       var INSTANT_UPDATE_INTERVAL = 250;
       var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
