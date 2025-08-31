@@ -18,7 +18,8 @@ const {
   formatVolume,
   formatConsumptionRate,
   formatEfficiency,
-  formatFlow
+  formatFlow,
+  MIN_VALID_SPEED_MPS
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('app.js utility functions', () => {
@@ -50,9 +51,9 @@ describe('app.js utility functions', () => {
         0
       );
     });
-    it('treats very low speeds as stationary', () => {
+    it('ignores speeds below the minimum threshold', () => {
       assert.strictEqual(
-        calculateInstantConsumption(0.001, 0.002),
+        calculateInstantConsumption(0.001, MIN_VALID_SPEED_MPS / 2),
         0
       );
     });

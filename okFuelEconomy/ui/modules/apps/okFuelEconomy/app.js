@@ -1,8 +1,8 @@
-// Treat speeds below this threshold as stationary when computing instant
-// consumption. This avoids dividing by very small numbers when the vehicle is
-// stopped or barely moving, which previously produced Infinity or extremely
-// large L/100km values.
+// Treat speeds below EPS_SPEED as stationary for general calculations.
+// MIN_VALID_SPEED_MPS adds a higher threshold for L/100km reporting so that
+// creeping speeds do not produce unrealistic per-distance consumption values.
 var EPS_SPEED = 0.005; // [m/s]
+var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
 
 function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
   if (dtSeconds <= 0 || previousFuel === null) return 0;
@@ -11,7 +11,7 @@ function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
 
 function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
   var speed = Math.abs(speed_mps);
-  if (speed <= EPS_SPEED) return 0;
+  if (speed <= MIN_VALID_SPEED_MPS) return 0;
   return (fuelFlow_lps / speed) * 100000;
 }
 
@@ -197,6 +197,8 @@ function convertVolumePerDistance(lPerKm, mode) {
 
 if (typeof module !== 'undefined') {
   module.exports = {
+    EPS_SPEED,
+    MIN_VALID_SPEED_MPS,
     calculateFuelFlow,
     calculateInstantConsumption,
     smoothFuelFlow,

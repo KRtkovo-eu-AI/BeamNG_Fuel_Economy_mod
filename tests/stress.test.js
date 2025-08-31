@@ -9,7 +9,8 @@ const {
   calculateInstantConsumption,
   smoothFuelFlow,
   trimQueue,
-  calculateRange
+  calculateRange,
+  MIN_VALID_SPEED_MPS
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 // Driving segments used for repeated environment cycles
@@ -72,7 +73,7 @@ function runCycle() {
         if (t === seg.duration - 1) endFlow = flow;
       }
       const inst = calculateInstantConsumption(flow, seg.speed);
-      if (seg.speed === 0) {
+      if (seg.speed < MIN_VALID_SPEED_MPS) {
         assert.strictEqual(inst, 0);
       } else {
         assert.ok(Number.isFinite(inst));
@@ -144,7 +145,7 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
     }
     const inst = calculateInstantConsumption(flowRate, speed);
 
-    if (speed === 0) {
+    if (speed < MIN_VALID_SPEED_MPS) {
       assert.strictEqual(inst, 0);
     } else {
       assert.ok(Number.isFinite(inst));
