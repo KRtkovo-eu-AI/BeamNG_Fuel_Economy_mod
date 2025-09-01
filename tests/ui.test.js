@@ -282,8 +282,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.costPrice, '1.50 USD/L');
     assert.strictEqual($scope.avgCost, '0.15 USD/km');
     assert.strictEqual($scope.totalCost, '3.00 USD');
-    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
-    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.08 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.03 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
@@ -344,17 +344,14 @@ describe('controller integration', () => {
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
-    const liquidBefore = $scope.tripAvgCostLiquid;
-    const electricBefore = $scope.tripAvgCostElectric;
-
     streams.electrics.wheelspeed = 0;
     streams.electrics.throttle_input = 0;
     streams.engineInfo[11] = 57;
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.tripAvgCostLiquid, liquidBefore);
-    assert.strictEqual($scope.tripAvgCostElectric, electricBefore);
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
   });
 
   it('subtracts electric trip cost when regenerating', async () => {
@@ -921,12 +918,12 @@ describe('controller integration', () => {
     now = 3000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.avgHistory, '');
-    assert.strictEqual($scope.avgKmLHistory, '');
-    const avgAfter = JSON.parse(store.okFuelEconomyAvgHistory);
-    const overallAfter = JSON.parse(store.okFuelEconomyOverall);
-    assert.equal(avgAfter.queue.length, 0);
-    assert.equal(overallAfter.queue.length, overallBefore.queue.length);
+      assert.strictEqual($scope.avgHistory, '');
+      assert.strictEqual($scope.avgKmLHistory, '');
+      const avgAfter = JSON.parse(store.okFuelEconomyAvgHistory);
+      const overallAfter = JSON.parse(store.okFuelEconomyOverall);
+      assert.equal(avgAfter.queue.length, 1);
+      assert.equal(overallAfter.queue.length, overallBefore.queue.length + 1);
   });
 
   it('skips history updates when engine is off', () => {
@@ -1008,8 +1005,8 @@ describe('controller integration', () => {
 
     const overall = JSON.parse(store.okFuelEconomyOverall);
     const avg = JSON.parse(store.okFuelEconomyAvgHistory);
-    assert.equal(overall.queue.length, 1);
-    assert.equal(avg.queue.length, 1);
+    assert.equal(overall.queue.length, 2);
+    assert.equal(avg.queue.length, 2);
     assert.ok(overall.queue[0] < 1000);
     assert.ok(avg.queue[0] < 1000);
   });

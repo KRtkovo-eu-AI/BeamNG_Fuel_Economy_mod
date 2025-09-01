@@ -414,7 +414,7 @@ angular.module('beamng.apps')
 
       // --------- Overall persistence (NEW) ----------
       var OVERALL_KEY = 'okFuelEconomyOverall';
-      var MAX_ENTRIES = 5000; // pevný počet hodnot pro frontu
+      var MAX_ENTRIES = 20000; // pevný počet hodnot pro frontu
 
       var overall = {
           queue: [],
@@ -680,11 +680,6 @@ angular.module('beamng.apps')
 
           distance_m += deltaDistance;
 
-          var avg_l_per_100km_ok = calculateAverageConsumption(fuel_used_l, distance_m);
-          if (!Number.isFinite(avg_l_per_100km_ok) || avg_l_per_100km_ok > MAX_CONSUMPTION) {
-            avg_l_per_100km_ok = 0;
-          }
-
           if (throttle <= 0.05 && lastThrottle > 0.05) {
             previousFuel_l = currentFuel_l;
           }
@@ -758,41 +753,33 @@ angular.module('beamng.apps')
             }
           }
 
+          var avg_l_per_100km_ok =
+            speed_mps > MIN_VALID_SPEED_MPS
+              ? calculateAverageConsumption(fuel_used_l, distance_m)
+              : inst_l_per_100km;
+          if (
+            !Number.isFinite(avg_l_per_100km_ok) ||
+            avg_l_per_100km_ok > MAX_CONSUMPTION
+          ) {
+            avg_l_per_100km_ok = 0;
+          }
+
           // ---------- Overall update (NEW) ----------
           if (engineRunning) {
-            if (!overall.previousAvg) overall.previousAvg = 0;
-
-            var shouldPush = false;
+            overall.queue.push(avg_l_per_100km_ok);
+            trimQueue(overall.queue, MAX_ENTRIES);
 
             if (speed_mps > EPS_SPEED) {
-                shouldPush = true; // vozidlo jede → libovolný růst
-            } else {
-                if (throttle > 0.2) {
-                    shouldPush = true; // stojí, ale motor v zátěži → libovolný růst
-                } else {
-                    // stojí, motor volnoběh → jen pokud průměrná spotřeba neklesá
-                    if (avg_l_per_100km_ok <= overall.previousAvg) {
-                        shouldPush = true;
-                    }
-                }
+              overall.distance = (overall.distance || 0) + deltaDistance;
             }
 
-            if (shouldPush && avg_l_per_100km_ok > 0) {
-                overall.queue.push(avg_l_per_100km_ok);
-                trimQueue(overall.queue, MAX_ENTRIES);
+            overall.previousAvg = avg_l_per_100km_ok;
 
-                if (speed_mps > EPS_SPEED) {
-                    overall.distance = (overall.distance || 0) + deltaDistance;
-                }
-
-                overall.previousAvg = avg_l_per_100km_ok;
-
-                if (!overall.lastSaveTime) overall.lastSaveTime = 0;
-                var now = performance.now();
-                if (now - overall.lastSaveTime >= 100) {
-                    saveOverall();
-                    overall.lastSaveTime = now;
-                }
+            if (!overall.lastSaveTime) overall.lastSaveTime = 0;
+            var now = performance.now();
+            if (now - overall.lastSaveTime >= 100) {
+              saveOverall();
+              overall.lastSaveTime = now;
             }
           }
 
@@ -802,38 +789,24 @@ angular.module('beamng.apps')
           $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
           $scope.tripAvgKmLHistory = buildQueueGraphPoints(overall.queue.map(function(v){ return v > 0 ? 100 / v : 0; }), 100, 40);
 
-          // ---------- Average Consumption rules (prevent increasing while stopped) ----------
+          // ---------- Average Consumption ----------
           if (engineRunning) {
-            if (!overall.previousAvgTrip) overall.previousAvgTrip = 0;
-            var shouldUpdateAvg = false;
+            overall.previousAvgTrip = avg_l_per_100km_ok;
 
-            if (speed_mps > EPS_SPEED) {
-                shouldUpdateAvg = true;
-            } else {
-                if (throttle > 0.2) {
-                    shouldUpdateAvg = true;
-                } else if (avg_l_per_100km_ok <= overall.previousAvgTrip) {
-                    shouldUpdateAvg = true;
-                }
-            }
-
-            if (shouldUpdateAvg) {
-                overall.previousAvgTrip = avg_l_per_100km_ok;
-            } else {
-                // při stání a bez plynu → spotřebu necháme beze změny
-                avg_l_per_100km_ok = overall.previousAvgTrip;
-            }
-
-            if (avg_l_per_100km_ok > 0) {
-                avgHistory.queue.push(avg_l_per_100km_ok);
-                trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
-                $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
-                $scope.avgKmLHistory = buildQueueGraphPoints(avgHistory.queue.map(function(v){ return v > 0 ? 100 / v : 0; }), 100, 40);
-                if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
-                if (now_ms - avgHistory.lastSaveTime >= 100) {
-                    saveAvgHistory();
-                    avgHistory.lastSaveTime = now_ms;
-                }
+            avgHistory.queue.push(avg_l_per_100km_ok);
+            trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
+            $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
+            $scope.avgKmLHistory = buildQueueGraphPoints(
+              avgHistory.queue.map(function (v) {
+                return v > 0 ? 100 / v : 0;
+              }),
+              100,
+              40
+            );
+            if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
+            if (now_ms - avgHistory.lastSaveTime >= 100) {
+              saveAvgHistory();
+              avgHistory.lastSaveTime = now_ms;
             }
           }
 
