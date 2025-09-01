@@ -838,7 +838,7 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
 
     const eff = parseFloat($scope.instantKmL);
-    const expectedEff = parseFloat((100 / (0.009 * 3600)).toFixed(2));
+    const expectedEff = parseFloat((100 / (0.009 * 900)).toFixed(2));
     assert.strictEqual(eff, expectedEff);
 
     const saved = JSON.parse(store.okFuelEconomyInstantEffHistory);

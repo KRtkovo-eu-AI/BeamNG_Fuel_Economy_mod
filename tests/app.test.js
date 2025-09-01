@@ -45,16 +45,16 @@ describe('app.js utility functions', () => {
         0.002 / 20 * 100000
       );
     });
-    it('uses hourly rate when stationary', () => {
+    it('uses quarter-hourly rate when stationary', () => {
       assert.strictEqual(
         calculateInstantConsumption(0.001, 0),
-        0.001 * 3600
+        (0.001 * 3600) / 4
       );
     });
-    it('applies hourly estimate below the minimum threshold', () => {
+    it('applies quarter-hourly estimate below the minimum threshold', () => {
       assert.strictEqual(
         calculateInstantConsumption(0.001, MIN_VALID_SPEED_MPS / 2),
-        0.001 * 3600
+        (0.001 * 3600) / 4
       );
     });
     it('propagates negative fuel flow', () => {
