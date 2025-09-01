@@ -334,6 +334,59 @@ function loadFuelPriceConfig(callback) {
   return defaults;
 }
 
+function saveFuelPriceConfig(cfg) {
+  if (typeof require === 'function' && typeof process !== 'undefined') {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const baseDir =
+        process.env.KRTEKTM_BNG_USER_DIR ||
+        path.join(
+          process.platform === 'win32'
+            ? process.env.LOCALAPPDATA || ''
+            : path.join(process.env.HOME || '', '.local', 'share'),
+          'BeamNG.drive'
+        );
+      const versions = fs
+        .readdirSync(baseDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const latest = versions[versions.length - 1];
+      if (!latest) return;
+      const settingsDir = path.join(
+        baseDir,
+        latest,
+        'settings',
+        'krtektm_fuelEconomy'
+      );
+      fs.mkdirSync(settingsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(settingsDir, 'fuelPrice.json'),
+        JSON.stringify(cfg)
+      );
+    } catch (e) { /* ignore */ }
+    return;
+  }
+  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    try {
+      var encoded = JSON.stringify(cfg)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'");
+      var lua = [
+        '(function()',
+        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
+        "local dir=user..'settings/krtektm_fuelEconomy/'",
+        'FS:directoryCreate(dir)',
+        "local p=dir..'fuelPrice.json'",
+        "jsonWriteFile(p,jsonDecode('" + encoded + "'))",
+        'end)()'
+      ].join('\n');
+      bngApi.engineLua(lua);
+    } catch (e) { /* ignore */ }
+  }
+}
+
 angular.module('beamng.apps')
 .directive('okFuelEconomy', [function () {
   return {
@@ -389,14 +442,6 @@ angular.module('beamng.apps')
       var SETTINGS_KEY = 'okFuelEconomyVisible';
       var UNIT_MODE_KEY = 'okFuelEconomyUnitMode';
       $scope.settingsOpen = false;
-      $scope.fuelPriceHelpOpen = false;
-      $scope.openFuelPriceHelp = function ($event) {
-        $event.preventDefault();
-        $scope.fuelPriceHelpOpen = true;
-      };
-      $scope.closeFuelPriceHelp = function () {
-        $scope.fuelPriceHelpOpen = false;
-      };
       $scope.unitModeLabels = {
         metric: 'Metric (L, km)',
         imperial: 'Imperial (gal, mi)',
@@ -415,6 +460,7 @@ angular.module('beamng.apps')
         $scope.unitEfficiencyUnit = lbls.efficiency;
         $scope.unitFlowUnit = lbls.flow;
         $scope.unitDistanceUnit = lbls.distance;
+        $scope.unitVolumeUnit = lbls.volume;
       }
       updateUnitLabels();
       $scope.visible = {
@@ -483,6 +529,11 @@ angular.module('beamng.apps')
           localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible));
           localStorage.setItem(UNIT_MODE_KEY, $scope.unitMode);
         } catch (e) { /* ignore */ }
+        saveFuelPriceConfig({
+          liquidFuelPrice: parseFloat($scope.liquidFuelPriceValue) || 0,
+          electricityPrice: parseFloat($scope.electricityPriceValue) || 0,
+          currency: $scope.currency || 'money'
+        });
         $scope.settingsOpen = false;
       };
 

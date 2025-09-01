@@ -60,9 +60,10 @@ describe('UI template styling', () => {
 
   it('renders fuel cost bindings without inline script', () => {
     assert.ok(!html.includes('fetch('));
-    assert.ok(html.includes('fuelPriceNotice'));
-    assert.ok(html.includes('fuel prices and currency in'));
-    assert.ok(html.includes('settings/<wbr>krtektm_fuelEconomy/<wbr>fuelPrice.json'));
+    assert.ok(!html.includes('fuelPriceNotice'));
+    assert.ok(html.includes('ng-model="liquidFuelPriceValue"'));
+    assert.ok(html.includes('ng-model="electricityPriceValue"'));
+    assert.ok(html.includes('ng-model="currency"'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ avgCost }}'));
@@ -73,27 +74,6 @@ describe('UI template styling', () => {
     assert.ok(html.includes('Electric: {{ tripTotalCostElectric }}'));
     assert.ok(html.includes('Liquid: {{ tripFuelUsedLiquid }}'));
     assert.ok(html.includes('Electric: {{ tripFuelUsedElectric }}'));
-  });
-
-  it('toggles fuel price help dialog via controller functions', async () => {
-    let directiveDef;
-    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
-    global.StreamsManager = { add: () => {}, remove: () => {} };
-    global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
-    global.localStorage = { getItem: () => null, setItem: () => {} };
-    global.performance = { now: () => 0 };
-    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
-    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
-    const $scope = { $on: () => {} };
-    controllerFn({ debug: () => {} }, $scope);
-
-    assert.equal($scope.fuelPriceHelpOpen, false);
-    $scope.openFuelPriceHelp({ preventDefault() {} });
-    assert.equal($scope.fuelPriceHelpOpen, true);
-    $scope.closeFuelPriceHelp();
-    assert.equal($scope.fuelPriceHelpOpen, false);
   });
 
   it('exposes fuel prices and currency in fuelPrice.json', () => {
@@ -133,6 +113,42 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.liquidFuelPriceValue, 2.25);
     assert.strictEqual($scope.electricityPriceValue, 0.5);
     assert.strictEqual($scope.currency, 'CZK');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+  });
+
+  it('saves fuel price settings to fuelPrice.json', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '1.02', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 1, electricityPrice: 0.2, currency: 'USD' }));
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(resolve => setImmediate(resolve));
+
+    $scope.liquidFuelPriceValue = 2.5;
+    $scope.electricityPriceValue = 0.7;
+    $scope.currency = 'EUR';
+    $scope.saveSettings();
+
+    const saved = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    assert.strictEqual(saved.liquidFuelPrice, 2.5);
+    assert.strictEqual(saved.electricityPrice, 0.7);
+    assert.strictEqual(saved.currency, 'EUR');
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
