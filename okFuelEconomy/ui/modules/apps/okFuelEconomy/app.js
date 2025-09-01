@@ -244,6 +244,165 @@ if (typeof module !== 'undefined') {
   };
 }
 
+function loadFuelPriceConfig(callback) {
+  var defaults = {
+    liquidFuelPrice: 0,
+    electricityPrice: 0,
+    currency: 'money'
+  };
+
+  if (typeof require === 'function' && typeof process !== 'undefined') {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const cfg = JSON.parse(
+        fs.readFileSync(path.join(__dirname, 'fuelPrice.json'), 'utf8')
+      );
+      defaults = cfg;
+
+      const baseDir =
+        process.env.KRTEKTM_BNG_USER_DIR ||
+        path.join(
+          process.platform === 'win32'
+            ? process.env.LOCALAPPDATA || ''
+            : path.join(process.env.HOME || '', '.local', 'share'),
+          'BeamNG.drive'
+        );
+
+      const versions = fs
+        .readdirSync(baseDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const latest = versions[versions.length - 1];
+      if (!latest) {
+        if (typeof callback === 'function') callback(defaults);
+        return defaults;
+      }
+      const settingsDir = path.join(
+        baseDir,
+        latest,
+        'settings',
+        'krtektm_fuelEconomy'
+      );
+      fs.mkdirSync(settingsDir, { recursive: true });
+      const userFile = path.join(settingsDir, 'fuelPrice.json');
+      if (!fs.existsSync(userFile)) {
+        fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
+        if (typeof callback === 'function') callback(defaults);
+        return defaults;
+      }
+      const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+      const cfgObj = {
+        liquidFuelPrice: parseFloat(data.liquidFuelPrice) || 0,
+        electricityPrice: parseFloat(data.electricityPrice) || 0,
+        currency: data.currency || 'money'
+      };
+      if (typeof callback === 'function') callback(cfgObj);
+      return cfgObj;
+    } catch (e) {
+      if (typeof callback === 'function') callback(defaults);
+      return defaults;
+    }
+  }
+
+  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    try {
+      const lua = [
+        '(function()',
+        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
+        "local dir=user..'settings/krtektm_fuelEconomy/'",
+        'FS:directoryCreate(dir)',
+        "local p=dir..'fuelPrice.json'",
+        'local cfg=jsonReadFile(p)',
+        "if not cfg then cfg={liquidFuelPrice=0,electricityPrice=0,currency='money'} jsonWriteFile(p,cfg) end",
+        "return jsonEncode({liquidFuelPrice=tonumber(cfg.liquidFuelPrice) or 0,electricityPrice=tonumber(cfg.electricityPrice) or 0,currency=cfg.currency or 'money'})",
+        'end)()'
+      ].join('\n');
+      bngApi.engineLua(lua, function (res) {
+        var cfg = defaults;
+        try { cfg = JSON.parse(res); } catch (e) { /* ignore */ }
+        if (typeof callback === 'function') callback(cfg);
+      });
+    } catch (e) {
+      if (typeof callback === 'function') callback(defaults);
+    }
+    return defaults;
+  }
+
+  if (typeof callback === 'function') callback(defaults);
+  return defaults;
+}
+
+function saveFuelPriceConfig(cfg, callback) {
+  var data = {
+    liquidFuelPrice: Number(cfg.liquidFuelPrice) || 0,
+    electricityPrice: Number(cfg.electricityPrice) || 0,
+    currency: cfg.currency || 'money'
+  };
+
+  if (typeof require === 'function' && typeof process !== 'undefined') {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const baseDir =
+        process.env.KRTEKTM_BNG_USER_DIR ||
+        path.join(
+          process.platform === 'win32'
+            ? process.env.LOCALAPPDATA || ''
+            : path.join(process.env.HOME || '', '.local', 'share'),
+          'BeamNG.drive'
+        );
+      const versions = fs
+        .readdirSync(baseDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const latest = versions[versions.length - 1] || '0';
+      const settingsDir = path.join(
+        baseDir,
+        latest,
+        'settings',
+        'krtektm_fuelEconomy'
+      );
+      fs.mkdirSync(settingsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(settingsDir, 'fuelPrice.json'),
+        JSON.stringify(data)
+      );
+      if (typeof callback === 'function') callback();
+    } catch (e) {
+      if (typeof callback === 'function') callback(e);
+    }
+    return;
+  }
+
+  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    try {
+      var json = JSON.stringify(data)
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"');
+      var lua = [
+        '(function()',
+        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
+        "local dir=user..'settings/krtektm_fuelEconomy/'",
+        'FS:directoryCreate(dir)',
+        "local p=dir..'fuelPrice.json'",
+        "jsonWriteFile(p,jsonDecode(\"" + json + "\"))",
+        'end)()'
+      ].join('\n');
+      bngApi.engineLua(lua, function () {
+        if (typeof callback === 'function') callback();
+      });
+    } catch (e) {
+      if (typeof callback === 'function') callback(e);
+    }
+    return;
+  }
+
+  if (typeof callback === 'function') callback(new Error('no save method'));
+}
+
 angular.module('beamng.apps')
 .directive('okFuelEconomy', [function () {
   return {
@@ -251,43 +410,54 @@ angular.module('beamng.apps')
     replace: true,
     restrict: 'EA',
     scope: true,
-    controller: ['$log', '$scope', '$http', function ($log, $scope, $http) {
+    controller: ['$log', '$scope', function ($log, $scope) {
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
 
       $scope.liquidFuelPriceValue = 0;
       $scope.electricityPriceValue = 0;
       $scope.currency = 'money';
-      $http.get('/ui/modules/apps/okFuelEconomy/fuelPrice.json')
-        .then(function (resp) {
-          $scope.liquidFuelPriceValue =
-            parseFloat((resp.data || {}).liquidFuelPrice) || 0;
-          $scope.electricityPriceValue =
-            parseFloat((resp.data || {}).electricityPrice) || 0;
-          $scope.currency = (resp.data || {}).currency || 'money';
-        })
-        .catch(function () {
-          $scope.liquidFuelPriceValue = 0;
-          $scope.electricityPriceValue = 0;
-          $scope.currency = 'money';
+      loadFuelPriceConfig(function (cfg) {
+        var applyInit = function () {
+          $scope.liquidFuelPriceValue = cfg.liquidFuelPrice;
+          $scope.electricityPriceValue = cfg.electricityPrice;
+          $scope.currency = cfg.currency;
+        };
+        if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(applyInit); else applyInit();
+      });
+
+      var pollMs = 1000;
+      if (typeof process !== 'undefined' && process.env && process.env.KRTEKTM_FUEL_POLL_MS) {
+        var intVal = parseInt(process.env.KRTEKTM_FUEL_POLL_MS, 10);
+        if (intVal > 0) pollMs = intVal;
+      }
+      var priceTimer = setInterval(function () {
+        loadFuelPriceConfig(function (cfg) {
+          if (
+            cfg.liquidFuelPrice !== $scope.liquidFuelPriceValue ||
+            cfg.electricityPrice !== $scope.electricityPriceValue ||
+            cfg.currency !== $scope.currency
+          ) {
+            var apply = function () {
+              $scope.liquidFuelPriceValue = cfg.liquidFuelPrice;
+              $scope.electricityPriceValue = cfg.electricityPrice;
+              $scope.currency = cfg.currency;
+            };
+            if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(apply); else apply();
+          }
         });
+      }, pollMs);
+      if (priceTimer.unref) priceTimer.unref();
 
       $scope.$on('$destroy', function () {
         StreamsManager.remove(streamsList);
+        clearInterval(priceTimer);
       });
 
       // Settings for visible fields
       var SETTINGS_KEY = 'okFuelEconomyVisible';
       var UNIT_MODE_KEY = 'okFuelEconomyUnitMode';
       $scope.settingsOpen = false;
-      $scope.fuelPriceHelpOpen = false;
-      $scope.openFuelPriceHelp = function ($event) {
-        $event.preventDefault();
-        $scope.fuelPriceHelpOpen = true;
-      };
-      $scope.closeFuelPriceHelp = function () {
-        $scope.fuelPriceHelpOpen = false;
-      };
       $scope.unitModeLabels = {
         metric: 'Metric (L, km)',
         imperial: 'Imperial (gal, mi)',
@@ -306,6 +476,7 @@ angular.module('beamng.apps')
         $scope.unitEfficiencyUnit = lbls.efficiency;
         $scope.unitFlowUnit = lbls.flow;
         $scope.unitDistanceUnit = lbls.distance;
+        $scope.unitVolumeUnit = lbls.volume;
       }
       updateUnitLabels();
       $scope.visible = {
@@ -374,6 +545,11 @@ angular.module('beamng.apps')
           localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible));
           localStorage.setItem(UNIT_MODE_KEY, $scope.unitMode);
         } catch (e) { /* ignore */ }
+        saveFuelPriceConfig({
+          liquidFuelPrice: $scope.liquidFuelPriceValue,
+          electricityPrice: $scope.electricityPriceValue,
+          currency: $scope.currency
+        });
         $scope.settingsOpen = false;
       };
 
