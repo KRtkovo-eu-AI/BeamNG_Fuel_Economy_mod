@@ -680,6 +680,37 @@ describe('controller integration', () => {
     assert.notStrictEqual($scope.tripAvgL100km, $scope.avgL100km);
   });
 
+  it('caps avg and trip efficiency history at 100 km/L', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => { now += 1000; return now; } };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope, httpStub);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 20, trip: 0, throttle_input: 0, rpmTacho: 1000 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    // first update establishes baseline without consumption
+    $scope.on_streamsUpdate(null, streams);
+
+    // second update with tiny fuel usage yielding >100 km/L if unclamped
+    streams.engineInfo[11] = 49.99998;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.avgKmLHistory, '0.0,0.0 100.0,0.0');
+    assert.strictEqual($scope.tripAvgKmLHistory, '0.0,0.0 100.0,0.0');
+  });
+
   it('throttles instant consumption updates', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

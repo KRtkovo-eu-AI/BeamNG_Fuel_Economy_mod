@@ -787,7 +787,13 @@ angular.module('beamng.apps')
           // Use the median of the recorded averages for trip stats and graphs
           var overall_median = calculateMedian(overall.queue);
           $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
-          $scope.tripAvgKmLHistory = buildQueueGraphPoints(overall.queue.map(function(v){ return v > 0 ? 100 / v : 0; }), 100, 40);
+          $scope.tripAvgKmLHistory = buildQueueGraphPoints(
+            overall.queue.map(function (v) {
+              return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
+            }),
+            100,
+            40
+          );
 
           // ---------- Average Consumption ----------
           if (engineRunning) {
@@ -798,7 +804,7 @@ angular.module('beamng.apps')
             $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
             $scope.avgKmLHistory = buildQueueGraphPoints(
               avgHistory.queue.map(function (v) {
-                return v > 0 ? 100 / v : 0;
+                return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
               }),
               100,
               40
