@@ -244,6 +244,53 @@ if (typeof module !== 'undefined') {
   };
 }
 
+function loadFuelPriceConfig() {
+  const fs = require('fs');
+  const path = require('path');
+  const defaults = JSON.parse(
+    fs.readFileSync(path.join(__dirname, 'fuelPrice.json'), 'utf8')
+  );
+
+  const baseDir =
+    process.env.KRTEKTM_BNG_USER_DIR ||
+    path.join(
+      process.platform === 'win32'
+        ? process.env.LOCALAPPDATA || ''
+        : path.join(process.env.HOME || '', '.local', 'share'),
+      'BeamNG.drive'
+    );
+
+  try {
+    const versions = fs
+      .readdirSync(baseDir, { withFileTypes: true })
+      .filter(d => d.isDirectory())
+      .map(d => d.name)
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const latest = versions[versions.length - 1];
+    if (!latest) return defaults;
+    const settingsDir = path.join(
+      baseDir,
+      latest,
+      'settings',
+      'krtektm_fuelEconomy'
+    );
+    fs.mkdirSync(settingsDir, { recursive: true });
+    const userFile = path.join(settingsDir, 'fuelPrice.json');
+    if (!fs.existsSync(userFile)) {
+      fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
+      return defaults;
+    }
+    const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+    return {
+      liquidFuelPrice: parseFloat(data.liquidFuelPrice) || 0,
+      electricityPrice: parseFloat(data.electricityPrice) || 0,
+      currency: data.currency || 'money'
+    };
+  } catch (e) {
+    return defaults;
+  }
+}
+
 angular.module('beamng.apps')
 .directive('okFuelEconomy', [function () {
   return {
@@ -251,26 +298,14 @@ angular.module('beamng.apps')
     replace: true,
     restrict: 'EA',
     scope: true,
-    controller: ['$log', '$scope', '$http', function ($log, $scope, $http) {
+    controller: ['$log', '$scope', function ($log, $scope) {
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
 
-      $scope.liquidFuelPriceValue = 0;
-      $scope.electricityPriceValue = 0;
-      $scope.currency = 'money';
-      $http.get('/ui/modules/apps/okFuelEconomy/fuelPrice.json')
-        .then(function (resp) {
-          $scope.liquidFuelPriceValue =
-            parseFloat((resp.data || {}).liquidFuelPrice) || 0;
-          $scope.electricityPriceValue =
-            parseFloat((resp.data || {}).electricityPrice) || 0;
-          $scope.currency = (resp.data || {}).currency || 'money';
-        })
-        .catch(function () {
-          $scope.liquidFuelPriceValue = 0;
-          $scope.electricityPriceValue = 0;
-          $scope.currency = 'money';
-        });
+      var priceCfg = loadFuelPriceConfig();
+      $scope.liquidFuelPriceValue = priceCfg.liquidFuelPrice;
+      $scope.electricityPriceValue = priceCfg.electricityPrice;
+      $scope.currency = priceCfg.currency;
 
       $scope.$on('$destroy', function () {
         StreamsManager.remove(streamsList);

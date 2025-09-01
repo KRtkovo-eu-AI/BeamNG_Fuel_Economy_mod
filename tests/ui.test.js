@@ -2,7 +2,6 @@ const assert = require('node:assert');
 const { describe, it } = require('node:test');
 const fs = require('fs');
 const path = require('path');
-const httpStub = { get: () => Promise.resolve({ data: { liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' } }) };
 
 const htmlPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'app.html');
 const html = fs.readFileSync(htmlPath, 'utf8');
@@ -63,7 +62,7 @@ describe('UI template styling', () => {
     assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('fuelPriceNotice'));
     assert.ok(html.includes('fuel prices and currency in'));
-    assert.ok(html.includes('fuelPrice.json'));
+    assert.ok(html.includes('settings/<wbr>krtektm_fuelEconomy/<wbr>fuelPrice.json'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ avgCost }}'));
@@ -84,13 +83,11 @@ describe('UI template styling', () => {
     global.bngApi = { engineLua: () => '' };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
-    const $http = { get: () => Promise.resolve({ data: {} }) };
-
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: () => {} };
-    controllerFn({ debug: () => {} }, $scope, $http);
+    controllerFn({ debug: () => {} }, $scope);
 
     assert.equal($scope.fuelPriceHelpOpen, false);
     $scope.openFuelPriceHelp({ preventDefault() {} });
@@ -116,18 +113,28 @@ describe('UI template styling', () => {
     global.bngApi = { engineLua: () => '' };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
-    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 2.25, electricityPrice: 0.5, currency: 'CZK' } }) };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '0.99', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 2.25, electricityPrice: 0.5, currency: 'CZK' })
+    );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: () => {} };
-    controllerFn({ debug: () => {} }, $scope, $http);
+    controllerFn({ debug: () => {} }, $scope);
     await new Promise(resolve => setImmediate(resolve));
 
     assert.strictEqual($scope.liquidFuelPriceValue, 2.25);
     assert.strictEqual($scope.electricityPriceValue, 0.5);
     assert.strictEqual($scope.currency, 'CZK');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('defaults fuel price when fuelPrice.json is missing', async () => {
@@ -139,13 +146,16 @@ describe('UI template styling', () => {
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.reject(new Error('missing')) };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    fs.mkdirSync(path.join(tmp, '0.50'), { recursive: true });
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, $http);
+    controllerFn({ debug: () => {} }, $scope);
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
@@ -166,6 +176,12 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.tripAvgCostElectric, '0.00 money/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '0.00 money');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
+
+    const cfgPath = path.join(tmp, '0.50', 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
+    const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    assert.strictEqual(cfg.liquidFuelPrice, 0);
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('positions reset, style toggle and settings icons consistently', () => {
@@ -244,7 +260,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: () => {}, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     assert.strictEqual($scope.visible.costPrice, false);
     assert.strictEqual($scope.visible.avgCost, false);
@@ -262,13 +278,20 @@ describe('controller integration', () => {
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' } }) };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '1.00', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+    );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, $http);
+    controllerFn({ debug: () => {} }, $scope);
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
@@ -325,6 +348,8 @@ describe('controller integration', () => {
     assert.ok(Math.abs(parseFloat($scope.totalCost) - parseFloat($scope.fuelUsed) * 1.5) < 1e-6);
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('keeps trip average cost steady while stationary', async () => {
@@ -336,13 +361,20 @@ describe('controller integration', () => {
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' } }) };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '1.01', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+    );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, $http);
+    controllerFn({ debug: () => {} }, $scope);
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
@@ -361,6 +393,8 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.tripAvgCostLiquid, '0.08 USD/km');
     assert.strictEqual($scope.tripAvgCostElectric, '0.03 USD/km');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('subtracts electric trip cost when regenerating', async () => {
@@ -372,13 +406,20 @@ describe('controller integration', () => {
     global.localStorage = { getItem: () => null, setItem: () => {} };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' } }) };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '1.02', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+    );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, $http);
+    controllerFn({ debug: () => {} }, $scope);
     await new Promise(resolve => setImmediate(resolve));
 
     $scope.setUnit('electric');
@@ -404,6 +445,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripFuelUsedElectric, '1.00 kWh');
     assert.strictEqual($scope.tripFuelUsedLiquid, '0.00 L');
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('tracks trip fuel usage for total cost', async () => {
@@ -419,13 +462,20 @@ describe('controller integration', () => {
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' } }) };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '1.03', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' })
+    );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, $http);
+    controllerFn({ debug: () => {} }, $scope);
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
@@ -453,6 +503,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '');
     assert.strictEqual($scope.tripFuelUsedLiquid, '');
     assert.strictEqual($scope.tripFuelUsedElectric, '');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('retains trip total cost across vehicle changes', async () => {
@@ -468,13 +520,20 @@ describe('controller integration', () => {
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' } }) };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '1.04', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' })
+    );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, $http);
+    controllerFn({ debug: () => {} }, $scope);
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
@@ -518,6 +577,8 @@ describe('controller integration', () => {
 
     const stored = JSON.parse(store.okFuelEconomyOverall);
     assert.ok(Math.abs(stored.fuelUsedLiquid - 3) < 1e-6);
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('restores trip totals after controller reload', async () => {
@@ -533,7 +594,14 @@ describe('controller integration', () => {
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' } }) };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '1.05', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' })
+    );
 
     function loadController() {
       let def;
@@ -545,7 +613,7 @@ describe('controller integration', () => {
       require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
       const ctrl = def.controller[def.controller.length - 1];
       const scope = { $on: (name, cb) => { scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-      ctrl({ debug: () => {} }, scope, $http);
+      ctrl({ debug: () => {} }, scope);
       return scope;
     }
 
@@ -580,6 +648,8 @@ describe('controller integration', () => {
     stored = JSON.parse(store.okFuelEconomyOverall);
     assert.strictEqual(stored.tripCostLiquid, 4.5);
     assert.ok(Math.abs(stored.fuelUsedLiquid - 3) < 1e-6);
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('avoids spurious tank drop when engine shuts off', async () => {
@@ -595,13 +665,20 @@ describe('controller integration', () => {
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
     let now = 0;
     global.performance = { now: () => now };
-    const $http = { get: () => Promise.resolve({ data: { liquidFuelPrice: 32.5, electricityPrice: 0, currency: 'money' } }) };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '1.06', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 32.5, electricityPrice: 0, currency: 'money' })
+    );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, $http);
+    controllerFn({ debug: () => {} }, $scope);
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
@@ -632,6 +709,8 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.tripTotalCostLiquid, '32.50 money');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('shows zero instant consumption when fuel flow stops but engine keeps spinning', () => {
@@ -648,7 +727,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
     streams.engineInfo[11] = 50;
@@ -684,7 +763,7 @@ describe('controller integration', () => {
       $on: (name, cb) => { $scope['on_' + name] = cb; },
       $evalAsync: fn => fn()
     };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = {
       engineInfo: Array(15).fill(0),
@@ -721,7 +800,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, trip: 0, throttle_input: 0, rpmTacho: 0 } };
     streams.engineInfo[11] = 50; streams.engineInfo[12] = 60;
@@ -760,7 +839,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -784,7 +863,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 20, trip: 0, throttle_input: 0, rpmTacho: 1000 } };
     streams.engineInfo[11] = 50;
@@ -816,7 +895,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 5, throttle_input: 0 } };
     streams.engineInfo[11] = 50;
@@ -849,7 +928,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -892,7 +971,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -935,7 +1014,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -977,7 +1056,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -1012,7 +1091,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -1064,7 +1143,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -1097,7 +1176,7 @@ describe('controller integration', () => {
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
     streams.engineInfo[11] = 50;
@@ -1148,7 +1227,7 @@ describe('visibility settings persistence', () => {
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
 
     const $scope = { $on: () => {} };
-    controllerFn({ debug: () => {} }, $scope, httpStub);
+    controllerFn({ debug: () => {} }, $scope);
 
     assert.equal($scope.visible.heading, true);
     $scope.visible.heading = false;
@@ -1163,7 +1242,7 @@ describe('visibility settings persistence', () => {
     assert.ok(store.okFuelEconomyVisible.includes('"instantGraph":false'));
 
     const $scope2 = { $on: () => {} };
-    controllerFn({ debug: () => {} }, $scope2, httpStub);
+    controllerFn({ debug: () => {} }, $scope2);
     assert.equal($scope2.visible.heading, false);
     assert.equal($scope2.visible.fuelLeft, false);
     assert.equal($scope2.visible.instantLph, false);
