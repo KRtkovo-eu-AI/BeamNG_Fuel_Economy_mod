@@ -245,50 +245,74 @@ if (typeof module !== 'undefined') {
 }
 
 function loadFuelPriceConfig() {
-  const fs = require('fs');
-  const path = require('path');
-  const defaults = JSON.parse(
-    fs.readFileSync(path.join(__dirname, 'fuelPrice.json'), 'utf8')
-  );
+  var defaults = {
+    liquidFuelPrice: 0,
+    electricityPrice: 0,
+    currency: 'money'
+  };
 
-  const baseDir =
-    process.env.KRTEKTM_BNG_USER_DIR ||
-    path.join(
-      process.platform === 'win32'
-        ? process.env.LOCALAPPDATA || ''
-        : path.join(process.env.HOME || '', '.local', 'share'),
-      'BeamNG.drive'
-    );
+  if (typeof require === 'function' && typeof process !== 'undefined') {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      defaults = JSON.parse(
+        fs.readFileSync(path.join(__dirname, 'fuelPrice.json'), 'utf8')
+      );
 
-  try {
-    const versions = fs
-      .readdirSync(baseDir, { withFileTypes: true })
-      .filter(d => d.isDirectory())
-      .map(d => d.name)
-      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    const latest = versions[versions.length - 1];
-    if (!latest) return defaults;
-    const settingsDir = path.join(
-      baseDir,
-      latest,
-      'settings',
-      'krtektm_fuelEconomy'
-    );
-    fs.mkdirSync(settingsDir, { recursive: true });
-    const userFile = path.join(settingsDir, 'fuelPrice.json');
-    if (!fs.existsSync(userFile)) {
-      fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
+      const baseDir =
+        process.env.KRTEKTM_BNG_USER_DIR ||
+        path.join(
+          process.platform === 'win32'
+            ? process.env.LOCALAPPDATA || ''
+            : path.join(process.env.HOME || '', '.local', 'share'),
+          'BeamNG.drive'
+        );
+
+      const versions = fs
+        .readdirSync(baseDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const latest = versions[versions.length - 1];
+      if (!latest) return defaults;
+      const settingsDir = path.join(
+        baseDir,
+        latest,
+        'settings',
+        'krtektm_fuelEconomy'
+      );
+      fs.mkdirSync(settingsDir, { recursive: true });
+      const userFile = path.join(settingsDir, 'fuelPrice.json');
+      if (!fs.existsSync(userFile)) {
+        fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
+        return defaults;
+      }
+      const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+      return {
+        liquidFuelPrice: parseFloat(data.liquidFuelPrice) || 0,
+        electricityPrice: parseFloat(data.electricityPrice) || 0,
+        currency: data.currency || 'money'
+      };
+    } catch (e) {
       return defaults;
     }
-    const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
-    return {
-      liquidFuelPrice: parseFloat(data.liquidFuelPrice) || 0,
-      electricityPrice: parseFloat(data.electricityPrice) || 0,
-      currency: data.currency || 'money'
-    };
-  } catch (e) {
-    return defaults;
   }
+
+  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    try {
+      var res = bngApi.engineLua(
+        "local p='settings/krtektm_fuelEconomy/fuelPrice.json'\n" +
+        "local cfg=jsonReadFile(p)\n" +
+        "if not cfg then cfg={liquidFuelPrice=0,electricityPrice=0,currency=\"money\"} jsonWriteFile(p,cfg) end\n" +
+        "return jsonEncode({liquidFuelPrice=tonumber(cfg.liquidFuelPrice) or 0,electricityPrice=tonumber(cfg.electricityPrice) or 0,currency=cfg.currency or \"money\"})"
+      );
+      return JSON.parse(res);
+    } catch (e) {
+      return defaults;
+    }
+  }
+
+  return defaults;
 }
 
 angular.module('beamng.apps')
