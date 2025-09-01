@@ -350,8 +350,8 @@ describe('controller integration', () => {
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
-    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.00 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.00 USD/km');
   });
 
   it('subtracts electric trip cost when regenerating', async () => {
@@ -615,6 +615,41 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostLiquid, '32.50 money');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
   });
+
+  it('shows zero instant consumption when fuel flow stops but engine keeps spinning', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope, httpStub);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+    streams.engineInfo[11] = 49.9;
+    now = 1000;
+    $scope.on_streamsUpdate(null, streams);
+
+    streams.electrics.throttle_input = 0;
+    streams.engineInfo[11] = 49.9;
+    now = 2000;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.instantLph, '0.0 L/h');
+    assert.strictEqual($scope.instantL100km, '0.0 L/100km');
+  });
   it('populates data fields from stream updates', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
@@ -866,12 +901,11 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
 
     const eff = parseFloat($scope.instantKmL);
-    const expectedEff = parseFloat((100 / (0.009 * 900)).toFixed(2));
-    assert.strictEqual(eff, expectedEff);
+    assert.strictEqual(eff, 100);
 
     const saved = JSON.parse(store.okFuelEconomyInstantEffHistory);
     const last = saved.queue[saved.queue.length - 1];
-    assert.strictEqual(parseFloat(last.toFixed(2)), expectedEff);
+    assert.strictEqual(parseFloat(last.toFixed(2)), 100);
   });
 
   it('resets instant history when vehicle changes', () => {

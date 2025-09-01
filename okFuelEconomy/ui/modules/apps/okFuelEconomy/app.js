@@ -22,9 +22,10 @@ function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
 
 // Resolve the fuel flow when sensor readings are static.
 // - While accelerating (throttle > 0) keep the last measured flow.
-// - While coasting with zero throttle, ease the previous reading toward the
-//   stored idle flow so the value keeps updating instead of freezing at the
-//   last accelerating reading.
+// - While coasting with zero throttle and no fuel use, report zero to
+//   immediately reflect engine-off or fuel-cut states.
+// - Otherwise ease the previous reading toward the stored idle flow so the
+//   value keeps updating instead of freezing at the last accelerating reading.
 function smoothFuelFlow(
   fuelFlow_lps,
   speed_mps,
@@ -45,6 +46,10 @@ function smoothFuelFlow(
   if (fuelFlow_lps > 0 && throttle > 0.05) {
     // A fresh reading while throttle is applied – use it directly.
     return fuelFlow_lps;
+  }
+  if (fuelFlow_lps <= 0 && throttle <= 0.05) {
+    // Engine off or fuel cut: no consumption.
+    return 0;
   }
 
   const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;

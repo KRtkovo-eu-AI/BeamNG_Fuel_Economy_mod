@@ -110,36 +110,34 @@ describe('app.js utility functions', () => {
       const res = smoothFuelFlow(0, 5, 0.6, last, 0.002, EPS_SPEED);
       assert.strictEqual(res, last);
     });
-    it('uses idle flow when coasting with zero throttle', () => {
+    it('returns zero when coasting without fuel', () => {
       const last = 0.03;
       const idle = 0.005;
       const res = smoothFuelFlow(0, 5, 0, last, idle, EPS_SPEED);
-      assert.ok(res < last);
+      assert.strictEqual(res, 0);
     });
     it('updates to new positive flow', () => {
       const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, EPS_SPEED);
       assert.strictEqual(res, 0.02);
     });
-    it('moves toward idle when stopped', () => {
+    it('returns zero when stopped without fuel', () => {
       const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, EPS_SPEED);
-      assert.ok(res < 0.01);
-      assert.ok(res > 0.005);
+      assert.strictEqual(res, 0);
     });
-    it('eases towards idle while coasting', () => {
+    it('drops to zero during prolonged coasting', () => {
       const idle = 0.005;
       let last = 0.02;
       const flow1 = smoothFuelFlow(0, 20, 0, last, idle, EPS_SPEED);
       const flow2 = smoothFuelFlow(0, 20, 0, flow1, idle, EPS_SPEED);
-      assert.ok(flow1 < last);
-      assert.ok(flow2 < flow1);
-      assert.ok(flow2 > idle);
+      assert.strictEqual(flow1, 0);
+      assert.strictEqual(flow2, 0);
     });
-    it('decays when idle is unknown', () => {
+    it('resets immediately when idle is unknown', () => {
       let last = 0.03;
       const flow1 = smoothFuelFlow(0, 25, 0, last, 0, EPS_SPEED);
       const flow2 = smoothFuelFlow(0, 25, 0, flow1, 0, EPS_SPEED);
-      assert.ok(flow1 < last);
-      assert.ok(flow2 < flow1);
+      assert.strictEqual(flow1, 0);
+      assert.strictEqual(flow2, 0);
     });
     it('passes through negative flow for regeneration', () => {
       const res = smoothFuelFlow(-0.01, 10, 0, 0, 0, EPS_SPEED);
