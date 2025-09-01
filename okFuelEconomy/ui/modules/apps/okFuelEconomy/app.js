@@ -308,20 +308,22 @@ function loadFuelPriceConfig(callback) {
 
   if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
     try {
-      bngApi.engineLua(
-        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''\n" +
-          "local dir=user..'settings/krtektm_fuelEconomy/'\n" +
-          "FS:directoryCreate(dir)\n" +
-          "local p=dir..'fuelPrice.json'\n" +
-          "local cfg=jsonReadFile(p)\n" +
-          "if not cfg then cfg={liquidFuelPrice=0,electricityPrice=0,currency='money'} jsonWriteFile(p,cfg) end\n" +
-          "return jsonEncode({liquidFuelPrice=tonumber(cfg.liquidFuelPrice) or 0,electricityPrice=tonumber(cfg.electricityPrice) or 0,currency=cfg.currency or 'money'})",
-        function (res) {
-          var cfg = defaults;
-          try { cfg = JSON.parse(res); } catch (e) { /* ignore */ }
-          if (typeof callback === 'function') callback(cfg);
-        }
-      );
+      const lua = [
+        '(function()',
+        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
+        "local dir=user..'settings/krtektm_fuelEconomy/'",
+        'FS:directoryCreate(dir)',
+        "local p=dir..'fuelPrice.json'",
+        'local cfg=jsonReadFile(p)',
+        "if not cfg then cfg={liquidFuelPrice=0,electricityPrice=0,currency='money'} jsonWriteFile(p,cfg) end",
+        "return jsonEncode({liquidFuelPrice=tonumber(cfg.liquidFuelPrice) or 0,electricityPrice=tonumber(cfg.electricityPrice) or 0,currency=cfg.currency or 'money'})",
+        'end)()'
+      ].join('\n');
+      bngApi.engineLua(lua, function (res) {
+        var cfg = defaults;
+        try { cfg = JSON.parse(res); } catch (e) { /* ignore */ }
+        if (typeof callback === 'function') callback(cfg);
+      });
     } catch (e) {
       if (typeof callback === 'function') callback(defaults);
     }

@@ -193,6 +193,7 @@ describe('UI template styling', () => {
 
     global.bngApi = {
       engineLua: (code, cb) => {
+        assert.ok(code.startsWith('(function()'), 'Lua chunk should be wrapped in a function');
         assert.ok(code.includes('core_paths.getUserPath'));
         try {
           cb(fs.readFileSync(cfgPath, 'utf8'));
