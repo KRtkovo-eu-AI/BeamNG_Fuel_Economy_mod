@@ -301,10 +301,13 @@ function loadFuelPriceConfig() {
   if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
     try {
       var res = bngApi.engineLua(
-        "local p='settings/krtektm_fuelEconomy/fuelPrice.json'\n" +
-        "local cfg=jsonReadFile(p)\n" +
-        "if not cfg then cfg={liquidFuelPrice=0,electricityPrice=0,currency=\"money\"} jsonWriteFile(p,cfg) end\n" +
-        "return jsonEncode({liquidFuelPrice=tonumber(cfg.liquidFuelPrice) or 0,electricityPrice=tonumber(cfg.electricityPrice) or 0,currency=cfg.currency or \"money\"})"
+        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''\n" +
+          "local dir=user..'settings/krtektm_fuelEconomy/'\n" +
+          "FS:directoryCreate(dir)\n" +
+          "local p=dir..'fuelPrice.json'\n" +
+          "local cfg=jsonReadFile(p)\n" +
+          "if not cfg then cfg={liquidFuelPrice=0,electricityPrice=0,currency='money'} jsonWriteFile(p,cfg) end\n" +
+          "return jsonEncode({liquidFuelPrice=tonumber(cfg.liquidFuelPrice) or 0,electricityPrice=tonumber(cfg.electricityPrice) or 0,currency=cfg.currency or 'money'})"
       );
       return JSON.parse(res);
     } catch (e) {

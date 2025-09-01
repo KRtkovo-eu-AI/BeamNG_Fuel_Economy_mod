@@ -181,6 +181,60 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_FUEL_POLL_MS;
   });
 
+  it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    const cfgPath = path.join(tmp, 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
+    fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 4, electricityPrice: 1.2, currency: 'Kč' }));
+
+    global.bngApi = {
+      engineLua: code => {
+        assert.ok(code.includes('core_paths.getUserPath'));
+        try {
+          return fs.readFileSync(cfgPath, 'utf8');
+        } catch (e) {
+          return JSON.stringify({ liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' });
+        }
+      }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    const realProcess = global.process;
+    const realSetInterval = global.setInterval;
+    global.process = undefined;
+    global.setInterval = (fn, ms) => realSetInterval(fn, 20);
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 4);
+    assert.strictEqual($scope.electricityPriceValue, 1.2);
+    assert.strictEqual($scope.currency, 'Kč');
+
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 5, electricityPrice: 1.5, currency: '€' }));
+    await new Promise(r => setTimeout(r, 60));
+    assert.strictEqual($scope.liquidFuelPriceValue, 5);
+    assert.strictEqual($scope.electricityPriceValue, 1.5);
+    assert.strictEqual($scope.currency, '€');
+
+    fs.writeFileSync(cfgPath, '{bad');
+    await new Promise(r => setTimeout(r, 60));
+    assert.strictEqual($scope.liquidFuelPriceValue, 0);
+    assert.strictEqual($scope.electricityPriceValue, 0);
+    assert.strictEqual($scope.currency, 'money');
+
+    global.process = realProcess;
+    global.setInterval = realSetInterval;
+  });
+
   it('defaults fuel price when fuelPrice.json is missing', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
