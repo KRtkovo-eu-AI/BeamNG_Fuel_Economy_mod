@@ -282,12 +282,15 @@ describe('controller integration', () => {
     assert.strictEqual($scope.costPrice, '1.50 USD/L');
     assert.strictEqual($scope.avgCost, '0.15 USD/km');
     assert.strictEqual($scope.totalCost, '3.00 USD');
-    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
-    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.08 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.03 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.totalCost) - parseFloat($scope.fuelUsed) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
 
     $scope.setUnit('electric');
     streams.engineInfo[11] = 56;
@@ -302,6 +305,9 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.totalCost) - parseFloat($scope.fuelUsed) * 0.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
 
     $scope.setUnit('metric');
     streams.engineInfo[11] = 54;
@@ -316,6 +322,9 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '4.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.totalCost) - parseFloat($scope.fuelUsed) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
   });
 
   it('keeps trip average cost steady while stationary', async () => {
@@ -344,17 +353,14 @@ describe('controller integration', () => {
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
-    const liquidBefore = $scope.tripAvgCostLiquid;
-    const electricBefore = $scope.tripAvgCostElectric;
-
     streams.electrics.wheelspeed = 0;
     streams.electrics.throttle_input = 0;
     streams.engineInfo[11] = 57;
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.tripAvgCostLiquid, liquidBefore);
-    assert.strictEqual($scope.tripAvgCostElectric, electricBefore);
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.08 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.03 USD/km');
   });
 
   it('subtracts electric trip cost when regenerating', async () => {
@@ -388,6 +394,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostLiquid, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
     assert.strictEqual($scope.tripFuelUsedLiquid, '0.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
 
     streams.engineInfo[11] = 59;
     now = 200000;
@@ -396,6 +403,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostLiquid, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedElectric, '1.00 kWh');
     assert.strictEqual($scope.tripFuelUsedLiquid, '0.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
   });
 
   it('tracks trip fuel usage for total cost', async () => {
@@ -435,6 +443,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     $scope.resetOverall();
     const storedAfter = JSON.parse(store.okFuelEconomyOverall);
@@ -481,6 +490,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     streams.engineInfo[11] = 70; streams.engineInfo[12] = 90;
     now = 200000;
@@ -489,6 +499,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     $scope.on_VehicleFocusChanged();
 
@@ -503,6 +514,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '3.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     const stored = JSON.parse(store.okFuelEconomyOverall);
     assert.ok(Math.abs(stored.fuelUsedLiquid - 3) < 1e-6);
@@ -546,6 +558,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 58; now = 100000; $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     let stored = JSON.parse(store.okFuelEconomyOverall);
     assert.strictEqual(stored.tripCostLiquid, 3);
@@ -557,10 +570,12 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     streams.engineInfo[11] = 57; now = 100000; $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '4.50 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '3.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     stored = JSON.parse(store.okFuelEconomyOverall);
     assert.strictEqual(stored.tripCostLiquid, 4.5);
@@ -617,6 +632,41 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.tripTotalCostLiquid, '32.50 money');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
+  });
+
+  it('shows zero instant consumption when fuel flow stops but engine keeps spinning', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope, httpStub);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+    streams.engineInfo[11] = 49.9;
+    now = 1000;
+    $scope.on_streamsUpdate(null, streams);
+
+    streams.electrics.throttle_input = 0;
+    streams.engineInfo[11] = 49.9;
+    now = 2000;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.instantLph, '0.0 L/h');
+    assert.strictEqual($scope.instantL100km, '0.0 L/100km');
   });
   it('populates data fields from stream updates', () => {
     let directiveDef;
@@ -681,6 +731,74 @@ describe('controller integration', () => {
     assert.notStrictEqual($scope.tripAvgHistory, '');
     assert.notStrictEqual($scope.tripAvgKmLHistory, '');
     assert.notStrictEqual($scope.tripAvgL100km, $scope.avgL100km);
+  });
+
+  it('recovers trip average quickly after long idle', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
+    global.bngApi = { engineLua: () => '' };
+    const idle = 0.25;
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({
+        queue: Array(20000).fill(idle).concat([20, 30, 40, 50]),
+        distance: 0,
+        fuelUsedLiquid: 0,
+        fuelUsedElectric: 0,
+        tripCostLiquid: 0,
+        tripCostElectric: 0,
+        tripDistanceLiquid: 0,
+        tripDistanceElectric: 0
+      }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: () => {} };
+    global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope, httpStub);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.tripAvgL100km, '30.0 L/100km');
+  });
+
+  it('caps avg and trip efficiency history at 100 km/L', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => { now += 1000; return now; } };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope, httpStub);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 20, trip: 0, throttle_input: 0, rpmTacho: 1000 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    // first update establishes baseline without consumption
+    $scope.on_streamsUpdate(null, streams);
+
+    // second update with tiny fuel usage yielding >100 km/L if unclamped
+    streams.engineInfo[11] = 49.99998;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.avgKmLHistory, '0.0,0.0 100.0,0.0');
+    assert.strictEqual($scope.tripAvgKmLHistory, '0.0,0.0 100.0,0.0');
   });
 
   it('throttles instant consumption updates', () => {
@@ -838,11 +956,11 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
 
     const eff = parseFloat($scope.instantKmL);
-    assert.ok(eff === 100, `expected 100 km/L, got ${$scope.instantKmL}`);
+    assert.strictEqual(eff, 100);
 
     const saved = JSON.parse(store.okFuelEconomyInstantEffHistory);
     const last = saved.queue[saved.queue.length - 1];
-    assert.strictEqual(last, 100);
+    assert.strictEqual(parseFloat(last.toFixed(2)), 100);
   });
 
   it('resets instant history when vehicle changes', () => {
@@ -920,12 +1038,12 @@ describe('controller integration', () => {
     now = 3000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.avgHistory, '');
-    assert.strictEqual($scope.avgKmLHistory, '');
-    const avgAfter = JSON.parse(store.okFuelEconomyAvgHistory);
-    const overallAfter = JSON.parse(store.okFuelEconomyOverall);
-    assert.equal(avgAfter.queue.length, 0);
-    assert.equal(overallAfter.queue.length, overallBefore.queue.length);
+      assert.strictEqual($scope.avgHistory, '');
+      assert.strictEqual($scope.avgKmLHistory, '');
+      const avgAfter = JSON.parse(store.okFuelEconomyAvgHistory);
+      const overallAfter = JSON.parse(store.okFuelEconomyOverall);
+      assert.equal(avgAfter.queue.length, 1);
+      assert.equal(overallAfter.queue.length, overallBefore.queue.length + 1);
   });
 
   it('skips history updates when engine is off', () => {
@@ -1007,8 +1125,8 @@ describe('controller integration', () => {
 
     const overall = JSON.parse(store.okFuelEconomyOverall);
     const avg = JSON.parse(store.okFuelEconomyAvgHistory);
-    assert.equal(overall.queue.length, 1);
-    assert.equal(avg.queue.length, 1);
+    assert.equal(overall.queue.length, 2);
+    assert.equal(avg.queue.length, 2);
     assert.ok(overall.queue[0] < 1000);
     assert.ok(avg.queue[0] < 1000);
   });

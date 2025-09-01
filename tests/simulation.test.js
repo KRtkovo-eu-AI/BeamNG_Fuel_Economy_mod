@@ -8,11 +8,13 @@ const {
   calculateFuelFlow,
   calculateInstantConsumption,
   trimQueue,
-  calculateRange
+  calculateRange,
+  MIN_VALID_SPEED_MPS
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('extended drive simulations', () => {
   it('handles diverse environments and driving modes', () => {
+    const crawlSpeed = MIN_VALID_SPEED_MPS / 2;
     const segments = [
       // mountains, high consumption climbing
       { name: 'mountains', duration: 100, speed: 15, flow: 0.004 },
@@ -26,8 +28,10 @@ describe('extended drive simulations', () => {
       { name: 'summer', duration: 100, speed: 25, flow: 0.0025 },
       // desert sand
       { name: 'desert', duration: 100, speed: 8, flow: 0.0035 },
-      // city stop-and-go (zero speed -> infinite consumption per 100km)
+      // city stop-and-go (zero speed -> hourly/4 rate used for L/100km)
       { name: 'city', duration: 100, speed: 0, flow: 0.001 },
+      // crawling speed below threshold
+      { name: 'crawl', duration: 100, speed: crawlSpeed, flow: 0.0015 },
       // sport mode
       { name: 'sport', duration: 100, speed: 30, flow: 0.004 },
       // offroad terrain
@@ -48,8 +52,8 @@ describe('extended drive simulations', () => {
         const flow = calculateFuelFlow(current, prevFuel, dt);
         const inst = calculateInstantConsumption(flow, seg.speed);
 
-        if (seg.speed === 0) {
-          assert.strictEqual(inst, Infinity);
+        if (seg.speed < MIN_VALID_SPEED_MPS) {
+          assert.strictEqual(inst, (flow * 3600) / 4);
         } else {
           assert.ok(Number.isFinite(inst));
         }

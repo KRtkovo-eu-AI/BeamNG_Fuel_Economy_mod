@@ -9,13 +9,15 @@ const {
   calculateInstantConsumption,
   smoothFuelFlow,
   trimQueue,
-  calculateRange
+  calculateRange,
+  calculateMedian,
+  MIN_VALID_SPEED_MPS
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 // Driving segments used for repeated environment cycles
 const segments = [
   { name: 'launch', duration: 100, speed: 30, flow: 0.004, throttle: 0.8 },
-  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, expectDecay: true, initialRaw: 0.003 },
+  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, expectZero: true },
   { name: 'city', duration: 100, speed: 0, flow: 0.001, throttle: 0 },
   { name: 'mountains', duration: 100, speed: 15, flow: 0.004, throttle: 0.6 },
   { name: 'countryside', duration: 100, speed: 20, flow: 0.002, throttle: 0.5 },
@@ -24,7 +26,7 @@ const segments = [
   { name: 'summer', duration: 100, speed: 25, flow: 0.0025, throttle: 0.5 },
   { name: 'desert', duration: 100, speed: 8, flow: 0.0035, throttle: 0.5 },
   { name: 'engineBrake', duration: 100, speed: 15, flow: 0.004, throttle: 0, expectIdleSame: true },
-  { name: 'coast', duration: 100, speed: 20, flow: 0, throttle: 0, expectCoastIdle: true },
+  { name: 'coast', duration: 100, speed: 20, flow: 0, throttle: 0, expectZero: true },
   { name: 'sport', duration: 100, speed: 30, flow: 0.004, throttle: 0.8 },
   { name: 'offroad', duration: 100, speed: 12, flow: 0.003, throttle: 0.6 },
   { name: 'combined', duration: 100, speed: 22, flow: 0.0022, throttle: 0.5 }
@@ -32,7 +34,7 @@ const segments = [
 
 const dt = 1;
 const capacity = 60;
-const expectedFuelUsed = segments.reduce((s, seg) => s + seg.flow * seg.duration + (seg.initialRaw || 0), 0);
+const expectedFuelUsed = segments.reduce((s, seg) => s + seg.flow * seg.duration, 0);
 const expectedDistance = segments.reduce((s, seg) => s + seg.speed * seg.duration, 0);
 
 function runCycle() {
@@ -52,9 +54,7 @@ function runCycle() {
       prev = fuel;
     }
     for (let t = 0; t < seg.duration; t += dt) {
-      let flowInput = seg.flow;
-      if (seg.initialRaw && t === 0) flowInput = seg.initialRaw;
-      const current = fuel - flowInput * dt;
+      const current = fuel - seg.flow * dt;
       const raw = calculateFuelFlow(current, prev, dt);
       if (seg.speed <= EPS_SPEED && seg.throttle <= 0.05 && raw > 0) {
         idleFlow = raw;
@@ -67,13 +67,13 @@ function runCycle() {
         idleFlow,
         EPS_SPEED
       );
-      if (seg.expectDecay || seg.expectCoastIdle) {
+      if (seg.expectZero) {
         if (t === 0) startFlow = flow;
         if (t === seg.duration - 1) endFlow = flow;
       }
       const inst = calculateInstantConsumption(flow, seg.speed);
-      if (seg.speed === 0) {
-        assert.strictEqual(inst, Infinity);
+      if (seg.speed < MIN_VALID_SPEED_MPS) {
+        assert.strictEqual(inst, (flow * 3600) / 4);
       } else {
         assert.ok(Number.isFinite(inst));
       }
@@ -88,12 +88,9 @@ function runCycle() {
     if (seg.expectIdleSame) {
       assert.strictEqual(idleFlow, idleBefore);
     }
-    if (seg.expectCoastIdle) {
-      assert.ok(startFlow > idleFlow);
-      assert.ok(Math.abs(endFlow - idleFlow) < 1e-9);
-    }
-    if (seg.expectDecay) {
-      assert.ok(startFlow > endFlow);
+    if (seg.expectZero) {
+      assert.strictEqual(startFlow, 0);
+      assert.strictEqual(endFlow, 0);
     }
   }
 
@@ -140,12 +137,12 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
     }
     flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, EPS_SPEED);
     if (throttle <= 0.05 && speed > EPS_SPEED && raw === 0 && idleFlow > 0) {
-      assert.ok(flowRate > 0);
+      assert.strictEqual(flowRate, 0);
     }
     const inst = calculateInstantConsumption(flowRate, speed);
 
-    if (speed === 0) {
-      assert.strictEqual(inst, Infinity);
+    if (speed < MIN_VALID_SPEED_MPS) {
+      assert.strictEqual(inst, (flowRate * 3600) / 4);
     } else {
       assert.ok(Number.isFinite(inst));
     }
@@ -176,4 +173,13 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
 
   assert.ok(trip > 0);
   assert.ok(Number.isFinite(trip));
+});
+
+// Ensure median calculation recovers after extended idle periods
+test('median recovery after long idle', () => {
+  const idle = 0.3;
+  const queue = Array(20000).fill(idle);
+  for (let i = 0; i < 100; i++) queue.push(8 + (i % 5));
+  const med = calculateMedian(queue);
+  assert.ok(med >= 8 && med <= 12);
 });

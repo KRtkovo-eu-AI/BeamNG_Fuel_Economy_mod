@@ -1,18 +1,31 @@
+// Treat speeds below EPS_SPEED as stationary for general calculations.
+// MIN_VALID_SPEED_MPS switches instant consumption to an hourly-rate based
+// estimate (hourly fuel rate divided by four) instead of dividing by
+// extremely small speeds, keeping idle or creeping readings realistic.
+var EPS_SPEED = 0.005; // [m/s]
+var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
+
 function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
   if (dtSeconds <= 0 || previousFuel === null) return 0;
   return (previousFuel - currentFuel) / dtSeconds; // L/s
 }
 
 function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
-  if (speed_mps === 0) return Infinity;
-  return (fuelFlow_lps / speed_mps) * 100000;
+  var speed = Math.abs(speed_mps);
+  if (speed <= MIN_VALID_SPEED_MPS) {
+    // For very low speeds use a quarter of the hourly fuel rate as a
+    // per-distance estimate to avoid extreme L/100km values.
+    return (fuelFlow_lps * 3600) / 4;
+  }
+  return (fuelFlow_lps / speed) * 100000;
 }
 
 // Resolve the fuel flow when sensor readings are static.
 // - While accelerating (throttle > 0) keep the last measured flow.
-// - While coasting with zero throttle, ease the previous reading toward the
-//   stored idle flow so the value keeps updating instead of freezing at the
-//   last accelerating reading.
+// - While coasting with zero throttle and no fuel use, report zero to
+//   immediately reflect engine-off or fuel-cut states.
+// - Otherwise ease the previous reading toward the stored idle flow so the
+//   value keeps updating instead of freezing at the last accelerating reading.
 function smoothFuelFlow(
   fuelFlow_lps,
   speed_mps,
@@ -33,6 +46,10 @@ function smoothFuelFlow(
   if (fuelFlow_lps > 0 && throttle > 0.05) {
     // A fresh reading while throttle is applied – use it directly.
     return fuelFlow_lps;
+  }
+  if (fuelFlow_lps <= 0 && throttle <= 0.05) {
+    // Engine off or fuel cut: no consumption.
+    return 0;
   }
 
   const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
@@ -56,12 +73,26 @@ function trimQueue(queue, maxEntries) {
   }
 }
 
+// Calculate a median that collapses near-idle minimum values to a single
+// entry so long idling periods do not skew trip averages for an extended
+// time. This assumes the smallest values in the queue correspond to the
+// vehicle's idle consumption and treats any reading within ~5% of that
+// minimum as the same baseline sample.
 function calculateMedian(queue) {
   if (!Array.isArray(queue) || queue.length === 0) return 0;
+
   var sorted = queue.slice().sort(function (a, b) { return a - b; });
-  var mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2) return sorted[mid];
-  return (sorted[mid - 1] + sorted[mid]) / 2;
+  var min = sorted[0];
+  var threshold = min * 1.05 + 1e-4; // consider values within 5% as idle
+
+  var deduped = [min];
+  for (var i = 1; i < sorted.length; i++) {
+    if (sorted[i] > threshold) deduped.push(sorted[i]);
+  }
+
+  var mid = Math.floor(deduped.length / 2);
+  if (deduped.length % 2) return deduped[mid];
+  return (deduped[mid - 1] + deduped[mid]) / 2;
 }
 
 function calculateAverageConsumption(fuelUsed_l, distance_m) {
@@ -190,6 +221,8 @@ function convertVolumePerDistance(lPerKm, mode) {
 
 if (typeof module !== 'undefined') {
   module.exports = {
+    EPS_SPEED,
+    MIN_VALID_SPEED_MPS,
     calculateFuelFlow,
     calculateInstantConsumption,
     smoothFuelFlow,
@@ -391,7 +424,6 @@ angular.module('beamng.apps')
       var engineWasRunning = false;
 
       var lastCapacity_l = null;
-      var EPS_SPEED = 0.005; // [m/s] ignore noise
       var lastInstantUpdate_ms = 0;
       var INSTANT_UPDATE_INTERVAL = 250;
       var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
@@ -401,7 +433,7 @@ angular.module('beamng.apps')
 
       // --------- Overall persistence (NEW) ----------
       var OVERALL_KEY = 'okFuelEconomyOverall';
-      var MAX_ENTRIES = 5000; // pevný počet hodnot pro frontu
+      var MAX_ENTRIES = 20000; // pevný počet hodnot pro frontu
 
       var overall = {
           queue: [],
@@ -667,11 +699,6 @@ angular.module('beamng.apps')
 
           distance_m += deltaDistance;
 
-          var avg_l_per_100km_ok = calculateAverageConsumption(fuel_used_l, distance_m);
-          if (!Number.isFinite(avg_l_per_100km_ok) || avg_l_per_100km_ok > MAX_CONSUMPTION) {
-            avg_l_per_100km_ok = 0;
-          }
-
           if (throttle <= 0.05 && lastThrottle > 0.05) {
             previousFuel_l = currentFuel_l;
           }
@@ -745,41 +772,33 @@ angular.module('beamng.apps')
             }
           }
 
+          var avg_l_per_100km_ok =
+            speed_mps > MIN_VALID_SPEED_MPS
+              ? calculateAverageConsumption(fuel_used_l, distance_m)
+              : inst_l_per_100km;
+          if (
+            !Number.isFinite(avg_l_per_100km_ok) ||
+            avg_l_per_100km_ok > MAX_CONSUMPTION
+          ) {
+            avg_l_per_100km_ok = 0;
+          }
+
           // ---------- Overall update (NEW) ----------
           if (engineRunning) {
-            if (!overall.previousAvg) overall.previousAvg = 0;
-
-            var shouldPush = false;
+            overall.queue.push(avg_l_per_100km_ok);
+            trimQueue(overall.queue, MAX_ENTRIES);
 
             if (speed_mps > EPS_SPEED) {
-                shouldPush = true; // vozidlo jede → libovolný růst
-            } else {
-                if (throttle > 0.2) {
-                    shouldPush = true; // stojí, ale motor v zátěži → libovolný růst
-                } else {
-                    // stojí, motor volnoběh → jen pokud průměrná spotřeba neklesá
-                    if (avg_l_per_100km_ok <= overall.previousAvg) {
-                        shouldPush = true;
-                    }
-                }
+              overall.distance = (overall.distance || 0) + deltaDistance;
             }
 
-            if (shouldPush && avg_l_per_100km_ok > 0) {
-                overall.queue.push(avg_l_per_100km_ok);
-                trimQueue(overall.queue, MAX_ENTRIES);
+            overall.previousAvg = avg_l_per_100km_ok;
 
-                if (speed_mps > EPS_SPEED) {
-                    overall.distance = (overall.distance || 0) + deltaDistance;
-                }
-
-                overall.previousAvg = avg_l_per_100km_ok;
-
-                if (!overall.lastSaveTime) overall.lastSaveTime = 0;
-                var now = performance.now();
-                if (now - overall.lastSaveTime >= 100) {
-                    saveOverall();
-                    overall.lastSaveTime = now;
-                }
+            if (!overall.lastSaveTime) overall.lastSaveTime = 0;
+            var now = performance.now();
+            if (now - overall.lastSaveTime >= 100) {
+              saveOverall();
+              overall.lastSaveTime = now;
             }
           }
 
@@ -787,40 +806,32 @@ angular.module('beamng.apps')
           // Use the median of the recorded averages for trip stats and graphs
           var overall_median = calculateMedian(overall.queue);
           $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
-          $scope.tripAvgKmLHistory = buildQueueGraphPoints(overall.queue.map(function(v){ return v > 0 ? 100 / v : 0; }), 100, 40);
+          $scope.tripAvgKmLHistory = buildQueueGraphPoints(
+            overall.queue.map(function (v) {
+              return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
+            }),
+            100,
+            40
+          );
 
-          // ---------- Average Consumption rules (prevent increasing while stopped) ----------
+          // ---------- Average Consumption ----------
           if (engineRunning) {
-            if (!overall.previousAvgTrip) overall.previousAvgTrip = 0;
-            var shouldUpdateAvg = false;
+            overall.previousAvgTrip = avg_l_per_100km_ok;
 
-            if (speed_mps > EPS_SPEED) {
-                shouldUpdateAvg = true;
-            } else {
-                if (throttle > 0.2) {
-                    shouldUpdateAvg = true;
-                } else if (avg_l_per_100km_ok <= overall.previousAvgTrip) {
-                    shouldUpdateAvg = true;
-                }
-            }
-
-            if (shouldUpdateAvg) {
-                overall.previousAvgTrip = avg_l_per_100km_ok;
-            } else {
-                // při stání a bez plynu → spotřebu necháme beze změny
-                avg_l_per_100km_ok = overall.previousAvgTrip;
-            }
-
-            if (avg_l_per_100km_ok > 0) {
-                avgHistory.queue.push(avg_l_per_100km_ok);
-                trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
-                $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
-                $scope.avgKmLHistory = buildQueueGraphPoints(avgHistory.queue.map(function(v){ return v > 0 ? 100 / v : 0; }), 100, 40);
-                if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
-                if (now_ms - avgHistory.lastSaveTime >= 100) {
-                    saveAvgHistory();
-                    avgHistory.lastSaveTime = now_ms;
-                }
+            avgHistory.queue.push(avg_l_per_100km_ok);
+            trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
+            $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
+            $scope.avgKmLHistory = buildQueueGraphPoints(
+              avgHistory.queue.map(function (v) {
+                return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
+              }),
+              100,
+              40
+            );
+            if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
+            if (now_ms - avgHistory.lastSaveTime >= 100) {
+              saveAvgHistory();
+              avgHistory.lastSaveTime = now_ms;
             }
           }
 
