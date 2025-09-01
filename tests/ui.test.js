@@ -288,6 +288,9 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.totalCost) - parseFloat($scope.fuelUsed) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
 
     $scope.setUnit('electric');
     streams.engineInfo[11] = 56;
@@ -302,6 +305,9 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.totalCost) - parseFloat($scope.fuelUsed) * 0.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
 
     $scope.setUnit('metric');
     streams.engineInfo[11] = 54;
@@ -316,6 +322,9 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '4.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.totalCost) - parseFloat($scope.fuelUsed) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
   });
 
   it('keeps trip average cost steady while stationary', async () => {
@@ -385,6 +394,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostLiquid, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
     assert.strictEqual($scope.tripFuelUsedLiquid, '0.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
 
     streams.engineInfo[11] = 59;
     now = 200000;
@@ -393,6 +403,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostLiquid, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedElectric, '1.00 kWh');
     assert.strictEqual($scope.tripFuelUsedLiquid, '0.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
   });
 
   it('tracks trip fuel usage for total cost', async () => {
@@ -432,6 +443,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     $scope.resetOverall();
     const storedAfter = JSON.parse(store.okFuelEconomyOverall);
@@ -478,6 +490,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     streams.engineInfo[11] = 70; streams.engineInfo[12] = 90;
     now = 200000;
@@ -486,6 +499,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     $scope.on_VehicleFocusChanged();
 
@@ -500,6 +514,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '3.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     const stored = JSON.parse(store.okFuelEconomyOverall);
     assert.ok(Math.abs(stored.fuelUsedLiquid - 3) < 1e-6);
@@ -543,6 +558,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 58; now = 100000; $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     let stored = JSON.parse(store.okFuelEconomyOverall);
     assert.strictEqual(stored.tripCostLiquid, 3);
@@ -554,10 +570,12 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     streams.engineInfo[11] = 57; now = 100000; $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostLiquid, '4.50 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '3.00 L');
+    assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
 
     stored = JSON.parse(store.okFuelEconomyOverall);
     assert.strictEqual(stored.tripCostLiquid, 4.5);
