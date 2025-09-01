@@ -255,8 +255,21 @@ describe('UI template styling', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    const calls = [];
-    global.bngApi = { engineLua: code => { calls.push(code); } };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    const cfgPath = path.join(tmp, 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
+    fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
+    global.bngApi = {
+      engineLua: code => {
+        const m = code.match(/jsonWriteFile\(p,{liquidFuelPrice=([0-9.]+),electricityPrice=([0-9.]+),currency=\[=\[(.*)\]=\]}\)/s);
+        assert.ok(m, 'lua snippet format');
+        const obj = {
+          liquidFuelPrice: parseFloat(m[1]),
+          electricityPrice: parseFloat(m[2]),
+          currency: m[3]
+        };
+        fs.writeFileSync(cfgPath, JSON.stringify(obj));
+      }
+    };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
     const realProcess = global.process;
@@ -274,12 +287,10 @@ describe('UI template styling', () => {
     $scope.currency = 'JPY';
     $scope.saveSettings();
 
-      assert.ok(calls.length > 0);
-      const lua = calls[calls.length - 1];
-      assert.ok(lua.includes('fuelPrice.json'));
-      assert.ok(lua.includes('jsonWriteFile'));
-      assert.ok(lua.includes('\\"liquidFuelPrice\\":9'));
-      assert.ok(lua.includes('\\"currency\\":\\"JPY\\"'));
+    const saved = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    assert.strictEqual(saved.liquidFuelPrice, 9);
+    assert.strictEqual(saved.electricityPrice, 1.1);
+    assert.strictEqual(saved.currency, 'JPY');
 
     global.process = realProcess;
   });
