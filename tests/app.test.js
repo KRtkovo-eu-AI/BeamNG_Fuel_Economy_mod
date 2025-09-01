@@ -88,6 +88,11 @@ describe('app.js utility functions', () => {
       assert.strictEqual(calculateMedian([1, 3, 2]), 2);
       assert.strictEqual(calculateMedian([1, 2, 3, 4]), 2.5);
     });
+    it('ignores repeated idle-level minimum values', () => {
+      const idle = 0.25;
+      const queue = Array(1000).fill(idle).concat([20, 30, 40, 50]);
+      assert.strictEqual(calculateMedian(queue), 30);
+    });
   });
 
   describe('calculateAverageConsumption', () => {

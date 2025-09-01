@@ -10,6 +10,7 @@ const {
   smoothFuelFlow,
   trimQueue,
   calculateRange,
+  calculateMedian,
   MIN_VALID_SPEED_MPS
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
@@ -172,4 +173,13 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
 
   assert.ok(trip > 0);
   assert.ok(Number.isFinite(trip));
+});
+
+// Ensure median calculation recovers after extended idle periods
+test('median recovery after long idle', () => {
+  const idle = 0.3;
+  const queue = Array(20000).fill(idle);
+  for (let i = 0; i < 100; i++) queue.push(8 + (i % 5));
+  const med = calculateMedian(queue);
+  assert.ok(med >= 8 && med <= 12);
 });

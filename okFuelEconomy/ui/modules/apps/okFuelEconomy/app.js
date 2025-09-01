@@ -73,12 +73,26 @@ function trimQueue(queue, maxEntries) {
   }
 }
 
+// Calculate a median that collapses near-idle minimum values to a single
+// entry so long idling periods do not skew trip averages for an extended
+// time. This assumes the smallest values in the queue correspond to the
+// vehicle's idle consumption and treats any reading within ~5% of that
+// minimum as the same baseline sample.
 function calculateMedian(queue) {
   if (!Array.isArray(queue) || queue.length === 0) return 0;
+
   var sorted = queue.slice().sort(function (a, b) { return a - b; });
-  var mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2) return sorted[mid];
-  return (sorted[mid - 1] + sorted[mid]) / 2;
+  var min = sorted[0];
+  var threshold = min * 1.05 + 1e-4; // consider values within 5% as idle
+
+  var deduped = [min];
+  for (var i = 1; i < sorted.length; i++) {
+    if (sorted[i] > threshold) deduped.push(sorted[i]);
+  }
+
+  var mid = Math.floor(deduped.length / 2);
+  if (deduped.length % 2) return deduped[mid];
+  return (deduped[mid - 1] + deduped[mid]) / 2;
 }
 
 function calculateAverageConsumption(fuelUsed_l, distance_m) {

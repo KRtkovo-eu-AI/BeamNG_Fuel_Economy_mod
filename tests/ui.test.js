@@ -350,8 +350,8 @@ describe('controller integration', () => {
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.tripAvgCostLiquid, '0.00 USD/km');
-    assert.strictEqual($scope.tripAvgCostElectric, '0.00 USD/km');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.08 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.03 USD/km');
   });
 
   it('subtracts electric trip cost when regenerating', async () => {
@@ -713,6 +713,43 @@ describe('controller integration', () => {
     assert.notStrictEqual($scope.tripAvgHistory, '');
     assert.notStrictEqual($scope.tripAvgKmLHistory, '');
     assert.notStrictEqual($scope.tripAvgL100km, $scope.avgL100km);
+  });
+
+  it('recovers trip average quickly after long idle', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
+    global.bngApi = { engineLua: () => '' };
+    const idle = 0.25;
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({
+        queue: Array(20000).fill(idle).concat([20, 30, 40, 50]),
+        distance: 0,
+        fuelUsedLiquid: 0,
+        fuelUsedElectric: 0,
+        tripCostLiquid: 0,
+        tripCostElectric: 0,
+        tripDistanceLiquid: 0,
+        tripDistanceElectric: 0
+      }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: () => {} };
+    global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope, httpStub);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.tripAvgL100km, '30.0 L/100km');
   });
 
   it('caps avg and trip efficiency history at 100 km/L', () => {
