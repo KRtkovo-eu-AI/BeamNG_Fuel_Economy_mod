@@ -331,8 +331,31 @@ angular.module('beamng.apps')
       $scope.electricityPriceValue = priceCfg.electricityPrice;
       $scope.currency = priceCfg.currency;
 
+      var pollMs = 1000;
+      if (typeof process !== 'undefined' && process.env && process.env.KRTEKTM_FUEL_POLL_MS) {
+        var intVal = parseInt(process.env.KRTEKTM_FUEL_POLL_MS, 10);
+        if (intVal > 0) pollMs = intVal;
+      }
+      var priceTimer = setInterval(function () {
+        var cfg = loadFuelPriceConfig();
+        if (
+          cfg.liquidFuelPrice !== $scope.liquidFuelPriceValue ||
+          cfg.electricityPrice !== $scope.electricityPriceValue ||
+          cfg.currency !== $scope.currency
+        ) {
+          var apply = function () {
+            $scope.liquidFuelPriceValue = cfg.liquidFuelPrice;
+            $scope.electricityPriceValue = cfg.electricityPrice;
+            $scope.currency = cfg.currency;
+          };
+          if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(apply); else apply();
+        }
+      }, pollMs);
+      if (priceTimer.unref) priceTimer.unref();
+
       $scope.$on('$destroy', function () {
         StreamsManager.remove(streamsList);
+        clearInterval(priceTimer);
       });
 
       // Settings for visible fields

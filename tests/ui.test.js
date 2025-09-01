@@ -137,6 +137,50 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
+  it('updates fuel prices when fuelPrice.json changes', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '0.98', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 1, electricityPrice: 0.2, currency: 'USD' }));
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 1);
+    assert.strictEqual($scope.electricityPriceValue, 0.2);
+    assert.strictEqual($scope.currency, 'USD');
+
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 3, electricityPrice: 0.8, currency: 'EUR' }));
+    await new Promise(r => setTimeout(r, 60));
+    assert.strictEqual($scope.liquidFuelPriceValue, 3);
+    assert.strictEqual($scope.electricityPriceValue, 0.8);
+    assert.strictEqual($scope.currency, 'EUR');
+
+    fs.writeFileSync(cfgPath, '{broken');
+    await new Promise(r => setTimeout(r, 60));
+    assert.strictEqual($scope.liquidFuelPriceValue, 0);
+    assert.strictEqual($scope.electricityPriceValue, 0);
+    assert.strictEqual($scope.currency, 'money');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
   it('defaults fuel price when fuelPrice.json is missing', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
