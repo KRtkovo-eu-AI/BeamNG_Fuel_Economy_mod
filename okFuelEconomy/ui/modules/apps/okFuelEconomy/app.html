@@ -138,7 +138,7 @@
     </tr>
 
     <tr ng-if="visible.tripAvgL100km || visible.tripAvgKmL">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip average consumption:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
@@ -149,10 +149,10 @@
     </tr>
 
     <tr ng-if="visible.tripGraph">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip average history:
       </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
           <polyline ng-attr-points="{{ tripAvgHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#5fdcff' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
         </svg>
@@ -160,10 +160,10 @@
     </tr>
 
     <tr ng-if="visible.tripKmLGraph">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip average {{ unitEfficiencyUnit }} history:
       </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
           <polyline ng-attr-points="{{ tripAvgKmLHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#5fdcff' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
         </svg>
@@ -171,7 +171,7 @@
     </tr>
 
     <tr ng-if="visible.tripDistance">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip distance:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
@@ -180,7 +180,7 @@
     </tr>
 
     <tr ng-if="visible.tripRange">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip range:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
@@ -189,7 +189,7 @@
     </tr>
 
     <tr ng-if="visible.tripFuelUsed">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip fuel used:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
@@ -200,7 +200,7 @@
     </tr>
 
     <tr ng-if="visible.tripAvgCost">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip average fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
@@ -211,7 +211,7 @@
     </tr>
 
     <tr ng-if="visible.tripTotalCost">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip total fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
@@ -222,7 +222,7 @@
     </tr>
 
     <tr ng-if="visible.tripReset">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip reset:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
@@ -321,5 +321,6 @@
               ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">
         <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
       </button>
+      <p ng-attr-style="{{ useCustomStyles ? 'margin-top:4px; color:#aeeaff;' : '' }}">Project version: 1.0.4</p>
   </div>
 </div>
