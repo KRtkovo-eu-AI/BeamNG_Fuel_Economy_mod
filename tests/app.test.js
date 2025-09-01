@@ -45,16 +45,16 @@ describe('app.js utility functions', () => {
         0.002 / 20 * 100000
       );
     });
-    it('returns zero for stationary vehicle', () => {
+    it('uses hourly rate when stationary', () => {
       assert.strictEqual(
         calculateInstantConsumption(0.001, 0),
-        0
+        0.001 * 3600
       );
     });
-    it('ignores speeds below the minimum threshold', () => {
+    it('applies hourly estimate below the minimum threshold', () => {
       assert.strictEqual(
         calculateInstantConsumption(0.001, MIN_VALID_SPEED_MPS / 2),
-        0
+        0.001 * 3600
       );
     });
     it('propagates negative fuel flow', () => {

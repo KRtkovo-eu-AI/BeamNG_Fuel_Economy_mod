@@ -1,6 +1,7 @@
 // Treat speeds below EPS_SPEED as stationary for general calculations.
-// MIN_VALID_SPEED_MPS adds a higher threshold for L/100km reporting so that
-// creeping speeds do not produce unrealistic per-distance consumption values.
+// MIN_VALID_SPEED_MPS switches instant consumption to an hourly-rate based
+// estimate instead of dividing by extremely small speeds, keeping idle or
+// creeping readings realistic.
 var EPS_SPEED = 0.005; // [m/s]
 var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
 
@@ -11,7 +12,11 @@ function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
 
 function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
   var speed = Math.abs(speed_mps);
-  if (speed <= MIN_VALID_SPEED_MPS) return 0;
+  if (speed <= MIN_VALID_SPEED_MPS) {
+    // For very low speeds use the hourly fuel rate directly as a per-distance
+    // estimate to avoid extreme L/100km values.
+    return fuelFlow_lps * 3600;
+  }
   return (fuelFlow_lps / speed) * 100000;
 }
 

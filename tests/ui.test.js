@@ -838,11 +838,12 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
 
     const eff = parseFloat($scope.instantKmL);
-    assert.ok(eff === 100, `expected 100 km/L, got ${$scope.instantKmL}`);
+    const expectedEff = parseFloat((100 / (0.009 * 3600)).toFixed(2));
+    assert.strictEqual(eff, expectedEff);
 
     const saved = JSON.parse(store.okFuelEconomyInstantEffHistory);
     const last = saved.queue[saved.queue.length - 1];
-    assert.strictEqual(last, 100);
+    assert.strictEqual(parseFloat(last.toFixed(2)), expectedEff);
   });
 
   it('resets instant history when vehicle changes', () => {
