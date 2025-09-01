@@ -192,12 +192,12 @@ describe('UI template styling', () => {
     fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 4, electricityPrice: 1.2, currency: 'Kč' }));
 
     global.bngApi = {
-      engineLua: code => {
+      engineLua: (code, cb) => {
         assert.ok(code.includes('core_paths.getUserPath'));
         try {
-          return fs.readFileSync(cfgPath, 'utf8');
+          cb(fs.readFileSync(cfgPath, 'utf8'));
         } catch (e) {
-          return JSON.stringify({ liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' });
+          cb(JSON.stringify({ liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' }));
         }
       }
     };
