@@ -196,7 +196,7 @@ test('restart and manual reset cycle', () => {
     return { $scope, setTime: t => { now = t; } };
   }
 
-  // First game session with some consumption
+  // First game session with some liquid consumption
   const sess1 = startSession();
   const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 20, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
   streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
@@ -206,20 +206,42 @@ test('restart and manual reset cycle', () => {
   assert.strictEqual(sess1.$scope.tripFuelUsedLiquid, '1.00 L');
   assert.strictEqual(sess1.$scope.tripTotalCostLiquid, '2.00 money');
 
-  // Simulate game restart
+  // Simulate game restart and verify persistence
   const sess2 = startSession();
   assert.strictEqual(sess2.$scope.tripFuelUsedLiquid, '1.00 L');
   assert.strictEqual(sess2.$scope.tripTotalCostLiquid, '2.00 money');
 
-  // Manual trip reset clears stored values
-  sess2.$scope.reset();
-  assert.strictEqual(sess2.$scope.tripFuelUsedLiquid, '');
-  assert.strictEqual(sess2.$scope.tripTotalCostLiquid, '');
+  // Consume electric energy in second session
+  sess2.$scope.unitMode = 'electric';
+  sess2.$scope.electricityPriceValue = 5;
+  const streamsE = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 20, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
+  streamsE.engineInfo[11] = 60; streamsE.engineInfo[12] = 80;
+  sess2.setTime(2000); sess2.$scope.on_streamsUpdate(null, streamsE);
+  streamsE.engineInfo[11] = 59;
+  sess2.setTime(3000); sess2.$scope.on_streamsUpdate(null, streamsE);
+  assert.strictEqual(sess2.$scope.tripFuelUsedElectric, '1.00 kWh');
+  assert.strictEqual(sess2.$scope.tripTotalCostElectric, '5.00 money');
 
-  // After reset, values remain cleared across restart
+  // Restart again and ensure both fuel types persist
   const sess3 = startSession();
+  assert.strictEqual(sess3.$scope.tripFuelUsedLiquid, '1.00 L');
+  assert.strictEqual(sess3.$scope.tripTotalCostLiquid, '2.00 money');
+  assert.strictEqual(sess3.$scope.tripFuelUsedElectric, '1.00 kWh');
+  assert.strictEqual(sess3.$scope.tripTotalCostElectric, '5.00 money');
+
+  // Manual trip reset clears stored values
+  sess3.$scope.reset();
   assert.strictEqual(sess3.$scope.tripFuelUsedLiquid, '');
   assert.strictEqual(sess3.$scope.tripTotalCostLiquid, '');
+  assert.strictEqual(sess3.$scope.tripFuelUsedElectric, '');
+  assert.strictEqual(sess3.$scope.tripTotalCostElectric, '');
+
+  // After reset, values remain cleared across restart
+  const sess4 = startSession();
+  assert.strictEqual(sess4.$scope.tripFuelUsedLiquid, '');
+  assert.strictEqual(sess4.$scope.tripTotalCostLiquid, '');
+  assert.strictEqual(sess4.$scope.tripFuelUsedElectric, '');
+  assert.strictEqual(sess4.$scope.tripTotalCostElectric, '');
 });
 
 // Ensure median calculation recovers after extended idle periods

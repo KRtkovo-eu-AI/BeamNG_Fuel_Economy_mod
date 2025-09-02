@@ -538,6 +538,7 @@ angular.module('beamng.apps')
 
       // --------- Overall persistence (NEW) ----------
       var OVERALL_KEY = 'okFuelEconomyOverall';
+      var TRIP_KEY = 'okFuelEconomyTripTotals';
       var MAX_ENTRIES = 20000; // pevný počet hodnot pro frontu
 
       var overall = {
@@ -564,12 +565,35 @@ angular.module('beamng.apps')
               if (!Number.isFinite(overall.tripDistanceElectric)) overall.tripDistanceElectric = 0;
           }
       } catch (e) { /* ignore */ }
-      tripFuelUsedLiquid_l = overall.fuelUsedLiquid || 0;
-      tripFuelUsedElectric_l = overall.fuelUsedElectric || 0;
-      tripCostLiquid = overall.tripCostLiquid || 0;
-      tripCostElectric = overall.tripCostElectric || 0;
+
+      // Separate trip totals persistence to avoid accidental resets
+      var tripTotals = {
+          fuelUsedLiquid: overall.fuelUsedLiquid || 0,
+          fuelUsedElectric: overall.fuelUsedElectric || 0,
+          costLiquid: overall.tripCostLiquid || 0,
+          costElectric: overall.tripCostElectric || 0
+      };
+      try {
+          var savedTrip = JSON.parse(localStorage.getItem(TRIP_KEY));
+          if (savedTrip) {
+              if (Number.isFinite(savedTrip.fuelUsedLiquid)) tripTotals.fuelUsedLiquid = savedTrip.fuelUsedLiquid;
+              if (Number.isFinite(savedTrip.fuelUsedElectric)) tripTotals.fuelUsedElectric = savedTrip.fuelUsedElectric;
+              if (Number.isFinite(savedTrip.costLiquid)) tripTotals.costLiquid = savedTrip.costLiquid;
+              if (Number.isFinite(savedTrip.costElectric)) tripTotals.costElectric = savedTrip.costElectric;
+          }
+      } catch (e) { /* ignore */ }
+
+      tripFuelUsedLiquid_l = tripTotals.fuelUsedLiquid;
+      tripFuelUsedElectric_l = tripTotals.fuelUsedElectric;
+      tripCostLiquid = tripTotals.costLiquid;
+      tripCostElectric = tripTotals.costElectric;
       tripDistanceLiquid_m = overall.tripDistanceLiquid || 0;
       tripDistanceElectric_m = overall.tripDistanceElectric || 0;
+
+      overall.fuelUsedLiquid = tripFuelUsedLiquid_l;
+      overall.fuelUsedElectric = tripFuelUsedElectric_l;
+      overall.tripCostLiquid = tripCostLiquid;
+      overall.tripCostElectric = tripCostElectric;
 
       // initialise scope with persisted trip values so they survive game restarts
       var initLiquidUnitMode = $scope.unitMode === 'imperial' ? 'imperial' : 'metric';
@@ -586,7 +610,16 @@ angular.module('beamng.apps')
         ? tripCostElectric.toFixed(2) + ' ' + $scope.currency
         : '';
 
+      function saveTripTotals() {
+          tripTotals.fuelUsedLiquid = tripFuelUsedLiquid_l;
+          tripTotals.fuelUsedElectric = tripFuelUsedElectric_l;
+          tripTotals.costLiquid = tripCostLiquid;
+          tripTotals.costElectric = tripCostElectric;
+          try { localStorage.setItem(TRIP_KEY, JSON.stringify(tripTotals)); } catch (e) { /* ignore */ }
+      }
+
       function saveOverall() {
+          saveTripTotals();
           try { localStorage.setItem(OVERALL_KEY, JSON.stringify(overall)); } catch (e) { /* ignore */ }
       }
 
