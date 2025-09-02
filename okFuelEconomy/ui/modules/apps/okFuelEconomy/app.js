@@ -275,10 +275,7 @@ function loadFuelPriceConfig(callback) {
         .map(d => d.name)
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       const latest = versions[versions.length - 1];
-      if (!latest) {
-        if (typeof callback === 'function') callback(defaults);
-        return defaults;
-      }
+      if (!latest) throw new Error('no version');
       const settingsDir = path.join(
         baseDir,
         latest,
@@ -359,7 +356,7 @@ function saveFuelPriceConfig(cfg) {
         .map(d => d.name)
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       const latest = versions[versions.length - 1];
-      if (!latest) return;
+      if (!latest) throw new Error('no version');
       const settingsDir = path.join(
         baseDir,
         latest,
