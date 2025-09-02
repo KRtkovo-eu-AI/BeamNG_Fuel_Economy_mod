@@ -301,8 +301,14 @@ function loadFuelPriceConfig(callback) {
       if (typeof callback === 'function') callback(cfgObj);
       return cfgObj;
     } catch (e) {
-      if (typeof callback === 'function') callback(defaults);
-      return defaults;
+      // Fall back to defaults when bngApi is unavailable, otherwise try bngApi
+      if (
+        typeof bngApi === 'undefined' ||
+        typeof bngApi.engineLua !== 'function'
+      ) {
+        if (typeof callback === 'function') callback(defaults);
+        return defaults;
+      }
     }
   }
 
@@ -365,8 +371,10 @@ function saveFuelPriceConfig(cfg) {
         path.join(settingsDir, 'fuelPrice.json'),
         JSON.stringify(cfg)
       );
-    } catch (e) { /* ignore */ }
-    return;
+      return;
+    } catch (e) {
+      // Fall through to bngApi path on failure
+    }
   }
   if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
     try {

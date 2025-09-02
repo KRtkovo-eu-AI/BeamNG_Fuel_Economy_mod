@@ -90,7 +90,13 @@ describe('UI template styling', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {
+      engineLua: (code, cb) => {
+        if (typeof cb === 'function') {
+          cb(JSON.stringify({ liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' }));
+        }
+      }
+    };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
 
@@ -203,6 +209,68 @@ describe('UI template styling', () => {
     global.process = realProcess;
   });
 
+  it('falls back to bngApi.engineLua when fs module is unavailable', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    const cfgPath = path.join(tmp, 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
+    fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 2, electricityPrice: 0.6, currency: 'USD' }));
+
+    let luaChunk;
+    let luaReads = 0;
+    global.bngApi = {
+      engineLua: (code, cb) => {
+        if (typeof cb === 'function') {
+          luaReads++;
+          cb(fs.readFileSync(cfgPath, 'utf8'));
+        } else {
+          luaChunk = code;
+          const m = code.match(/local cfg={liquidFuelPrice=([0-9.]+),electricityPrice=([0-9.]+),currency='([^']*)'}/);
+          const cfg = { liquidFuelPrice: parseFloat(m[1]), electricityPrice: parseFloat(m[2]), currency: m[3] };
+          fs.writeFileSync(cfgPath, JSON.stringify(cfg));
+        }
+      }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    const Module = require('module');
+    const realLoad = Module._load;
+    Module._load = (request, parent, isMain) => {
+      if (request === 'fs') throw new Error('no fs');
+      return realLoad(request, parent, isMain);
+    };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 2);
+    assert.strictEqual($scope.electricityPriceValue, 0.6);
+    assert.strictEqual($scope.currency, 'USD');
+    assert.strictEqual(luaReads, 1);
+
+    $scope.liquidFuelPriceValue = 3.5;
+    $scope.electricityPriceValue = 1.1;
+    $scope.currency = 'GBP';
+    $scope.saveSettings();
+
+    Module._load = realLoad;
+
+    const saved = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    assert.strictEqual(saved.liquidFuelPrice, 3.5);
+    assert.strictEqual(saved.electricityPrice, 1.1);
+    assert.strictEqual(saved.currency, 'GBP');
+    assert.ok(luaChunk.includes('jsonWriteFile(p,cfg)'));
+  });
+
   it('updates fuel prices when fuelPrice.json changes', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
@@ -236,12 +304,6 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.liquidFuelPriceValue, 3);
     assert.strictEqual($scope.electricityPriceValue, 0.8);
     assert.strictEqual($scope.currency, 'EUR');
-
-    fs.writeFileSync(cfgPath, '{broken');
-    await new Promise(r => setTimeout(r, 60));
-    assert.strictEqual($scope.liquidFuelPriceValue, 0);
-    assert.strictEqual($scope.electricityPriceValue, 0);
-    assert.strictEqual($scope.currency, 'money');
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
     delete process.env.KRTEKTM_FUEL_POLL_MS;
