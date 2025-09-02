@@ -370,7 +370,9 @@ function saveFuelPriceConfig(cfg) {
   }
   if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
     try {
-      var encoded = JSON.stringify(cfg)
+      var liquid = Number(cfg.liquidFuelPrice) || 0;
+      var electric = Number(cfg.electricityPrice) || 0;
+      var curr = String(cfg.currency || 'money')
         .replace(/\\/g, '\\\\')
         .replace(/'/g, "\\'");
       var lua = [
@@ -379,7 +381,8 @@ function saveFuelPriceConfig(cfg) {
         "local dir=user..'settings/krtektm_fuelEconomy/'",
         'FS:directoryCreate(dir)',
         "local p=dir..'fuelPrice.json'",
-        "jsonWriteFile(p,jsonDecode('" + encoded + "'))",
+        "local cfg={liquidFuelPrice=" + liquid + ",electricityPrice=" + electric + ",currency='" + curr + "'}",
+        'jsonWriteFile(p,cfg)',
         'end)()'
       ].join('\n');
       bngApi.engineLua(lua);

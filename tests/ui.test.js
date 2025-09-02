@@ -153,6 +153,56 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
+  it('saves fuel price via bngApi.engineLua when require is unavailable', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    const cfgPath = path.join(tmp, 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
+    fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 1, electricityPrice: 0.2, currency: 'USD' }));
+
+    let luaChunk;
+    global.bngApi = {
+      engineLua: (code, cb) => {
+        if (typeof cb === 'function') {
+          cb(fs.readFileSync(cfgPath, 'utf8'));
+        } else {
+          luaChunk = code;
+          const m = code.match(/local cfg={liquidFuelPrice=([0-9.]+),electricityPrice=([0-9.]+),currency='([^']*)'}/);
+          const cfg = { liquidFuelPrice: parseFloat(m[1]), electricityPrice: parseFloat(m[2]), currency: m[3] };
+          fs.writeFileSync(cfgPath, JSON.stringify(cfg));
+        }
+      }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    const realProcess = global.process;
+    global.process = undefined;
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(resolve => setImmediate(resolve));
+
+    $scope.liquidFuelPriceValue = 3;
+    $scope.electricityPriceValue = 0.9;
+    $scope.currency = 'GBP';
+    $scope.saveSettings();
+
+    const saved = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    assert.strictEqual(saved.liquidFuelPrice, 3);
+    assert.strictEqual(saved.electricityPrice, 0.9);
+    assert.strictEqual(saved.currency, 'GBP');
+    assert.ok(luaChunk.includes('jsonWriteFile(p,cfg)'));
+
+    global.process = realProcess;
+  });
+
   it('updates fuel prices when fuelPrice.json changes', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
