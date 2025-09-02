@@ -26,9 +26,14 @@ Data are gathered via `StreamsManager` from the *electrics* and *engineInfo* cha
 
 ## Fuel price configuration
 
-To enable fuel cost calculations, edit `AppData/Local/BeamNG.drive/{version}/settings/krtektm_fuelEconomy/fuelPrice.json` (for example `C:/Users/<your user>/AppData/Local/BeamNG.drive/<version>/settings/krtektm_fuelEconomy/fuelPrice.json` on Windows) and set the `liquidFuelPrice` and `electricityPrice` values to the prices of fuel per volume unit you use and optionally set the `currency` label (e.g. `$`, `€`). The controller loads these values at runtime and computes average cost per distance, trip average cost per distance, total fuel cost and trip total fuel cost when the relevant fields are enabled in settings.
+Fuel cost calculations use values stored in `AppData/Local/BeamNG.drive/{version}/settings/krtektm_fuelEconomy/fuelPrice.json`. You can change them in two ways:
+
+1. Use the in-game fuel price dialog to set the values directly. This UI writes to the same `fuelPrice.json` file.
+2. Manually edit `fuelPrice.json` yourself (for example `C:/Users/<your user>/AppData/Local/BeamNG.drive/<version>/settings/krtektm_fuelEconomy/fuelPrice.json` on Windows) and set the `liquidFuelPrice` and `electricityPrice` values, optionally adding a `currency` label (e.g. `$`, `€`).
+
+The controller loads these prices at runtime and computes average cost per distance, trip average cost per distance, total fuel cost and trip total fuel cost when the relevant fields are enabled in settings.
 Trip costs accumulate only while their respective unit mode is active: liquid costs grow when using metric or imperial units, whereas electric costs grow when using the electric unit mode.
-Any edits to this file while the game is running are picked up automatically so prices can be changed without restarting.
+Any edits to the file—whether done manually or via the dialog—while the game is running are picked up automatically so prices can be changed without restarting.
 If the file is missing, the widget falls back to a price of `0` and a currency label of `money` so the calculator still operates.
 
 ## Tests
