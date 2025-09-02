@@ -389,17 +389,9 @@ angular.module('beamng.apps')
       var SETTINGS_KEY = 'okFuelEconomyVisible';
       var UNIT_MODE_KEY = 'okFuelEconomyUnitMode';
       $scope.settingsOpen = false;
-      $scope.fuelPriceHelpOpen = false;
-      $scope.openFuelPriceHelp = function ($event) {
+      $scope.openFuelPriceEditor = function ($event) {
         $event.preventDefault();
-        $scope.fuelPriceHelpOpen = true;
-      };
-      $scope.openFuelCostEditor = function ($event) {
-        $scope.openFuelPriceHelp($event);
-        bngApi.engineLua('extensions.load("fuelCostEditor")');
-      };
-      $scope.closeFuelPriceHelp = function () {
-        $scope.fuelPriceHelpOpen = false;
+        bngApi.engineLua('extensions.load("fuelPriceEditor")');
       };
       $scope.unitModeLabels = {
         metric: 'Metric (L, km)',

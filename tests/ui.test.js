@@ -61,8 +61,7 @@ describe('UI template styling', () => {
   it('renders fuel cost bindings without inline script', () => {
     assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('fuelPriceNotice'));
-    assert.ok(html.includes('fuel prices and currency in'));
-    assert.ok(html.includes('settings/<wbr>krtektm_fuelEconomy/<wbr>fuelPrice.json'));
+    assert.ok(html.includes('Open Fuel Price Editor'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ avgCost }}'));
@@ -75,28 +74,7 @@ describe('UI template styling', () => {
     assert.ok(html.includes('Electric: {{ tripFuelUsedElectric }}'));
   });
 
-  it('toggles fuel price help dialog via controller functions', async () => {
-    let directiveDef;
-    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
-    global.StreamsManager = { add: () => {}, remove: () => {} };
-    global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
-    global.localStorage = { getItem: () => null, setItem: () => {} };
-    global.performance = { now: () => 0 };
-    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
-    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
-    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
-    const $scope = { $on: () => {} };
-    controllerFn({ debug: () => {} }, $scope);
-
-    assert.equal($scope.fuelPriceHelpOpen, false);
-    $scope.openFuelPriceHelp({ preventDefault() {} });
-    assert.equal($scope.fuelPriceHelpOpen, true);
-    $scope.closeFuelPriceHelp();
-    assert.equal($scope.fuelPriceHelpOpen, false);
-  });
-
-  it('loads fuel cost editor via controller function', async () => {
+  it('loads fuel price editor via controller function', async () => {
     let directiveDef;
     let luaCmd;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
@@ -111,8 +89,8 @@ describe('UI template styling', () => {
     const $scope = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope);
 
-    $scope.openFuelCostEditor({ preventDefault() {} });
-    assert.equal(luaCmd, 'extensions.load("fuelCostEditor")');
+    $scope.openFuelPriceEditor({ preventDefault() {} });
+    assert.equal(luaCmd, 'extensions.load("fuelPriceEditor")');
   });
 
   it('exposes fuel prices and currency in fuelPrice.json', () => {

@@ -3,8 +3,8 @@ local M = {}
 local im = ui_imgui
 local ffi = require('ffi')
 
-local pricePath
-local priceDir
+local pricePath = '/settings/krtektm_fuelEconomy/fuelPrice.json'
+local priceDir = '/settings/krtektm_fuelEconomy/'
 local data = {}
 local uiState = {
   liquid = im.FloatPtr(0),
@@ -13,8 +13,6 @@ local uiState = {
 }
 
 local function ensureFile()
-  priceDir = FS:getUserPath() .. 'settings/krtektm_fuelEconomy/'
-  pricePath = priceDir .. 'fuelPrice.json'
   if not FS:directoryExists(priceDir) then
     FS:directoryCreate(priceDir)
   end
@@ -35,10 +33,11 @@ local function savePrices()
   data.electricityPrice = uiState.electric[0]
   data.currency = ffi.string(uiState.currency)
   jsonWriteFile(pricePath, data, true)
+  loadPrices()
 end
 
 local function onUpdate()
-  im.Begin('Fuel Cost Editor')
+  im.Begin('Fuel Price Editor')
 
   im.InputFloat('Liquid fuel price', uiState.liquid)
   im.InputFloat('Electricity price', uiState.electric)
