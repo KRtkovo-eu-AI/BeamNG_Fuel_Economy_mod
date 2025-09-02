@@ -1290,10 +1290,11 @@ describe('controller integration', () => {
 
     streams.electrics.rpmTacho = 0;
     streams.electrics.throttle_input = 0;
-    streams.electrics.wheelspeed = 0;
+    streams.electrics.wheelspeed = 5;
 
     for (let i = 0; i < 5; i++) {
       now += 1000;
+      streams.engineInfo[11] -= 0.05;
       $scope.on_streamsUpdate(null, streams);
     }
 

@@ -832,35 +832,35 @@ angular.module('beamng.apps')
             distance_m = 0;
           }
 
-          var deltaTripFuel = previousFuel_l - currentFuel_l;
-          if (Math.abs(deltaTripFuel) < capacity_l) {
-            var deltaFuelUnit = convertVolumeToUnit(deltaTripFuel, $scope.unitMode);
-            if ($scope.unitMode === 'electric') {
-              tripFuelUsedElectric_l += deltaTripFuel;
-              overall.fuelUsedElectric = tripFuelUsedElectric_l;
-              tripCostElectric += deltaFuelUnit * $scope.electricityPriceValue;
-            } else {
-              if (deltaTripFuel > 0) {
+          if (engineRunning) {
+            var deltaTripFuel = previousFuel_l - currentFuel_l;
+            if (Math.abs(deltaTripFuel) < capacity_l) {
+              var deltaFuelUnit = convertVolumeToUnit(deltaTripFuel, $scope.unitMode);
+              if ($scope.unitMode === 'electric') {
+                tripFuelUsedElectric_l += deltaTripFuel;
+                overall.fuelUsedElectric = tripFuelUsedElectric_l;
+                tripCostElectric += deltaFuelUnit * $scope.electricityPriceValue;
+              } else if (deltaTripFuel > 0) {
                 tripFuelUsedLiquid_l += deltaTripFuel;
                 overall.fuelUsedLiquid = tripFuelUsedLiquid_l;
                 tripCostLiquid += deltaFuelUnit * $scope.liquidFuelPriceValue;
               }
             }
-          }
-          if (speed_mps > EPS_SPEED) {
-            if ($scope.unitMode === 'electric') {
-              tripDistanceElectric_m += deltaDistance;
-            } else {
-              tripDistanceLiquid_m += deltaDistance;
+            if (speed_mps > EPS_SPEED) {
+              if ($scope.unitMode === 'electric') {
+                tripDistanceElectric_m += deltaDistance;
+              } else {
+                tripDistanceLiquid_m += deltaDistance;
+              }
             }
-          }
-          overall.tripCostLiquid = tripCostLiquid;
-          overall.tripCostElectric = tripCostElectric;
-          overall.tripDistanceLiquid = tripDistanceLiquid_m;
-          overall.tripDistanceElectric = tripDistanceElectric_m;
-          if (now_ms - (overall.lastCostSaveTime || 0) >= 100) {
-            saveOverall();
-            overall.lastCostSaveTime = now_ms;
+            overall.tripCostLiquid = tripCostLiquid;
+            overall.tripCostElectric = tripCostElectric;
+            overall.tripDistanceLiquid = tripDistanceLiquid_m;
+            overall.tripDistanceElectric = tripDistanceElectric_m;
+            if (now_ms - (overall.lastCostSaveTime || 0) >= 100) {
+              saveOverall();
+              overall.lastCostSaveTime = now_ms;
+            }
           }
 
           if (distance_m === 0 && lastDistance_m > 0) {
