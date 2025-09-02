@@ -107,6 +107,23 @@ function calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED)
   return speed_mps > EPS_SPEED ? Infinity : 0;
 }
 
+function resolveAverageConsumption(
+  engineRunning,
+  speed_mps,
+  fuel_used_l,
+  distance_m,
+  inst_l_per_100km,
+  previousAvgTrip,
+  previousAvg
+) {
+  if (engineRunning) {
+    return speed_mps > MIN_VALID_SPEED_MPS
+      ? calculateAverageConsumption(fuel_used_l, distance_m)
+      : inst_l_per_100km;
+  }
+  return previousAvgTrip || previousAvg || 0;
+}
+
 // Decide which speed value should be used for distance accumulation.
 // Prefer the airspeed when available as it represents the vehicle's
 // movement relative to the environment. If the airspeed is below the
@@ -230,6 +247,7 @@ if (typeof module !== 'undefined') {
     calculateMedian,
     calculateAverageConsumption,
     calculateRange,
+    resolveAverageConsumption,
     buildQueueGraphPoints,
     resolveSpeed,
     getUnitLabels,
@@ -850,7 +868,9 @@ angular.module('beamng.apps')
             resetAvgHistory();
           }
 
-          distance_m += deltaDistance;
+          if (engineRunning) {
+            distance_m += deltaDistance;
+          }
 
           if (throttle <= 0.05 && lastThrottle > 0.05) {
             previousFuel_l = currentFuel_l;
@@ -925,10 +945,15 @@ angular.module('beamng.apps')
             }
           }
 
-          var avg_l_per_100km_ok =
-            speed_mps > MIN_VALID_SPEED_MPS
-              ? calculateAverageConsumption(fuel_used_l, distance_m)
-              : inst_l_per_100km;
+          var avg_l_per_100km_ok = resolveAverageConsumption(
+            engineRunning,
+            speed_mps,
+            fuel_used_l,
+            distance_m,
+            inst_l_per_100km,
+            overall.previousAvgTrip,
+            overall.previousAvg
+          );
           if (
             !Number.isFinite(avg_l_per_100km_ok) ||
             avg_l_per_100km_ok > MAX_CONSUMPTION

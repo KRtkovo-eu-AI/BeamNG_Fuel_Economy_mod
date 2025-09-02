@@ -14,6 +14,7 @@ const {
   calculateRange,
   buildQueueGraphPoints,
   resolveSpeed,
+  resolveAverageConsumption,
   formatDistance,
   formatVolume,
   formatConsumptionRate,
@@ -170,6 +171,38 @@ describe('app.js utility functions', () => {
     });
     it('treats negative avg as no consumption while stopped', () => {
       assert.strictEqual(calculateRange(10, -5, 0, EPS_SPEED), 0);
+    });
+  });
+
+  describe('resolveAverageConsumption', () => {
+    it('uses previous averages when engine is off', () => {
+      const avg = resolveAverageConsumption(false, 0, 0, 0, 0, 5, 7);
+      assert.strictEqual(avg, 5);
+    });
+    it('computes average when running and moving', () => {
+      const avg = resolveAverageConsumption(
+        true,
+        MIN_VALID_SPEED_MPS + 1,
+        1,
+        1000,
+        0,
+        0,
+        0
+      );
+      assert.strictEqual(avg, calculateAverageConsumption(1, 1000));
+    });
+    it('falls back to instant rate at low speed', () => {
+      const inst = 8;
+      const avg = resolveAverageConsumption(
+        true,
+        MIN_VALID_SPEED_MPS / 2,
+        0,
+        0,
+        inst,
+        0,
+        0
+      );
+      assert.strictEqual(avg, inst);
     });
   });
 
