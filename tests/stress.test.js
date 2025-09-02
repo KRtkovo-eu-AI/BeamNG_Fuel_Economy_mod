@@ -175,6 +175,53 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
   assert.ok(Number.isFinite(trip));
 });
 
+// Ensure trip values persist across restart cycles and only reset on manual request
+test('restart and manual reset cycle', () => {
+  let directiveDef;
+  const store = {};
+
+  function startSession() {
+    global.angular = { module: () => ({ directive: (n, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
+    let now = 0; global.performance = { now: () => now };
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controller = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (n, cb) => { $scope['on_' + n] = cb; }, $evalAsync: fn => fn() };
+    controller({ debug: () => {} }, $scope);
+    $scope.liquidFuelPriceValue = 2; // ensure costs are non-zero
+    return { $scope, setTime: t => { now = t; } };
+  }
+
+  // First game session with some consumption
+  const sess1 = startSession();
+  const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 20, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
+  streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+  sess1.setTime(0); sess1.$scope.on_streamsUpdate(null, streams);
+  streams.engineInfo[11] = 59;
+  sess1.setTime(1000); sess1.$scope.on_streamsUpdate(null, streams);
+  assert.strictEqual(sess1.$scope.tripFuelUsedLiquid, '1.00 L');
+  assert.strictEqual(sess1.$scope.tripTotalCostLiquid, '2.00 money');
+
+  // Simulate game restart
+  const sess2 = startSession();
+  assert.strictEqual(sess2.$scope.tripFuelUsedLiquid, '1.00 L');
+  assert.strictEqual(sess2.$scope.tripTotalCostLiquid, '2.00 money');
+
+  // Manual trip reset clears stored values
+  sess2.$scope.reset();
+  assert.strictEqual(sess2.$scope.tripFuelUsedLiquid, '');
+  assert.strictEqual(sess2.$scope.tripTotalCostLiquid, '');
+
+  // After reset, values remain cleared across restart
+  const sess3 = startSession();
+  assert.strictEqual(sess3.$scope.tripFuelUsedLiquid, '');
+  assert.strictEqual(sess3.$scope.tripTotalCostLiquid, '');
+});
+
 // Ensure median calculation recovers after extended idle periods
 test('median recovery after long idle', () => {
   const idle = 0.3;

@@ -571,6 +571,21 @@ angular.module('beamng.apps')
       tripDistanceLiquid_m = overall.tripDistanceLiquid || 0;
       tripDistanceElectric_m = overall.tripDistanceElectric || 0;
 
+      // initialise scope with persisted trip values so they survive game restarts
+      var initLiquidUnitMode = $scope.unitMode === 'imperial' ? 'imperial' : 'metric';
+      $scope.tripFuelUsedLiquid = tripFuelUsedLiquid_l > 0
+        ? formatVolume(tripFuelUsedLiquid_l, initLiquidUnitMode, 2)
+        : '';
+      $scope.tripFuelUsedElectric = tripFuelUsedElectric_l > 0
+        ? formatVolume(tripFuelUsedElectric_l, 'electric', 2)
+        : '';
+      $scope.tripTotalCostLiquid = tripCostLiquid > 0
+        ? tripCostLiquid.toFixed(2) + ' ' + $scope.currency
+        : '';
+      $scope.tripTotalCostElectric = tripCostElectric > 0
+        ? tripCostElectric.toFixed(2) + ' ' + $scope.currency
+        : '';
+
       function saveOverall() {
           try { localStorage.setItem(OVERALL_KEY, JSON.stringify(overall)); } catch (e) { /* ignore */ }
       }
