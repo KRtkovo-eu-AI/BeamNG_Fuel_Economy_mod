@@ -394,6 +394,10 @@ angular.module('beamng.apps')
         $event.preventDefault();
         $scope.fuelPriceHelpOpen = true;
       };
+      $scope.openFuelCostEditor = function ($event) {
+        $scope.openFuelPriceHelp($event);
+        bngApi.engineLua('extensions.load("fuelCostEditor")');
+      };
       $scope.closeFuelPriceHelp = function () {
         $scope.fuelPriceHelpOpen = false;
       };

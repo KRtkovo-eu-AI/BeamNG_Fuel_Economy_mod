@@ -96,6 +96,25 @@ describe('UI template styling', () => {
     assert.equal($scope.fuelPriceHelpOpen, false);
   });
 
+  it('loads fuel cost editor via controller function', async () => {
+    let directiveDef;
+    let luaCmd;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: cmd => { luaCmd = cmd; } };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+
+    $scope.openFuelCostEditor({ preventDefault() {} });
+    assert.equal(luaCmd, 'extensions.load("fuelCostEditor")');
+  });
+
   it('exposes fuel prices and currency in fuelPrice.json', () => {
     const priceConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'fuelPrice.json');
     const cfg = JSON.parse(fs.readFileSync(priceConfigPath, 'utf8'));
