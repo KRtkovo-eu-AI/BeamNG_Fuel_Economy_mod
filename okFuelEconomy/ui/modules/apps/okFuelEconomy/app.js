@@ -543,10 +543,11 @@ angular.module('beamng.apps')
       var tripDistanceElectric_m = 0;
       var lastFuelFlow_lps = 0; // last smoothed value
       var idleFuelFlow_lps = 0;
-      var lastThrottle = 0;
-      var engineWasRunning = false;
+        var lastThrottle = 0;
+        var engineWasRunning = false;
+        var initialized = false;
 
-      var lastCapacity_l = null;
+        var lastCapacity_l = null;
       var lastInstantUpdate_ms = 0;
       var INSTANT_UPDATE_INTERVAL = 250;
       var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
@@ -831,37 +832,35 @@ angular.module('beamng.apps')
             distance_m = 0;
           }
 
-          if (engineRunning) {
-            var deltaTripFuel = previousFuel_l - currentFuel_l;
-            if (Math.abs(deltaTripFuel) < capacity_l) {
-              var deltaFuelUnit = convertVolumeToUnit(deltaTripFuel, $scope.unitMode);
-              if ($scope.unitMode === 'electric') {
-                tripFuelUsedElectric_l += deltaTripFuel;
-                overall.fuelUsedElectric = tripFuelUsedElectric_l;
-                tripCostElectric += deltaFuelUnit * $scope.electricityPriceValue;
-              } else {
-                if (deltaTripFuel > 0) {
-                  tripFuelUsedLiquid_l += deltaTripFuel;
-                  overall.fuelUsedLiquid = tripFuelUsedLiquid_l;
-                  tripCostLiquid += deltaFuelUnit * $scope.liquidFuelPriceValue;
-                }
+          var deltaTripFuel = previousFuel_l - currentFuel_l;
+          if (Math.abs(deltaTripFuel) < capacity_l) {
+            var deltaFuelUnit = convertVolumeToUnit(deltaTripFuel, $scope.unitMode);
+            if ($scope.unitMode === 'electric') {
+              tripFuelUsedElectric_l += deltaTripFuel;
+              overall.fuelUsedElectric = tripFuelUsedElectric_l;
+              tripCostElectric += deltaFuelUnit * $scope.electricityPriceValue;
+            } else {
+              if (deltaTripFuel > 0) {
+                tripFuelUsedLiquid_l += deltaTripFuel;
+                overall.fuelUsedLiquid = tripFuelUsedLiquid_l;
+                tripCostLiquid += deltaFuelUnit * $scope.liquidFuelPriceValue;
               }
             }
-            if (speed_mps > EPS_SPEED) {
-              if ($scope.unitMode === 'electric') {
-                tripDistanceElectric_m += deltaDistance;
-              } else {
-                tripDistanceLiquid_m += deltaDistance;
-              }
+          }
+          if (speed_mps > EPS_SPEED) {
+            if ($scope.unitMode === 'electric') {
+              tripDistanceElectric_m += deltaDistance;
+            } else {
+              tripDistanceLiquid_m += deltaDistance;
             }
-            overall.tripCostLiquid = tripCostLiquid;
-            overall.tripCostElectric = tripCostElectric;
-            overall.tripDistanceLiquid = tripDistanceLiquid_m;
-            overall.tripDistanceElectric = tripDistanceElectric_m;
-            if (now_ms - (overall.lastCostSaveTime || 0) >= 100) {
-              saveOverall();
-              overall.lastCostSaveTime = now_ms;
-            }
+          }
+          overall.tripCostLiquid = tripCostLiquid;
+          overall.tripCostElectric = tripCostElectric;
+          overall.tripDistanceLiquid = tripDistanceLiquid_m;
+          overall.tripDistanceElectric = tripDistanceElectric_m;
+          if (now_ms - (overall.lastCostSaveTime || 0) >= 100) {
+            saveOverall();
+            overall.lastCostSaveTime = now_ms;
           }
 
           if (distance_m === 0 && lastDistance_m > 0) {
@@ -924,6 +923,12 @@ angular.module('beamng.apps')
             }
             $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
             lastInstantUpdate_ms = now_ms;
+          }
+
+          if (!engineRunning && initialized) {
+            previousFuel_l = currentFuel_l;
+            lastThrottle = throttle;
+            return;
           }
 
           if (engineRunning) {
@@ -1087,6 +1092,7 @@ angular.module('beamng.apps')
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
           lastDistance_m = distance_m;
+          initialized = true;
         });
       });
     }]
