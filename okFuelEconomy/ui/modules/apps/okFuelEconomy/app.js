@@ -291,13 +291,7 @@ function loadFuelPriceConfig(callback) {
     currency: 'money'
   };
 
-  if (
-    typeof require === 'function' &&
-    typeof process === 'object' &&
-    process &&
-    process.versions &&
-    process.versions.node
-  ) {
+  if (typeof require === 'function') {
     try {
       const fs = require('fs');
       const path = require('path');
@@ -307,13 +301,21 @@ function loadFuelPriceConfig(callback) {
       defaults = cfg;
 
       const baseDir =
-        process.env.KRTEKTM_BNG_USER_DIR ||
-        path.join(
-          process.platform === 'win32'
-            ? process.env.LOCALAPPDATA || ''
-            : path.join(process.env.HOME || '', '.local', 'share'),
-          'BeamNG.drive'
-        );
+        (typeof process === 'object' &&
+          process &&
+          (process.env.KRTEKTM_BNG_USER_DIR ||
+            path.join(
+              process.platform === 'win32'
+                ? process.env.LOCALAPPDATA || ''
+                : path.join(process.env.HOME || '', '.local', 'share'),
+              'BeamNG.drive'
+            ))) ||
+        null;
+
+      if (!baseDir) {
+        if (typeof callback === 'function') callback(defaults);
+        return defaults;
+      }
 
       const versions = fs
         .readdirSync(baseDir, { withFileTypes: true })
@@ -348,7 +350,7 @@ function loadFuelPriceConfig(callback) {
       return cfgObj;
     } catch (e) {
       if (typeof callback === 'function') callback(defaults);
-      return defaults;
+      // fall back to bngApi if file access fails
     }
   }
 

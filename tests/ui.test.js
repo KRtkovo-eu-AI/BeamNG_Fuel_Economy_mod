@@ -107,7 +107,7 @@ describe('UI template styling', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = { engineLua: (code, cb) => cb('') };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
 
@@ -131,7 +131,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.electricityPriceValue, 0.5);
     assert.strictEqual($scope.currency, 'CZK');
 
-    delete process.env.KRTEKTM_BNG_USER_DIR;
+    if (process && process.env) delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('updates fuel prices when fuelPrice.json changes', async () => {
@@ -169,7 +169,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.currency, 'EUR');
 
     fs.writeFileSync(cfgPath, '{broken');
-    await new Promise(r => setTimeout(r, 60));
+    await new Promise(r => setTimeout(r, 80));
     assert.strictEqual($scope.liquidFuelPriceValue, 0);
     assert.strictEqual($scope.electricityPriceValue, 0);
     assert.strictEqual($scope.currency, 'money');
@@ -243,6 +243,12 @@ describe('UI template styling', () => {
     global.performance = { now: () => 0 };
     const realProcess = global.process;
     const realSetInterval = global.setInterval;
+    const Module = require('module');
+    const realRequire = Module.prototype.require;
+    Module.prototype.require = function (id) {
+      if (id === 'fs' || id === 'path') throw new Error('no fs');
+      return realRequire.apply(this, arguments);
+    };
     global.process = undefined;
     global.setInterval = (fn, ms) => realSetInterval(fn, 20);
 
@@ -269,26 +275,27 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.electricityPriceValue, 0);
     assert.strictEqual($scope.currency, 'money');
 
+    Module.prototype.require = realRequire;
     global.process = realProcess;
     global.setInterval = realSetInterval;
   });
 
-  it('falls back to bngApi when process.versions.node is missing', async () => {
+  it('reads fuel prices via fs even when process.versions.node is missing', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
     const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
-    const cfgPath = path.join(tmp, 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
+    const cfgPath = path.join(tmp, '2.00', 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
     fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
     fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 6, electricityPrice: 2, currency: 'GBP' }));
 
-    global.bngApi = { engineLua: (code, cb) => cb(fs.readFileSync(cfgPath, 'utf8')) };
+    global.bngApi = { engineLua: () => { throw new Error('should not call engineLua'); } };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
     const realProcess = global.process;
     const realSetInterval = global.setInterval;
-    global.process = { env: {} };
+    global.process = { env: { KRTEKTM_BNG_USER_DIR: tmp }, platform: 'linux' };
     global.setInterval = (fn, ms) => realSetInterval(fn, 20);
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
