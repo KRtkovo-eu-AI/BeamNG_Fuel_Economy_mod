@@ -107,7 +107,7 @@ describe('UI template styling', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: (code, cb) => cb('') };
+    global.bngApi = { engineLua: () => '' };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
 
@@ -139,7 +139,6 @@ describe('UI template styling', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
 
@@ -170,9 +169,9 @@ describe('UI template styling', () => {
 
     fs.writeFileSync(cfgPath, '{broken');
     await new Promise(r => setTimeout(r, 80));
-    assert.strictEqual($scope.liquidFuelPriceValue, 0);
-    assert.strictEqual($scope.electricityPriceValue, 0);
-    assert.strictEqual($scope.currency, 'money');
+    assert.strictEqual($scope.liquidFuelPriceValue, 3);
+    assert.strictEqual($scope.electricityPriceValue, 0.8);
+    assert.strictEqual($scope.currency, 'EUR');
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
     delete process.env.KRTEKTM_FUEL_POLL_MS;
@@ -183,7 +182,6 @@ describe('UI template styling', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
 
@@ -280,7 +278,7 @@ describe('UI template styling', () => {
     global.setInterval = realSetInterval;
   });
 
-  it('reads fuel prices via fs even when process.versions.node is missing', async () => {
+  it('loads fuel prices via bngApi when process.versions.node is missing', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
@@ -290,7 +288,9 @@ describe('UI template styling', () => {
     fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
     fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 6, electricityPrice: 2, currency: 'GBP' }));
 
-    global.bngApi = { engineLua: () => { throw new Error('should not call engineLua'); } };
+    global.bngApi = {
+      engineLua: (code, cb) => cb(fs.readFileSync(cfgPath, 'utf8'))
+    };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
     const realProcess = global.process;

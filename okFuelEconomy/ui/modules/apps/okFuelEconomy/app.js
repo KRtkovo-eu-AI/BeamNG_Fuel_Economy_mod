@@ -291,7 +291,14 @@ function loadFuelPriceConfig(callback) {
     currency: 'money'
   };
 
-  if (typeof require === 'function') {
+  var hasNode =
+    typeof require === 'function' &&
+    typeof process === 'object' &&
+    process &&
+    process.versions &&
+    process.versions.node;
+
+  if (hasNode) {
     try {
       const fs = require('fs');
       const path = require('path');
@@ -312,45 +319,39 @@ function loadFuelPriceConfig(callback) {
             ))) ||
         null;
 
-      if (!baseDir) {
-        if (typeof callback === 'function') callback(defaults);
-        return defaults;
+      if (baseDir) {
+        const versions = fs
+          .readdirSync(baseDir, { withFileTypes: true })
+          .filter(d => d.isDirectory())
+          .map(d => d.name)
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        const latest = versions[versions.length - 1];
+        if (latest) {
+          const settingsDir = path.join(
+            baseDir,
+            latest,
+            'settings',
+            'krtektm_fuelEconomy'
+          );
+          fs.mkdirSync(settingsDir, { recursive: true });
+          const userFile = path.join(settingsDir, 'fuelPrice.json');
+          if (!fs.existsSync(userFile)) {
+            fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
+            if (typeof callback === 'function') callback(defaults);
+            return defaults;
+          }
+          const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+          const cfgObj = {
+            liquidFuelPrice: parseFloat(data.liquidFuelPrice) || 0,
+            electricityPrice: parseFloat(data.electricityPrice) || 0,
+            currency: data.currency || 'money'
+          };
+          if (typeof callback === 'function') callback(cfgObj);
+          return cfgObj;
+        }
       }
-
-      const versions = fs
-        .readdirSync(baseDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      const latest = versions[versions.length - 1];
-      if (!latest) {
-        if (typeof callback === 'function') callback(defaults);
-        return defaults;
-      }
-      const settingsDir = path.join(
-        baseDir,
-        latest,
-        'settings',
-        'krtektm_fuelEconomy'
-      );
-      fs.mkdirSync(settingsDir, { recursive: true });
-      const userFile = path.join(settingsDir, 'fuelPrice.json');
-      if (!fs.existsSync(userFile)) {
-        fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
-        if (typeof callback === 'function') callback(defaults);
-        return defaults;
-      }
-      const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
-      const cfgObj = {
-        liquidFuelPrice: parseFloat(data.liquidFuelPrice) || 0,
-        electricityPrice: parseFloat(data.electricityPrice) || 0,
-        currency: data.currency || 'money'
-      };
-      if (typeof callback === 'function') callback(cfgObj);
-      return cfgObj;
     } catch (e) {
-      if (typeof callback === 'function') callback(defaults);
-      // fall back to bngApi if file access fails
+      // fall through to bngApi if file access fails
     }
   }
 
