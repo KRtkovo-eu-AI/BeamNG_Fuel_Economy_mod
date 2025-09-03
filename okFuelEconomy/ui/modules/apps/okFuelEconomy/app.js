@@ -137,6 +137,26 @@ function resolveSpeed(wheelSpeed_mps, airSpeed_mps, EPS_SPEED) {
   return Math.abs(wheelSpeed_mps || 0) > EPS_SPEED ? wheelSpeed_mps : 0;
 }
 
+function isEngineRunning(electrics, engineInfo) {
+  if (electrics) {
+    if (typeof electrics.engineRunning === 'boolean') {
+      return electrics.engineRunning;
+    }
+    if (typeof electrics.ignitionLevel === 'number') {
+      return electrics.ignitionLevel > 1;
+    }
+  }
+  if (
+    Array.isArray(engineInfo) &&
+    typeof engineInfo[14] === 'number' &&
+    engineInfo[14] !== 0
+  ) {
+    return engineInfo[14] > 0;
+  }
+  var rpm = (electrics && electrics.rpmTacho) || 0;
+  return rpm > 0;
+}
+
 function buildQueueGraphPoints(queue, width, height) {
   if (!Array.isArray(queue) || queue.length < 2) return '';
   var max = Math.max.apply(null, queue);
@@ -250,6 +270,7 @@ if (typeof module !== 'undefined') {
     resolveAverageConsumption,
     buildQueueGraphPoints,
     resolveSpeed,
+    isEngineRunning,
     getUnitLabels,
     formatDistance,
     formatVolume,
@@ -793,8 +814,7 @@ angular.module('beamng.apps')
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
           var throttle = streams.electrics.throttle_input || 0;
-          var rpm = streams.electrics.rpmTacho || 0;
-          var engineRunning = rpm > 0;
+          var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
           if (!engineRunning && engineWasRunning) {
             resetInstantHistory();
           }

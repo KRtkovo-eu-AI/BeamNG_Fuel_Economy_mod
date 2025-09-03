@@ -1,6 +1,6 @@
 {
   "name": "beamng-fuel-economy-mod",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "BeamNG fuel economy mod",
   "scripts": {
     "test": "node --test"

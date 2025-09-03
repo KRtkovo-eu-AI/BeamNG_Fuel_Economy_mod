@@ -15,6 +15,7 @@ const {
   buildQueueGraphPoints,
   resolveSpeed,
   resolveAverageConsumption,
+  isEngineRunning,
   formatDistance,
   formatVolume,
   formatConsumptionRate,
@@ -242,6 +243,33 @@ describe('app.js utility functions', () => {
     it('falls back to wheel speed when airspeed missing', () => {
       const s = resolveSpeed(7, undefined, EPS_SPEED);
       assert.strictEqual(s, 7);
+    });
+  });
+
+  describe('isEngineRunning', () => {
+    it('prefers the engineRunning flag when present', () => {
+      assert.strictEqual(
+        isEngineRunning({ engineRunning: false, rpmTacho: 800 }, []),
+        false
+      );
+      assert.strictEqual(
+        isEngineRunning({ engineRunning: true, rpmTacho: 0 }, []),
+        true
+      );
+    });
+    it('falls back to ignition level', () => {
+      assert.strictEqual(
+        isEngineRunning({ ignitionLevel: 0, rpmTacho: 900 }, []),
+        false
+      );
+      assert.strictEqual(
+        isEngineRunning({ ignitionLevel: 2, rpmTacho: 0 }, []),
+        true
+      );
+    });
+    it('uses rpm as a last resort', () => {
+      assert.strictEqual(isEngineRunning({ rpmTacho: 700 }, []), true);
+      assert.strictEqual(isEngineRunning({}, []), false);
     });
   });
 
