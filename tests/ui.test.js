@@ -107,7 +107,7 @@ describe('UI template styling', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
 
@@ -283,7 +283,7 @@ describe('UI template styling', () => {
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    global.bngApi = { engineLua: () => '' };
+    global.bngApi = {};
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
     const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
@@ -310,6 +310,39 @@ describe('UI template styling', () => {
 
     global.process = realProcess;
     delete process.env.KRTEKTM_BNG_USER_DIR;
+  });
+
+  it('uses cached fuel prices from localStorage when file access is unavailable', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {};
+    const stored = JSON.stringify({ liquidFuelPrice: 9, electricityPrice: 3, currency: 'PLN' });
+    global.localStorage = {
+      getItem: key => (key === 'okFuelEconomyFuelPrice' ? stored : null),
+      setItem: () => {}
+    };
+    global.performance = { now: () => 0 };
+    const Module = require('module');
+    const realRequire = Module.prototype.require;
+    Module.prototype.require = function (id) {
+      if (id === 'fs' || id === 'path') throw new Error('no fs');
+      return realRequire.apply(this, arguments);
+    };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 9);
+    assert.strictEqual($scope.electricityPriceValue, 3);
+    assert.strictEqual($scope.currency, 'PLN');
+
+    Module.prototype.require = realRequire;
   });
 
   it('defaults fuel price when fuelPrice.json is missing', async () => {

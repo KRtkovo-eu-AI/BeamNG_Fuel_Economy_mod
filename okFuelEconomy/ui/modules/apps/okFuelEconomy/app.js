@@ -291,6 +291,28 @@ function loadFuelPriceConfig(callback) {
     currency: 'money'
   };
 
+  var cacheKey = 'okFuelEconomyFuelPrice';
+  try {
+    if (typeof localStorage !== 'undefined') {
+      var cached = JSON.parse(localStorage.getItem(cacheKey));
+      if (cached && typeof cached === 'object') {
+        defaults = {
+          liquidFuelPrice: parseFloat(cached.liquidFuelPrice) || 0,
+          electricityPrice: parseFloat(cached.electricityPrice) || 0,
+          currency: cached.currency || 'money'
+        };
+      }
+    }
+  } catch (e) { /* ignore cache errors */ }
+
+  function persist(cfg) {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(cacheKey, JSON.stringify(cfg));
+      }
+    } catch (e) { /* ignore persist errors */ }
+  }
+
   var fs = null;
   var path = null;
   if (typeof require === 'function') {
@@ -374,6 +396,7 @@ function loadFuelPriceConfig(callback) {
         } catch (e) {
           cfgObj = null;
         }
+        if (cfgObj) persist(cfgObj);
         if (cfgObj && typeof callback === 'function') callback(cfgObj);
         else if (!cfgObj && typeof callback === 'function') callback(null);
         return cfgObj || defaults;
@@ -399,6 +422,7 @@ function loadFuelPriceConfig(callback) {
       bngApi.engineLua(lua, function (res) {
         var cfg = defaults;
         try { cfg = JSON.parse(res); } catch (e) { /* ignore */ }
+        persist(cfg);
         if (typeof callback === 'function') callback(cfg);
       });
     } catch (e) {
@@ -407,6 +431,7 @@ function loadFuelPriceConfig(callback) {
     return defaults;
   }
 
+  persist(defaults);
   if (typeof callback === 'function') callback(defaults);
   return defaults;
 }
