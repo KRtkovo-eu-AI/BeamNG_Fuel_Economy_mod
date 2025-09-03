@@ -333,6 +333,47 @@ function loadFuelPriceConfig(callback) {
       );
       defaults = cfg;
 
+      var userFile = null;
+      try {
+        var probe = __dirname;
+        for (var i = 0; i < 10; i++) {
+          var candidate = path.join(
+            probe,
+            'settings',
+            'krtektm_fuelEconomy',
+            'fuelPrice.json'
+          );
+          if (fs.existsSync(candidate)) {
+            userFile = candidate;
+            break;
+          }
+          var parent = path.dirname(probe);
+          if (!parent || parent === probe) break;
+          probe = parent;
+        }
+      } catch (e) {
+        userFile = null;
+      }
+
+      if (userFile) {
+        var cfgObj = null;
+        try {
+          var data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+          cfgObj = {
+            liquidFuelPrice: parseFloat(data.liquidFuelPrice) || 0,
+            electricityPrice: parseFloat(data.electricityPrice) || 0,
+            currency: data.currency || 'money'
+          };
+        } catch (e) {
+          cfgObj = null;
+        }
+        if (cfgObj) {
+          persist(cfgObj);
+          if (typeof callback === 'function') callback(cfgObj);
+          return cfgObj;
+        }
+      }
+
       let userPath = null;
       if (
         typeof bngApi !== 'undefined' &&
@@ -387,21 +428,21 @@ function loadFuelPriceConfig(callback) {
         if (!fs.existsSync(userFile)) {
           fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
         }
-        let cfgObj = null;
+        let cfgObj2 = null;
         try {
-          const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
-          cfgObj = {
-            liquidFuelPrice: parseFloat(data.liquidFuelPrice) || 0,
-            electricityPrice: parseFloat(data.electricityPrice) || 0,
-            currency: data.currency || 'money'
+          const data2 = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+          cfgObj2 = {
+            liquidFuelPrice: parseFloat(data2.liquidFuelPrice) || 0,
+            electricityPrice: parseFloat(data2.electricityPrice) || 0,
+            currency: data2.currency || 'money'
           };
         } catch (e) {
-          cfgObj = null;
+          cfgObj2 = null;
         }
-        if (cfgObj) persist(cfgObj);
-        if (cfgObj && typeof callback === 'function') callback(cfgObj);
-        else if (!cfgObj && typeof callback === 'function') callback(null);
-        return cfgObj || defaults;
+        if (cfgObj2) persist(cfgObj2);
+        if (cfgObj2 && typeof callback === 'function') callback(cfgObj2);
+        else if (!cfgObj2 && typeof callback === 'function') callback(null);
+        return cfgObj2 || defaults;
       }
     } catch (e) {
       // fall through to bngApi if file access fails
@@ -433,7 +474,6 @@ function loadFuelPriceConfig(callback) {
     return defaults;
   }
 
-  if (!hadCache) persist(defaults);
   if (typeof callback === 'function') callback(defaults);
   return defaults;
 }

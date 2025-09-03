@@ -312,6 +312,56 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
+  it('finds fuel prices by walking parent directories', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (n, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {};
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    const tmpRoot = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    const userDir = path.join(tmpRoot, 'user');
+    const settingsDir = path.join(userDir, 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(settingsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(settingsDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 7, electricityPrice: 1.7, currency: 'CZK' })
+    );
+
+    const modDir = path.join(
+      userDir,
+      'mods',
+      'unpacked',
+      'okFuelEconomy',
+      'ui',
+      'modules',
+      'apps',
+      'okFuelEconomy'
+    );
+    fs.mkdirSync(modDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(modDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' })
+    );
+    fs.copyFileSync(
+      path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'app.js'),
+      path.join(modDir, 'app.js')
+    );
+
+    delete require.cache[require.resolve(path.join(modDir, 'app.js'))];
+    require(path.join(modDir, 'app.js'));
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 7);
+    assert.strictEqual($scope.electricityPriceValue, 1.7);
+    assert.strictEqual($scope.currency, 'CZK');
+  });
+
   it('uses cached fuel prices from localStorage when file access is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
