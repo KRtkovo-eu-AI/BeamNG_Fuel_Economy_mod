@@ -386,20 +386,18 @@ function loadFuelPriceConfig(callback) {
           userPath = null;
         }
       }
-      if (!userPath) {
-        userPath =
-          (typeof process === 'object' &&
-            process &&
-            process.env &&
-            (process.env.KRTEKTM_BNG_USER_DIR ||
-              path.join(
-                process.platform === 'win32'
-                  ? process.env.LOCALAPPDATA || ''
-                  : path.join(process.env.HOME || '', '.local', 'share'),
-                'BeamNG.drive'
-              ))) ||
-          null;
+      if (
+        !userPath &&
+        typeof process === 'object' &&
+        process &&
+        process.env &&
+        process.env.KRTEKTM_BNG_USER_DIR
+      ) {
+        userPath = process.env.KRTEKTM_BNG_USER_DIR;
       }
+
+      if (userPath && !path.isAbsolute(userPath)) userPath = null;
+      if (userPath && !fs.existsSync(userPath)) userPath = null;
 
       if (userPath) {
         try {
