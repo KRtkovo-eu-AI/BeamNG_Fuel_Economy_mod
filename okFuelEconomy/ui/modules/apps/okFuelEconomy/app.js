@@ -291,17 +291,19 @@ function loadFuelPriceConfig(callback) {
     currency: 'money'
   };
 
-  var hasNode =
-    typeof require === 'function' &&
-    typeof process === 'object' &&
-    process &&
-    process.versions &&
-    process.versions.node;
-
-  if (hasNode) {
+  var fs = null;
+  var path = null;
+  if (typeof require === 'function') {
     try {
-      const fs = require('fs');
-      const path = require('path');
+      fs = require('fs');
+      path = require('path');
+    } catch (e) {
+      fs = null;
+    }
+  }
+
+  if (fs && path) {
+    try {
       const cfg = JSON.parse(
         fs.readFileSync(path.join(__dirname, 'fuelPrice.json'), 'utf8')
       );

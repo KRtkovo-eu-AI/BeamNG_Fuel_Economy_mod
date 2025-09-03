@@ -278,25 +278,24 @@ describe('UI template styling', () => {
     global.setInterval = realSetInterval;
   });
 
-  it('loads fuel prices via bngApi when process.versions.node is missing', async () => {
+  it('loads fuel prices via fs even without process.versions.node', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
-    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
-    const cfgPath = path.join(tmp, '2.00', 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
-    fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
-    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 6, electricityPrice: 2, currency: 'GBP' }));
-
-    global.bngApi = {
-      engineLua: (code, cb) => cb(fs.readFileSync(cfgPath, 'utf8'))
-    };
+    global.bngApi = { engineLua: () => '' };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '2.00', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 6, electricityPrice: 2, currency: 'GBP' })
+    );
     const realProcess = global.process;
-    const realSetInterval = global.setInterval;
-    global.process = { env: { KRTEKTM_BNG_USER_DIR: tmp }, platform: 'linux' };
-    global.setInterval = (fn, ms) => realSetInterval(fn, 20);
+    global.process = { env: { KRTEKTM_BNG_USER_DIR: tmp }, platform: 'linux', versions: {} };
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -310,7 +309,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.currency, 'GBP');
 
     global.process = realProcess;
-    global.setInterval = realSetInterval;
+    delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
   it('defaults fuel price when fuelPrice.json is missing', async () => {
