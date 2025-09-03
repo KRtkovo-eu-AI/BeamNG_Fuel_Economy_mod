@@ -4,6 +4,7 @@
 // extremely small speeds, keeping idle or creeping readings realistic.
 var EPS_SPEED = 0.005; // [m/s]
 var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
+var MIN_RPM_RUNNING = 100; // below this rpm the engine is considered off
 
 function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
   if (dtSeconds <= 0 || previousFuel === null) return 0;
@@ -154,7 +155,7 @@ function isEngineRunning(electrics, engineInfo) {
     return engineInfo[14] > 0;
   }
   var rpm = (electrics && electrics.rpmTacho) || 0;
-  return rpm > 0;
+  return rpm >= MIN_RPM_RUNNING;
 }
 
 function buildQueueGraphPoints(queue, width, height) {

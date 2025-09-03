@@ -269,6 +269,7 @@ describe('app.js utility functions', () => {
     });
     it('uses rpm as a last resort', () => {
       assert.strictEqual(isEngineRunning({ rpmTacho: 700 }, []), true);
+      assert.strictEqual(isEngineRunning({ rpmTacho: 50 }, []), false);
       assert.strictEqual(isEngineRunning({}, []), false);
     });
   });
