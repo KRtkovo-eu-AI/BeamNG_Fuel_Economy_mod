@@ -398,6 +398,41 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.currency, 'CZK');
   });
 
+  it('loads fuel prices via window.location.pathname', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (n, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {};
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    const verDir = path.join(tmp, '2.00');
+    const settingsDir = path.join(verDir, 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(settingsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(settingsDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 8.8, electricityPrice: 4.4, currency: 'USD' })
+    );
+    const uiDir = path.join(verDir, 'ui');
+    fs.mkdirSync(uiDir, { recursive: true });
+    global.window = { location: { pathname: path.join(uiDir, 'index.html') } };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 8.8);
+    assert.strictEqual($scope.electricityPriceValue, 4.4);
+    assert.strictEqual($scope.currency, 'USD');
+
+    delete global.window;
+  });
+
   it('uses cached fuel prices from localStorage when file access is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

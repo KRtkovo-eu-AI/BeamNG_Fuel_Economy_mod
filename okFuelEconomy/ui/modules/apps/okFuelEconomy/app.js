@@ -374,6 +374,52 @@ function loadFuelPriceConfig(callback) {
         }
       }
 
+      if (
+        !userFile &&
+        typeof window !== 'undefined' &&
+        window.location &&
+        window.location.pathname
+      ) {
+        try {
+          var probe = path.dirname(decodeURI(window.location.pathname));
+          for (var j = 0; j < 10; j++) {
+            var candidate2 = path.join(
+              probe,
+              'settings',
+              'krtektm_fuelEconomy',
+              'fuelPrice.json'
+            );
+            if (fs.existsSync(candidate2)) {
+              userFile = candidate2;
+              break;
+            }
+            var parent2 = path.dirname(probe);
+            if (!parent2 || parent2 === probe) break;
+            probe = parent2;
+          }
+        } catch (e) {
+          userFile = null;
+        }
+        if (userFile) {
+          var cfgObj3 = null;
+          try {
+            var data3 = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+            cfgObj3 = {
+              liquidFuelPrice: parseFloat(data3.liquidFuelPrice) || 0,
+              electricityPrice: parseFloat(data3.electricityPrice) || 0,
+              currency: data3.currency || 'money'
+            };
+          } catch (e) {
+            cfgObj3 = null;
+          }
+          if (cfgObj3) {
+            persist(cfgObj3);
+            if (typeof callback === 'function') callback(cfgObj3);
+            return cfgObj3;
+          }
+        }
+      }
+
       let userPath = null;
       if (
         typeof bngApi !== 'undefined' &&
