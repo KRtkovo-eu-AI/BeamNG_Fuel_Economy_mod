@@ -4,6 +4,7 @@
 // extremely small speeds, keeping idle or creeping readings realistic.
 var EPS_SPEED = 0.005; // [m/s]
 var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
+var MIN_RPM_RUNNING = 100; // below this rpm the engine is considered off
 
 function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
   if (dtSeconds <= 0 || previousFuel === null) return 0;
@@ -107,6 +108,23 @@ function calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED)
   return speed_mps > EPS_SPEED ? Infinity : 0;
 }
 
+function resolveAverageConsumption(
+  engineRunning,
+  speed_mps,
+  fuel_used_l,
+  distance_m,
+  inst_l_per_100km,
+  previousAvgTrip,
+  previousAvg
+) {
+  if (engineRunning) {
+    return speed_mps > MIN_VALID_SPEED_MPS
+      ? calculateAverageConsumption(fuel_used_l, distance_m)
+      : inst_l_per_100km;
+  }
+  return previousAvgTrip || previousAvg || 0;
+}
+
 // Decide which speed value should be used for distance accumulation.
 // Prefer the airspeed when available as it represents the vehicle's
 // movement relative to the environment. If the airspeed is below the
@@ -118,6 +136,26 @@ function resolveSpeed(wheelSpeed_mps, airSpeed_mps, EPS_SPEED) {
     return Math.abs(airSpeed_mps) > EPS_SPEED ? airSpeed_mps : 0;
   }
   return Math.abs(wheelSpeed_mps || 0) > EPS_SPEED ? wheelSpeed_mps : 0;
+}
+
+function isEngineRunning(electrics, engineInfo) {
+  if (electrics) {
+    if (typeof electrics.engineRunning === 'boolean') {
+      return electrics.engineRunning;
+    }
+    if (typeof electrics.ignitionLevel === 'number') {
+      return electrics.ignitionLevel > 1;
+    }
+  }
+  if (
+    Array.isArray(engineInfo) &&
+    typeof engineInfo[14] === 'number' &&
+    engineInfo[14] !== 0
+  ) {
+    return engineInfo[14] > 0;
+  }
+  var rpm = (electrics && electrics.rpmTacho) || 0;
+  return rpm >= MIN_RPM_RUNNING;
 }
 
 function buildQueueGraphPoints(queue, width, height) {
@@ -230,8 +268,10 @@ if (typeof module !== 'undefined') {
     calculateMedian,
     calculateAverageConsumption,
     calculateRange,
+    resolveAverageConsumption,
     buildQueueGraphPoints,
     resolveSpeed,
+    isEngineRunning,
     getUnitLabels,
     formatDistance,
     formatVolume,
@@ -525,10 +565,11 @@ angular.module('beamng.apps')
       var tripDistanceElectric_m = 0;
       var lastFuelFlow_lps = 0; // last smoothed value
       var idleFuelFlow_lps = 0;
-      var lastThrottle = 0;
-      var engineWasRunning = false;
+        var lastThrottle = 0;
+        var engineWasRunning = false;
+        var initialized = false;
 
-      var lastCapacity_l = null;
+        var lastCapacity_l = null;
       var lastInstantUpdate_ms = 0;
       var INSTANT_UPDATE_INTERVAL = 250;
       var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
@@ -774,8 +815,7 @@ angular.module('beamng.apps')
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
           var throttle = streams.electrics.throttle_input || 0;
-          var rpm = streams.electrics.rpmTacho || 0;
-          var engineRunning = rpm > 0;
+          var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
           if (!engineRunning && engineWasRunning) {
             resetInstantHistory();
           }
@@ -821,12 +861,10 @@ angular.module('beamng.apps')
                 tripFuelUsedElectric_l += deltaTripFuel;
                 overall.fuelUsedElectric = tripFuelUsedElectric_l;
                 tripCostElectric += deltaFuelUnit * $scope.electricityPriceValue;
-              } else {
-                if (deltaTripFuel > 0) {
-                  tripFuelUsedLiquid_l += deltaTripFuel;
-                  overall.fuelUsedLiquid = tripFuelUsedLiquid_l;
-                  tripCostLiquid += deltaFuelUnit * $scope.liquidFuelPriceValue;
-                }
+              } else if (deltaTripFuel > 0) {
+                tripFuelUsedLiquid_l += deltaTripFuel;
+                overall.fuelUsedLiquid = tripFuelUsedLiquid_l;
+                tripCostLiquid += deltaFuelUnit * $scope.liquidFuelPriceValue;
               }
             }
             if (speed_mps > EPS_SPEED) {
@@ -850,7 +888,9 @@ angular.module('beamng.apps')
             resetAvgHistory();
           }
 
-          distance_m += deltaDistance;
+          if (engineRunning) {
+            distance_m += deltaDistance;
+          }
 
           if (throttle <= 0.05 && lastThrottle > 0.05) {
             previousFuel_l = currentFuel_l;
@@ -906,6 +946,12 @@ angular.module('beamng.apps')
             lastInstantUpdate_ms = now_ms;
           }
 
+          if (!engineRunning && initialized) {
+            previousFuel_l = currentFuel_l;
+            lastThrottle = throttle;
+            return;
+          }
+
           if (engineRunning) {
             instantHistory.queue.push(inst_l_per_h);
             trimQueue(instantHistory.queue, INSTANT_MAX_ENTRIES);
@@ -925,10 +971,15 @@ angular.module('beamng.apps')
             }
           }
 
-          var avg_l_per_100km_ok =
-            speed_mps > MIN_VALID_SPEED_MPS
-              ? calculateAverageConsumption(fuel_used_l, distance_m)
-              : inst_l_per_100km;
+          var avg_l_per_100km_ok = resolveAverageConsumption(
+            engineRunning,
+            speed_mps,
+            fuel_used_l,
+            distance_m,
+            inst_l_per_100km,
+            overall.previousAvgTrip,
+            overall.previousAvg
+          );
           if (
             !Number.isFinite(avg_l_per_100km_ok) ||
             avg_l_per_100km_ok > MAX_CONSUMPTION
@@ -1062,6 +1113,7 @@ angular.module('beamng.apps')
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
           lastDistance_m = distance_m;
+          initialized = true;
         });
       });
     }]

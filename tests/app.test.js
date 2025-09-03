@@ -14,6 +14,8 @@ const {
   calculateRange,
   buildQueueGraphPoints,
   resolveSpeed,
+  resolveAverageConsumption,
+  isEngineRunning,
   formatDistance,
   formatVolume,
   formatConsumptionRate,
@@ -173,6 +175,38 @@ describe('app.js utility functions', () => {
     });
   });
 
+  describe('resolveAverageConsumption', () => {
+    it('uses previous averages when engine is off', () => {
+      const avg = resolveAverageConsumption(false, 0, 0, 0, 0, 5, 7);
+      assert.strictEqual(avg, 5);
+    });
+    it('computes average when running and moving', () => {
+      const avg = resolveAverageConsumption(
+        true,
+        MIN_VALID_SPEED_MPS + 1,
+        1,
+        1000,
+        0,
+        0,
+        0
+      );
+      assert.strictEqual(avg, calculateAverageConsumption(1, 1000));
+    });
+    it('falls back to instant rate at low speed', () => {
+      const inst = 8;
+      const avg = resolveAverageConsumption(
+        true,
+        MIN_VALID_SPEED_MPS / 2,
+        0,
+        0,
+        inst,
+        0,
+        0
+      );
+      assert.strictEqual(avg, inst);
+    });
+  });
+
   describe('buildQueueGraphPoints', () => {
     it('returns empty string for short queues', () => {
       assert.strictEqual(buildQueueGraphPoints([1], 100, 40), '');
@@ -209,6 +243,34 @@ describe('app.js utility functions', () => {
     it('falls back to wheel speed when airspeed missing', () => {
       const s = resolveSpeed(7, undefined, EPS_SPEED);
       assert.strictEqual(s, 7);
+    });
+  });
+
+  describe('isEngineRunning', () => {
+    it('prefers the engineRunning flag when present', () => {
+      assert.strictEqual(
+        isEngineRunning({ engineRunning: false, rpmTacho: 800 }, []),
+        false
+      );
+      assert.strictEqual(
+        isEngineRunning({ engineRunning: true, rpmTacho: 0 }, []),
+        true
+      );
+    });
+    it('falls back to ignition level', () => {
+      assert.strictEqual(
+        isEngineRunning({ ignitionLevel: 0, rpmTacho: 900 }, []),
+        false
+      );
+      assert.strictEqual(
+        isEngineRunning({ ignitionLevel: 2, rpmTacho: 0 }, []),
+        true
+      );
+    });
+    it('uses rpm as a last resort', () => {
+      assert.strictEqual(isEngineRunning({ rpmTacho: 700 }, []), true);
+      assert.strictEqual(isEngineRunning({ rpmTacho: 50 }, []), false);
+      assert.strictEqual(isEngineRunning({}, []), false);
     });
   });
 
