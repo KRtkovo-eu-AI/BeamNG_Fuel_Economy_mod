@@ -291,7 +291,13 @@ function loadFuelPriceConfig(callback) {
     currency: 'money'
   };
 
-  if (typeof require === 'function' && typeof process !== 'undefined') {
+  if (
+    typeof require === 'function' &&
+    typeof process === 'object' &&
+    process &&
+    process.versions &&
+    process.versions.node
+  ) {
     try {
       const fs = require('fs');
       const path = require('path');

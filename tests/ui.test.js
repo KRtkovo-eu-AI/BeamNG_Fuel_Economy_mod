@@ -233,6 +233,39 @@ describe('UI template styling', () => {
     global.setInterval = realSetInterval;
   });
 
+  it('falls back to bngApi when process.versions.node is missing', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    const cfgPath = path.join(tmp, 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
+    fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 6, electricityPrice: 2, currency: 'GBP' }));
+
+    global.bngApi = { engineLua: (code, cb) => cb(fs.readFileSync(cfgPath, 'utf8')) };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    const realProcess = global.process;
+    const realSetInterval = global.setInterval;
+    global.process = { env: {} };
+    global.setInterval = (fn, ms) => realSetInterval(fn, 20);
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 6);
+    assert.strictEqual($scope.electricityPriceValue, 2);
+    assert.strictEqual($scope.currency, 'GBP');
+
+    global.process = realProcess;
+    global.setInterval = realSetInterval;
+  });
+
   it('defaults fuel price when fuelPrice.json is missing', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
