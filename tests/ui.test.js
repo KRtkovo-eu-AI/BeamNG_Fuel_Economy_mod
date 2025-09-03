@@ -278,6 +278,55 @@ describe('UI template styling', () => {
     global.setInterval = realSetInterval;
   });
 
+  it('uses engineLua when require exists without a Node runtime', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    const cfgPath = path.join(tmp, 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
+    fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({ liquidFuelPrice: 9.9, electricityPrice: 3.3, currency: 'JPY' })
+    );
+
+    let luaCalled = false;
+    global.bngApi = {
+      engineLua: (code, cb) => {
+        luaCalled = true;
+        cb(fs.readFileSync(cfgPath, 'utf8'));
+      }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    const Module = require('module');
+    const realRequire = Module.prototype.require;
+    Module.prototype.require = function (id) {
+      if (id === 'fs' || id === 'path') return {};
+      return realRequire.apply(this, arguments);
+    };
+    const realProcess = global.process;
+    global.process = { env: {}, versions: {} };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setImmediate(r));
+
+    assert.ok(luaCalled);
+    assert.strictEqual($scope.liquidFuelPriceValue, 9.9);
+    assert.strictEqual($scope.electricityPriceValue, 3.3);
+    assert.strictEqual($scope.currency, 'JPY');
+
+    Module.prototype.require = realRequire;
+    global.process = realProcess;
+  });
+
   it('falls back to bngApi.engineLua when user path cannot be resolved', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

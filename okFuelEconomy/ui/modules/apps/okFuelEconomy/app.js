@@ -317,7 +317,12 @@ function loadFuelPriceConfig(callback) {
 
   var fs = null;
   var path = null;
-  if (typeof require === 'function') {
+  var haveNode =
+    typeof process === 'object' &&
+    process &&
+    process.versions &&
+    process.versions.node;
+  if (haveNode && typeof require === 'function') {
     try {
       fs = require('fs');
       path = require('path');
