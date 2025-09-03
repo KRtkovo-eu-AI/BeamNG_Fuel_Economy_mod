@@ -400,7 +400,9 @@ angular.module('beamng.apps')
           $scope.electricityPriceValue = cfg.electricityPrice;
           $scope.currency = cfg.currency;
         };
-        if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(applyInit); else applyInit();
+        if (typeof $scope.$applyAsync === 'function') $scope.$applyAsync(applyInit);
+        else if (typeof $scope.$apply === 'function') $scope.$apply(applyInit);
+        else applyInit();
       });
 
       var pollMs = 1000;
@@ -420,7 +422,9 @@ angular.module('beamng.apps')
               $scope.electricityPriceValue = cfg.electricityPrice;
               $scope.currency = cfg.currency;
             };
-            if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(apply); else apply();
+            if (typeof $scope.$applyAsync === 'function') $scope.$applyAsync(apply);
+            else if (typeof $scope.$apply === 'function') $scope.$apply(apply);
+            else apply();
           }
         });
       }, pollMs);
@@ -803,7 +807,7 @@ angular.module('beamng.apps')
       });
 
       $scope.$on('streamsUpdate', function (event, streams) {
-        $scope.$evalAsync(function () {
+        var fn = function () {
           if (!streams.engineInfo || !streams.electrics) return;
 
           var now_ms = performance.now();
@@ -1120,7 +1124,10 @@ angular.module('beamng.apps')
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
           lastDistance_m = distance_m;
           initialized = true;
-        });
+        };
+        if (typeof $scope.$applyAsync === 'function') $scope.$applyAsync(fn);
+        else if (typeof $scope.$apply === 'function') $scope.$apply(fn);
+        else fn();
       });
     }]
   };

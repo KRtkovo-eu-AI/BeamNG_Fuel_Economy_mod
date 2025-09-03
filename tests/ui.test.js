@@ -178,6 +178,46 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_FUEL_POLL_MS;
   });
 
+  it('applies fuel price updates without active digest', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '1.05', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 1.1, electricityPrice: 0.7, currency: 'EUR' }));
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const queued = [];
+    const $scope = {
+      $on: () => {},
+      $evalAsync: fn => queued.push(fn),
+      $applyAsync: fn => fn()
+    };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 30));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 1.1);
+    assert.strictEqual(queued.length, 0);
+
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 2.2, electricityPrice: 1.4, currency: 'EUR' }));
+    await new Promise(r => setTimeout(r, 60));
+    assert.strictEqual($scope.liquidFuelPriceValue, 2.2);
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
