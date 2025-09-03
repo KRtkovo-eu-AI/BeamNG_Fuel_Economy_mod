@@ -345,6 +345,41 @@ describe('UI template styling', () => {
     Module.prototype.require = realRequire;
   });
 
+  it('retains cached fuel prices when game API is unavailable', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const stored = JSON.stringify({ liquidFuelPrice: 7, electricityPrice: 1.1, currency: 'CZK' });
+    const setCalls = [];
+    global.localStorage = {
+      getItem: key => (key === 'okFuelEconomyFuelPrice' ? stored : null),
+      setItem: (...args) => { setCalls.push(args); }
+    };
+    global.performance = { now: () => 0 };
+    global.bngApi = undefined;
+    const Module = require('module');
+    const realRequire = Module.prototype.require;
+    Module.prototype.require = function (id) {
+      if (id === 'fs' || id === 'path') throw new Error('no fs');
+      return realRequire.apply(this, arguments);
+    };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 7);
+    assert.strictEqual($scope.electricityPriceValue, 1.1);
+    assert.strictEqual($scope.currency, 'CZK');
+    assert.deepStrictEqual(setCalls, []);
+
+    Module.prototype.require = realRequire;
+  });
+
   it('defaults fuel price when fuelPrice.json is missing', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

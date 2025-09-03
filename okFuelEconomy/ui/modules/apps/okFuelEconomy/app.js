@@ -292,6 +292,7 @@ function loadFuelPriceConfig(callback) {
   };
 
   var cacheKey = 'okFuelEconomyFuelPrice';
+  var hadCache = false;
   try {
     if (typeof localStorage !== 'undefined') {
       var cached = JSON.parse(localStorage.getItem(cacheKey));
@@ -301,6 +302,7 @@ function loadFuelPriceConfig(callback) {
           electricityPrice: parseFloat(cached.electricityPrice) || 0,
           currency: cached.currency || 'money'
         };
+        hadCache = true;
       }
     }
   } catch (e) { /* ignore cache errors */ }
@@ -431,7 +433,7 @@ function loadFuelPriceConfig(callback) {
     return defaults;
   }
 
-  persist(defaults);
+  if (!hadCache) persist(defaults);
   if (typeof callback === 'function') callback(defaults);
   return defaults;
 }
