@@ -424,7 +424,7 @@ angular.module('beamng.apps')
           }
         });
       }, pollMs);
-      if (priceTimer.unref) priceTimer.unref();
+      if (typeof window === 'undefined' && priceTimer.unref) priceTimer.unref();
 
       $scope.$on('$destroy', function () {
         StreamsManager.remove(streamsList);
