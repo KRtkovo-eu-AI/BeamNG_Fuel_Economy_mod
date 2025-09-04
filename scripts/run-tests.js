@@ -65,31 +65,29 @@ if (major >= 20) {
     const cases = [];
     let failures = 0;
     const start = Date.now();
-    for await (const { type, data } of run({ files: testFiles })) {
-      if (
-        (type !== 'test:pass' && type !== 'test:fail') ||
-        data.details?.type !== 'test'
-      )
-        continue;
+    for await (const event of run({ files: testFiles })) {
+      const { type } = event;
+      if (type !== 'test:pass' && type !== 'test:fail') continue;
 
-      const name = data.name || data.test?.name || 'unknown';
-      const durationMs =
-        data.details?.duration_ms ?? data.test?.duration_ms ?? 0;
+      const obj = event.data || event;
+      const evtTest = obj.test;
+      const evtDetails = obj.details;
+      const evtType = evtDetails?.type || evtTest?.type;
+      if (evtType && evtType !== 'test') continue;
+
+      const name = obj.name || evtTest?.name || 'unknown';
+      const durationMs = evtDetails?.duration_ms ?? evtTest?.duration_ms ?? 0;
       const t = durationMs / 1000;
 
       if (type === 'test:pass') {
         console.log(`\u2713 ${name}`);
-        cases.push(
-          `<testcase name="${escapeXml(name)}" time="${t}"></testcase>`
-        );
+        cases.push(`<testcase name="${escapeXml(name)}" time="${t}"></testcase>`);
       } else {
         const msg =
-          data.details?.error?.message ||
-          data.errors?.[0]?.message ||
-          'failed';
+          evtDetails?.error?.message || obj.errors?.[0]?.message || 'failed';
         console.log(`\u2717 ${name}`);
-        if (data.details?.error) console.error(data.details.error);
-        if (data.errors) data.errors.forEach((e) => console.error(e));
+        if (evtDetails?.error) console.error(evtDetails.error);
+        if (obj.errors) obj.errors.forEach((e) => console.error(e));
         cases.push(
           `<testcase name="${escapeXml(name)}" time="${t}"><failure>${escapeXml(msg)}</failure></testcase>`
         );
@@ -98,9 +96,7 @@ if (major >= 20) {
     }
     const total = cases.length;
     const time = (Date.now() - start) / 1000;
-    const suite = `<?xml version="1.0" encoding="utf-8"?>\n<testsuite name="node" tests="${total}" failures="${failures}" errors="0" skipped="0" time="${time}">\n${cases.join(
-      '\n'
-    )}\n</testsuite>\n`;
+    const suite = `<?xml version="1.0" encoding="utf-8"?>\n<testsuite name="node" tests="${total}" failures="${failures}" errors="0" skipped="0" time="${time}">\n${cases.join('\n')}\n</testsuite>\n`;
     fs.mkdirSync(path.dirname(junitDest), { recursive: true });
     fs.writeFileSync(junitDest, suite);
     process.exit(failures > 0 ? 1 : 0);
@@ -109,3 +105,4 @@ if (major >= 20) {
     process.exit(1);
   });
 }
+
