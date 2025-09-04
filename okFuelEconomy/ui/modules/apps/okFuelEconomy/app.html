@@ -1,5 +1,4 @@
 <div class="bngApp"
-     ng-init="useCustomStyles=true"
      ng-attr-style="{{ 'width:100%; height:100%; overflow:auto; position:relative;' + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:16px 16px,16px 16px; color:#aeeaff; font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
      layout="column">
 
@@ -243,7 +242,7 @@
   </span>
   <!-- Style toggle icon -->
   <span class="material-icons"
-        ng-click="useCustomStyles=!useCustomStyles"
+        ng-click="toggleCustomStyles()"
         ng-attr-style="{{ 'position:absolute; top:24px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
     palette
   </span>
