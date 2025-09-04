@@ -56,7 +56,11 @@ if (major >= 20) {
     let failures = 0;
     const start = Date.now();
     for await (const { type, data } of run({ files: testFiles })) {
-      if (type !== 'test:pass' && type !== 'test:fail') continue;
+      if (
+        (type !== 'test:pass' && type !== 'test:fail') ||
+        data.details?.type !== 'test'
+      )
+        continue;
 
       const name = data.name || data.test?.name || 'unknown';
       const durationMs =
