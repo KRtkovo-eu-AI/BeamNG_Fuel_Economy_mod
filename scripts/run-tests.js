@@ -8,9 +8,24 @@ const testFiles = fs
   .filter((f) => f.endsWith('.test.js'))
   .map((f) => path.join('tests', f));
 
+const major = parseInt(process.versions.node.split('.')[0], 10);
+const argv = process.argv.slice(2);
+const reporterArgs = [];
+const otherArgs = [];
+
+for (const arg of argv) {
+  if (arg.startsWith('--test-reporter')) {
+    if (major >= 20) {
+      reporterArgs.push(arg);
+    }
+  } else {
+    otherArgs.push(arg);
+  }
+}
+
 const child = spawn(
   process.execPath,
-  ['--test', ...testFiles, ...process.argv.slice(2)],
+  ['--test', ...reporterArgs, ...otherArgs, ...testFiles],
   {
     env: { ...process.env, NODE_OPTIONS: '' },
     stdio: 'inherit'
