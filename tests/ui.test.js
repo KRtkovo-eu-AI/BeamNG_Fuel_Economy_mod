@@ -93,6 +93,33 @@ describe('UI template styling', () => {
     assert.equal(luaCmd, 'extensions.load("fuelPriceEditor")');
   });
 
+  it('persists style preference to localStorage', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {};
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
+    global.performance = { now: () => 0 };
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+    assert.strictEqual($scope.useCustomStyles, true);
+    $scope.toggleCustomStyles();
+    assert.strictEqual($scope.useCustomStyles, false);
+    assert.strictEqual(store.okFuelEconomyUseCustomStyles, 'false');
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    directiveDef = undefined;
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn2 = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope2 = { $on: () => {} };
+    controllerFn2({ debug: () => {} }, $scope2);
+    assert.strictEqual($scope2.useCustomStyles, false);
+  });
+
   it('exposes fuel prices and currency in fuelPrice.json', () => {
     const priceConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'fuelPrice.json');
     const cfg = JSON.parse(fs.readFileSync(priceConfigPath, 'utf8'));
@@ -282,7 +309,7 @@ describe('UI template styling', () => {
 
   it('positions reset, style toggle and settings icons consistently', () => {
     const resetAttr = getNgAttrStyle('ng-click="reset($event)"');
-    const toggleAttr = getNgAttrStyle('ng-click="useCustomStyles=!useCustomStyles"');
+    const toggleAttr = getNgAttrStyle('ng-click="toggleCustomStyles()"');
     const settingsAttr = getNgAttrStyle('ng-click="settingsOpen=!settingsOpen"');
     const r = parseStyle(resetAttr);
     const t = parseStyle(toggleAttr);
@@ -315,7 +342,7 @@ describe('UI template styling', () => {
     assert.ok(html.includes('{{ vehicleNameStr }}'));
     assert.ok(html.includes('strong ng-if="visible.heading"'));
     assert.ok(html.includes('ng-click="reset($event)"'));
-    assert.ok(html.includes('ng-click="useCustomStyles=!useCustomStyles"'));
+    assert.ok(html.includes('ng-click="toggleCustomStyles()"'));
     assert.ok(html.includes('ng-click="settingsOpen=!settingsOpen"'));
     assert.ok(html.includes('autorenew'));
     assert.ok(html.includes('palette'));
