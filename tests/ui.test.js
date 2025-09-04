@@ -515,6 +515,48 @@ describe('UI template styling', () => {
     Module.prototype.require = realRequire;
   });
 
+  it('preserves cached fuel prices when packaged defaults exist', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {};
+    const stored = JSON.stringify({ liquidFuelPrice: 32.5, electricityPrice: 5.5, currency: 'CZK' });
+    const cache = { okFuelEconomyFuelPrice: stored };
+    global.localStorage = {
+      getItem: key => (key in cache ? cache[key] : null),
+      setItem: (key, val) => { cache[key] = val; }
+    };
+    global.performance = { now: () => 0 };
+    const Module = require('module');
+    const realRequire = Module.prototype.require;
+    Module.prototype.require = function (id) {
+      if (id === 'fs') {
+        return {
+          readFileSync: () => JSON.stringify({ liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' }),
+          existsSync: () => false,
+          mkdirSync: () => {},
+          copyFileSync: () => {}
+        };
+      }
+      if (id === 'path') return realRequire.call(this, 'path');
+      return realRequire.apply(this, arguments);
+    };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 32.5);
+    assert.strictEqual($scope.electricityPriceValue, 5.5);
+    assert.strictEqual($scope.currency, 'CZK');
+
+    Module.prototype.require = realRequire;
+  });
+
   it('retains cached fuel prices when game API is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

@@ -336,7 +336,7 @@ function loadFuelPriceConfig(callback) {
       const cfg = JSON.parse(
         fs.readFileSync(path.join(__dirname, 'fuelPrice.json'), 'utf8')
       );
-      defaults = cfg;
+      if (!hadCache) defaults = cfg;
 
       var userFile = null;
       try {
