@@ -392,6 +392,42 @@ describe('controller integration', () => {
     assert.strictEqual($scope.visible.tripAvgCost, false);
     assert.strictEqual($scope.visible.tripTotalCost, false);
   });
+  it('applies currency before engine starts', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '1.10', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(verDir, 'fuelPrice.json'),
+      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+    );
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.strictEqual($scope.totalCost, '0.00 USD');
+    assert.strictEqual($scope.avgCost, '0.00 USD/km');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.00 USD/km');
+    assert.strictEqual($scope.tripTotalCostLiquid, '0.00 USD');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+  });
   it('computes fuel costs via controller', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
