@@ -317,18 +317,18 @@ function loadFuelPriceConfig(callback) {
 
   var fs = null;
   var path = null;
-  var haveNode =
-    typeof process === 'object' &&
-    process &&
-    process.versions &&
-    process.versions.node;
-  if (haveNode && typeof require === 'function') {
+  if (typeof require === 'function') {
     try {
       fs = require('fs');
       path = require('path');
     } catch (e) {
       fs = null;
+      path = null;
     }
+  }
+  if (!fs || typeof fs.readFileSync !== 'function') {
+    fs = null;
+    path = null;
   }
 
   if (fs && path) {
