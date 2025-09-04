@@ -385,39 +385,61 @@ angular.module('beamng.apps')
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
 
-      $scope.liquidFuelPriceValue = 0;
-      $scope.electricityPriceValue = 0;
-      $scope.currency = 'money';
-      loadFuelPriceConfig(function (cfg) {
-        var applyInit = function () {
-          $scope.liquidFuelPriceValue = cfg.liquidFuelPrice;
-          $scope.electricityPriceValue = cfg.electricityPrice;
-          $scope.currency = cfg.currency;
-        };
-        if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(applyInit); else applyInit();
-      });
+        $scope.liquidFuelPriceValue = 0;
+        $scope.electricityPriceValue = 0;
+        $scope.currency = 'money';
+
+        function updateCostPrice(unitLabels, priceForMode) {
+          var mode = $scope.unitMode || 'metric';
+          if (!unitLabels) {
+            unitLabels = getUnitLabels(mode);
+          }
+          if (typeof priceForMode !== 'number') {
+            priceForMode =
+              mode === 'electric'
+                ? $scope.electricityPriceValue
+                : $scope.liquidFuelPriceValue;
+          }
+          $scope.costPrice =
+            priceForMode.toFixed(2) +
+            ' ' +
+            $scope.currency +
+            '/' +
+            unitLabels.volume;
+        }
+
+        loadFuelPriceConfig(function (cfg) {
+          var applyInit = function () {
+            $scope.liquidFuelPriceValue = cfg.liquidFuelPrice;
+            $scope.electricityPriceValue = cfg.electricityPrice;
+            $scope.currency = cfg.currency;
+            updateCostPrice();
+          };
+          if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(applyInit); else applyInit();
+        });
 
       var pollMs = 1000;
       if (typeof process !== 'undefined' && process.env && process.env.KRTEKTM_FUEL_POLL_MS) {
         var intVal = parseInt(process.env.KRTEKTM_FUEL_POLL_MS, 10);
         if (intVal > 0) pollMs = intVal;
       }
-      var priceTimer = setInterval(function () {
-        loadFuelPriceConfig(function (cfg) {
-          if (
-            cfg.liquidFuelPrice !== $scope.liquidFuelPriceValue ||
-            cfg.electricityPrice !== $scope.electricityPriceValue ||
-            cfg.currency !== $scope.currency
-          ) {
-            var apply = function () {
-              $scope.liquidFuelPriceValue = cfg.liquidFuelPrice;
-              $scope.electricityPriceValue = cfg.electricityPrice;
-              $scope.currency = cfg.currency;
-            };
-            if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(apply); else apply();
-          }
-        });
-      }, pollMs);
+        var priceTimer = setInterval(function () {
+          loadFuelPriceConfig(function (cfg) {
+            if (
+              cfg.liquidFuelPrice !== $scope.liquidFuelPriceValue ||
+              cfg.electricityPrice !== $scope.electricityPriceValue ||
+              cfg.currency !== $scope.currency
+            ) {
+              var apply = function () {
+                $scope.liquidFuelPriceValue = cfg.liquidFuelPrice;
+                $scope.electricityPriceValue = cfg.electricityPrice;
+                $scope.currency = cfg.currency;
+                updateCostPrice();
+              };
+              if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(apply); else apply();
+            }
+          });
+        }, pollMs);
       if (priceTimer.unref) priceTimer.unref();
 
       $scope.$on('$destroy', function () {
@@ -438,21 +460,23 @@ angular.module('beamng.apps')
         imperial: 'Imperial (gal, mi)',
         electric: 'Electric (kWh, km)'
       };
-      $scope.unitMenuOpen = false;
-      $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
-      $scope.setUnit = function (mode) {
-        $scope.unitMode = mode;
-        updateUnitLabels();
         $scope.unitMenuOpen = false;
-      };
-      function updateUnitLabels() {
-        var lbls = getUnitLabels($scope.unitMode);
-        $scope.unitConsumptionUnit = lbls.consumption;
-        $scope.unitEfficiencyUnit = lbls.efficiency;
-        $scope.unitFlowUnit = lbls.flow;
-        $scope.unitDistanceUnit = lbls.distance;
-      }
-      updateUnitLabels();
+        $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
+        $scope.setUnit = function (mode) {
+          $scope.unitMode = mode;
+          updateUnitLabels();
+          updateCostPrice();
+          $scope.unitMenuOpen = false;
+        };
+        function updateUnitLabels() {
+          var lbls = getUnitLabels($scope.unitMode);
+          $scope.unitConsumptionUnit = lbls.consumption;
+          $scope.unitEfficiencyUnit = lbls.efficiency;
+          $scope.unitFlowUnit = lbls.flow;
+          $scope.unitDistanceUnit = lbls.distance;
+        }
+        updateUnitLabels();
+        updateCostPrice();
       $scope.visible = {
         heading: true,
         distanceMeasured: true,
@@ -1054,8 +1078,7 @@ angular.module('beamng.apps')
             $scope.unitMode === 'electric'
               ? $scope.electricityPriceValue
               : $scope.liquidFuelPriceValue;
-          $scope.costPrice =
-            priceForMode.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.volume;
+          updateCostPrice(unitLabels, priceForMode);
 
           var fuelUsedUnit = convertVolumeToUnit(fuel_used_l, $scope.unitMode);
           var totalCostVal = fuelUsedUnit * priceForMode;
