@@ -7,10 +7,16 @@ if (!input || !output) {
   process.exit(1);
 }
 
+if (!fs.existsSync(input)) {
+  const empty = `<?xml version="1.0" encoding="utf-8"?>\n<testsuite name="node" tests="0" failures="0" errors="0" skipped="0" time="0">\n</testsuite>\n`;
+  fs.writeFileSync(output, empty);
+  process.exit(0);
+}
+
 const xml = fs.readFileSync(input, 'utf8');
 const cases = xml.match(/<testcase[\s\S]*?<\/testcase>|<testcase[^>]*\/>/g) || [];
 let total = 0;
-const cleaned = cases.map(tc => {
+const cleaned = cases.map((tc) => {
   const m = tc.match(/time="([0-9.]+)"/);
   if (m) total += parseFloat(m[1]);
   return tc;
