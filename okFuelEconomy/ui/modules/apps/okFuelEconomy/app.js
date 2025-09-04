@@ -450,6 +450,12 @@ angular.module('beamng.apps')
       // Settings for visible fields
       var SETTINGS_KEY = 'okFuelEconomyVisible';
       var UNIT_MODE_KEY = 'okFuelEconomyUnitMode';
+      var STYLE_KEY = 'okFuelEconomyUseCustomStyles';
+      $scope.useCustomStyles = localStorage.getItem(STYLE_KEY) !== 'false';
+      $scope.toggleCustomStyles = function () {
+        $scope.useCustomStyles = !$scope.useCustomStyles;
+        try { localStorage.setItem(STYLE_KEY, $scope.useCustomStyles ? "true" : "false"); } catch (e) {}
+      };
       $scope.settingsOpen = false;
       $scope.openFuelPriceEditor = function ($event) {
         $event.preventDefault();
