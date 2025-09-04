@@ -56,27 +56,28 @@ if (major >= 20) {
     let failures = 0;
     const start = Date.now();
     for await (const { type, data } of run({ files: testFiles })) {
-      if (data.details?.type !== 'test') continue;
+      if (type !== 'test:pass' && type !== 'test:fail') continue;
+
+      const name = data.name || data.test?.name || 'unknown';
+      const durationMs =
+        data.details?.duration_ms ?? data.test?.duration_ms ?? 0;
+      const t = durationMs / 1000;
+
       if (type === 'test:pass') {
-        const t = (data.details?.duration_ms || 0) / 1000;
-        console.log(`\u2713 ${data.name}`);
+        console.log(`\u2713 ${name}`);
         cases.push(
-          `<testcase name="${escapeXml(data.name)}" time="${t}"></testcase>`
+          `<testcase name="${escapeXml(name)}" time="${t}"></testcase>`
         );
-      } else if (type === 'test:fail') {
-        const t = (data.details?.duration_ms || 0) / 1000;
+      } else {
         const msg =
           data.details?.error?.message ||
           data.errors?.[0]?.message ||
           'failed';
-        console.log(`\u2717 ${data.name}`);
+        console.log(`\u2717 ${name}`);
         if (data.details?.error) console.error(data.details.error);
-        if (data.errors)
-          data.errors.forEach((e) => console.error(e));
+        if (data.errors) data.errors.forEach((e) => console.error(e));
         cases.push(
-          `<testcase name="${escapeXml(
-            data.name
-          )}" time="${t}"><failure>${escapeXml(msg)}</failure></testcase>`
+          `<testcase name="${escapeXml(name)}" time="${t}"><failure>${escapeXml(msg)}</failure></testcase>`
         );
         failures++;
       }
