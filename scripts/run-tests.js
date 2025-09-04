@@ -13,12 +13,16 @@ const major = parseInt(process.versions.node.split('.')[0], 10);
 const argv = process.argv.slice(2);
 const reporterArgs = [];
 const otherArgs = [];
+const reporters = [];
+const destinations = [];
 
 for (const arg of argv) {
-  if (arg.startsWith('--test-reporter')) {
-    if (major >= 20) {
-      reporterArgs.push(arg);
-    }
+  if (arg.startsWith('--test-reporter=')) {
+    reporters.push(arg.split('=')[1]);
+    if (major >= 20) reporterArgs.push(arg);
+  } else if (arg.startsWith('--test-reporter-destination=')) {
+    destinations.push(arg.split('=')[1]);
+    if (major >= 20) reporterArgs.push(arg);
   } else {
     otherArgs.push(arg);
   }
@@ -52,6 +56,12 @@ if (major >= 20) {
   });
 } else {
   (async () => {
+    const reporterDest = {};
+    for (let i = 0; i < reporters.length; i++) {
+      reporterDest[reporters[i]] = destinations[i];
+    }
+    const junitDest = reporterDest['junit'] || 'test-results.xml';
+
     const cases = [];
     let failures = 0;
     const start = Date.now();
@@ -91,7 +101,8 @@ if (major >= 20) {
     const suite = `<?xml version="1.0" encoding="utf-8"?>\n<testsuite name="node" tests="${total}" failures="${failures}" errors="0" skipped="0" time="${time}">\n${cases.join(
       '\n'
     )}\n</testsuite>\n`;
-    fs.writeFileSync('test-results.xml', suite);
+    fs.mkdirSync(path.dirname(junitDest), { recursive: true });
+    fs.writeFileSync(junitDest, suite);
     process.exit(failures > 0 ? 1 : 0);
   })().catch((err) => {
     console.error(err);
