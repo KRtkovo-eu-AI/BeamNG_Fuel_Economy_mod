@@ -382,6 +382,22 @@ angular.module('beamng.apps')
     restrict: 'EA',
     scope: true,
     controller: ['$log', '$scope', function ($log, $scope) {
+      function safeApply(fn) {
+        if (typeof $scope.$apply === 'function') {
+          try {
+            $scope.$apply(fn);
+            return;
+          } catch (e) {
+            /* fall back */
+          }
+        }
+        if (typeof $scope.$evalAsync === 'function') {
+          $scope.$evalAsync(fn);
+        } else {
+          fn();
+        }
+      }
+
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
 
@@ -394,7 +410,7 @@ angular.module('beamng.apps')
           $scope.electricityPriceValue = cfg.electricityPrice;
           $scope.currency = cfg.currency;
         };
-        if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(applyInit); else applyInit();
+        safeApply(applyInit);
       });
 
       var pollMs = 1000;
@@ -414,7 +430,7 @@ angular.module('beamng.apps')
               $scope.electricityPriceValue = cfg.electricityPrice;
               $scope.currency = cfg.currency;
             };
-            if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(apply); else apply();
+            safeApply(apply);
           }
         });
       }, pollMs);
