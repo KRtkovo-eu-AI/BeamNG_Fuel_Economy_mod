@@ -414,6 +414,7 @@ angular.module('beamng.apps')
             $scope.electricityPriceValue = cfg.electricityPrice;
             $scope.currency = cfg.currency;
             updateCostPrice();
+            setTimeout(refreshCostOutputs, 0);
           };
           if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(applyInit); else applyInit();
         });
@@ -435,6 +436,7 @@ angular.module('beamng.apps')
                 $scope.electricityPriceValue = cfg.electricityPrice;
                 $scope.currency = cfg.currency;
                 updateCostPrice();
+                refreshCostOutputs();
               };
               if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(apply); else apply();
             }
@@ -472,6 +474,7 @@ angular.module('beamng.apps')
           $scope.unitMode = mode;
           updateUnitLabels();
           updateCostPrice();
+          refreshCostOutputs();
           $scope.unitMenuOpen = false;
         };
         function updateUnitLabels() {
@@ -689,10 +692,44 @@ angular.module('beamng.apps')
           try { localStorage.setItem(TRIP_KEY, JSON.stringify(tripTotals)); } catch (e) { /* ignore */ }
       }
 
-      function saveOverall() {
-          saveTripTotals();
-          try { localStorage.setItem(OVERALL_KEY, JSON.stringify(overall)); } catch (e) { /* ignore */ }
-      }
+        function saveOverall() {
+            saveTripTotals();
+            try { localStorage.setItem(OVERALL_KEY, JSON.stringify(overall)); } catch (e) { /* ignore */ }
+        }
+
+        function refreshCostOutputs() {
+          var unitLabels = getUnitLabels($scope.unitMode);
+          var priceForMode =
+            $scope.unitMode === 'electric'
+              ? $scope.electricityPriceValue
+              : $scope.liquidFuelPriceValue;
+          updateCostPrice(unitLabels, priceForMode);
+          var fuelUsed_l =
+            $scope.unitMode === 'electric'
+              ? tripFuelUsedElectric_l
+              : tripFuelUsedLiquid_l;
+          var fuelUsedUnit = convertVolumeToUnit(fuelUsed_l, $scope.unitMode);
+          var totalCostVal = fuelUsedUnit * priceForMode;
+          $scope.totalCost = totalCostVal.toFixed(2) + ' ' + $scope.currency;
+          var avgLitersPerKm = (overall.previousAvgTrip || overall.previousAvg || 0) / 100;
+          var avgVolPerDistUnit = convertVolumePerDistance(avgLitersPerKm, $scope.unitMode);
+          var avgCostVal = avgVolPerDistUnit * priceForMode;
+          $scope.avgCost =
+            avgCostVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
+          var overall_median = calculateMedian(overall.queue);
+          var medianLitersPerKm = overall_median / 100;
+          var medianVolPerDistUnit = convertVolumePerDistance(medianLitersPerKm, $scope.unitMode);
+          var tripAvgCostLiquidVal = medianVolPerDistUnit * $scope.liquidFuelPriceValue;
+          var tripAvgCostElectricVal = medianVolPerDistUnit * $scope.electricityPriceValue;
+          $scope.tripAvgCostLiquid =
+            tripAvgCostLiquidVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
+          $scope.tripAvgCostElectric =
+            tripAvgCostElectricVal.toFixed(2) + ' ' + $scope.currency + '/' + unitLabels.distance;
+          $scope.tripTotalCostLiquid =
+            tripCostLiquid.toFixed(2) + ' ' + $scope.currency;
+          $scope.tripTotalCostElectric =
+            tripCostElectric.toFixed(2) + ' ' + $scope.currency;
+        }
 
       // --------- Average history persistence (NEW) ----------
       var AVG_KEY = 'okFuelEconomyAvgHistory';
