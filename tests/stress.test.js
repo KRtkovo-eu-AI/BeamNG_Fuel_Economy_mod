@@ -1,5 +1,8 @@
 const assert = require('node:assert');
 const { test } = require('node:test');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
 
 // Stub minimal angular object so the module can be required in Node.
 global.angular = { module: () => ({ directive: () => ({}) }) };
@@ -181,6 +184,9 @@ test('restart and manual reset cycle', () => {
   const store = {};
 
   function startSession() {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fuel-'));
+    const prevDir = process.env.KRTEKTM_BNG_USER_DIR;
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
     global.angular = { module: () => ({ directive: (n, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
     global.UiUnits = { buildString: () => '' };
@@ -192,6 +198,7 @@ test('restart and manual reset cycle', () => {
     const controller = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: (n, cb) => { $scope['on_' + n] = cb; }, $evalAsync: fn => fn() };
     controller({ debug: () => {} }, $scope);
+    if (prevDir === undefined) delete process.env.KRTEKTM_BNG_USER_DIR; else process.env.KRTEKTM_BNG_USER_DIR = prevDir;
     $scope.liquidFuelPriceValue = 2; // ensure costs are non-zero
     return { $scope, setTime: t => { now = t; } };
   }
