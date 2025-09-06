@@ -79,6 +79,15 @@ local function savePrices()
   loadPrices()
 end
 
+local function removeFuelType(name)
+  if name == 'Gasoline' or name == 'Electricity' then return end
+  if uiState.prices[name] == nil then return end
+  uiState.prices[name] = nil
+  data.prices = data.prices or {}
+  data.prices[name] = nil
+  savePrices()
+end
+
 local function onUpdate()
   im.Begin('Fuel Price Editor')
   local names = {}
@@ -88,6 +97,13 @@ local function onUpdate()
   table.sort(names)
   for _, name in ipairs(names) do
     im.InputFloat(name, uiState.prices[name])
+    im.SameLine()
+    local disabled = name == 'Gasoline' or name == 'Electricity'
+    if disabled then im.BeginDisabled() end
+    if im.Button('Delete##' .. name) then
+      removeFuelType(name)
+    end
+    if disabled then im.EndDisabled() end
   end
   im.InputText('Currency', uiState.currency)
 
