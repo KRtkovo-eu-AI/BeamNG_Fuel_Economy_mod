@@ -261,7 +261,7 @@ function formatFuelTypeLabel(fuelType) {
   if (typeof fuelType === 'string') {
     var lower = fuelType.toLowerCase();
     if (lower.indexOf('electric') !== -1) {
-      return 'Electric';
+      return 'Electricity';
     }
     if (lower === 'compressedgas') {
       return 'LPG/CNG';

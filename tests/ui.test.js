@@ -67,11 +67,11 @@ describe('UI template styling', () => {
     assert.ok(html.includes('{{ avgCost }}'));
     assert.ok(html.includes('{{ totalCost }}'));
     assert.ok(html.includes('Liquid: {{ tripAvgCostLiquid }}'));
-    assert.ok(html.includes('Electric: {{ tripAvgCostElectric }}'));
+    assert.ok(html.includes('Electricity: {{ tripAvgCostElectric }}'));
     assert.ok(html.includes('Liquid: {{ tripTotalCostLiquid }}'));
-    assert.ok(html.includes('Electric: {{ tripTotalCostElectric }}'));
+    assert.ok(html.includes('Electricity: {{ tripTotalCostElectric }}'));
     assert.ok(html.includes('Liquid: {{ tripFuelUsedLiquid }}'));
-    assert.ok(html.includes('Electric: {{ tripFuelUsedElectric }}'));
+    assert.ok(html.includes('Electricity: {{ tripFuelUsedElectric }}'));
   });
 
   it('loads fuel price editor via controller function', async () => {
