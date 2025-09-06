@@ -257,6 +257,16 @@ function convertVolumePerDistance(lPerKm, mode) {
     : lPerKm;
 }
 
+function resolveUnitModeForFuelType(fuelType, liquidMode) {
+  if (
+    typeof fuelType === 'string' &&
+    fuelType.toLowerCase().indexOf('electric') !== -1
+  ) {
+    return 'electric';
+  }
+  return liquidMode;
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     EPS_SPEED,
@@ -280,7 +290,8 @@ if (typeof module !== 'undefined') {
     formatFlow,
     convertVolumeToUnit,
     convertDistanceToUnit,
-    convertVolumePerDistance
+    convertVolumePerDistance,
+    resolveUnitModeForFuelType
   };
 }
 
@@ -453,6 +464,7 @@ angular.module('beamng.apps')
       var SETTINGS_KEY = 'okFuelEconomyVisible';
       var UNIT_MODE_KEY = 'okFuelEconomyUnitMode';
       var STYLE_KEY = 'okFuelEconomyUseCustomStyles';
+      var PREFERRED_UNIT_KEY = 'okFuelEconomyPreferredUnit';
       $scope.useCustomStyles = localStorage.getItem(STYLE_KEY) !== 'false';
       $scope.toggleCustomStyles = function () {
         $scope.useCustomStyles = !$scope.useCustomStyles;
@@ -470,8 +482,18 @@ angular.module('beamng.apps')
       };
         $scope.unitMenuOpen = false;
         $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
+        var preferredLiquidUnit =
+          localStorage.getItem(PREFERRED_UNIT_KEY) ||
+          ($scope.unitMode === 'imperial' ? 'imperial' : 'metric');
+        var manualUnit = false;
+        var lastFuelType = '';
         $scope.setUnit = function (mode) {
           $scope.unitMode = mode;
+          if (mode !== 'electric') {
+            preferredLiquidUnit = mode;
+            try { localStorage.setItem(PREFERRED_UNIT_KEY, preferredLiquidUnit); } catch (e) {}
+          }
+          manualUnit = true;
           updateUnitLabels();
           updateCostPrice();
           refreshCostOutputs();
@@ -486,6 +508,41 @@ angular.module('beamng.apps')
         }
         updateUnitLabels();
         updateCostPrice();
+        fetchFuelType();
+
+        function applyAutoUnitMode(type) {
+          var desired = resolveUnitModeForFuelType(type, preferredLiquidUnit);
+          if (!manualUnit && desired !== $scope.unitMode) {
+            $scope.unitMode = desired;
+            updateUnitLabels();
+            updateCostPrice();
+            refreshCostOutputs();
+          }
+        }
+
+        function fetchFuelType() {
+          if (
+            typeof window === 'undefined' ||
+            typeof bngApi === 'undefined' ||
+            typeof bngApi.engineLua !== 'function'
+          )
+            return;
+          var lua = [
+            '(function()',
+            'local stor=energyStorage and energyStorage.getStorages and energyStorage.getStorages()',
+            'local t=""',
+            'if stor then for _,s in pairs(stor) do if s.energyType then t=s.energyType break end end end',
+            'return t',
+            'end)()'
+          ].join('\n');
+          bngApi.engineLua(lua, function (res) {
+            $scope.$evalAsync(function () {
+              lastFuelType = res || '';
+              $scope.fuelType = lastFuelType || '';
+              applyAutoUnitMode(lastFuelType);
+            });
+          });
+        }
       $scope.visible = {
         heading: true,
         distanceMeasured: true,
@@ -493,6 +550,7 @@ angular.module('beamng.apps')
         fuelUsed: true,
         fuelLeft: true,
         fuelCap: true,
+        fuelType: true,
         avgL100km: true,
         avgKmL: true,
         avgGraph: true,
@@ -551,6 +609,9 @@ angular.module('beamng.apps')
         try {
           localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible));
           localStorage.setItem(UNIT_MODE_KEY, $scope.unitMode);
+          if ($scope.unitMode !== 'electric') {
+            localStorage.setItem(PREFERRED_UNIT_KEY, $scope.unitMode);
+          }
         } catch (e) { /* ignore */ }
         $scope.settingsOpen = false;
       };
@@ -576,6 +637,7 @@ angular.module('beamng.apps')
       $scope.instantHistory = '';
       $scope.instantKmLHistory = '';
       $scope.costPrice = '';
+      $scope.fuelType = '';
       $scope.avgCost = '';
       $scope.totalCost = '';
       $scope.tripAvgCostLiquid = '';
@@ -861,11 +923,17 @@ angular.module('beamng.apps')
       $scope.$on('VehicleFocusChanged', function () {
         $log.debug('<ok-fuel-economy> vehicle changed -> reset trip');
         hardReset(true);
+        manualUnit = false;
+        lastFuelType = '';
+        $scope.fuelType = '';
+        fetchFuelType();
       });
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
           if (!streams.engineInfo || !streams.electrics) return;
+
+          if (!lastFuelType) fetchFuelType();
 
           var now_ms = performance.now();
           var dt = Math.max(0, (now_ms - lastTime_ms) / 1000);
