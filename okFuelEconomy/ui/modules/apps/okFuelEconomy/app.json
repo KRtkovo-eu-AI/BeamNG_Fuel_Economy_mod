@@ -1,7 +1,7 @@
 {
   "name" : "Fuel Economy",
   "author": "KRtekTM",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Fuel Economy - Average Fuel Consumption",
   "directive": "okFuelEconomy",
   "domElement": "<ok-fuel-economy></ok-fuel-economy>",
