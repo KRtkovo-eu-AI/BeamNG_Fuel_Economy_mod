@@ -40,29 +40,38 @@ If the file is missing, the widget falls back to a price of `0` and a currency l
 
 ## Tests
 
-Automated Node.js tests cover:
+This project uses Node's built-in test runner. The suite exercises:
 
 - utility helpers for fuel flow, instant consumption, queue trimming and range
-- cumulative fuel usage and distance tracking
-- extended drive simulations across varied environments, vehicle resets and trip counter behaviour
-- stress scenarios repeating environment cycles plus a 30‑second random run with periodic resets
+- cumulative fuel usage, distance tracking and trip resets
+- regeneration behaviour for electric powertrains
+- fuel price editor interactions
+- extended simulations across varied environments with vehicle resets
+- stress scenarios cycling environments plus a 30‑second randomised run
 - UI template styling, placeholders, controller integration, update throttling and saved visibility settings
 
-Run them with:
+Install dependencies and run the tests with:
 
 ```
+npm install
 npm test
 ```
 
-We recommend running tests after every change. Our GitHub repo is configured to run tests automatically with PRs.
+GitHub Actions executes the same command for every pull request, so we recommend running it locally before pushing changes.
 
 ## Structure
 
 ```
-  okFuelEconomy/
-    ui/modules/apps/okFuelEconomy/app.html  – UI template
-    ui/modules/apps/okFuelEconomy/app.js    – app logic
-    tests/                                 – automated tests for calculations, simulations, stress and UI
+.
+├── okFuelEconomy/
+│   ├── ui/modules/apps/okFuelEconomy/
+│   │   ├── app.html      – UI template
+│   │   ├── app.js        – app logic
+│   │   ├── app.json      – app manifest
+│   │   └── fuelPrice.json – default prices
+│   └── lua/              – Lua scripts for BeamNG integration
+├── scripts/run-tests.js  – wrapper around Node's test runner
+└── tests/                – automated test suite
 ```
 
 ## License
