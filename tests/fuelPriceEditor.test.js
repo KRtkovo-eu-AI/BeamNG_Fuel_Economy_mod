@@ -134,11 +134,67 @@ describe('Fuel Price Editor saving', () => {
   });
 });
 
+describe('Fuel Price Editor removal', () => {
+  it('removes fuel types from fuelPrice.json', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fuel-'));
+    const map = p => path.join(tmp, p.replace(/^\//, ''));
+
+    const pricePath = '/settings/krtektm_fuelEconomy/fuelPrice.json';
+    fs.mkdirSync(path.dirname(map(pricePath)), { recursive: true });
+    fs.writeFileSync(
+      map(pricePath),
+      JSON.stringify({ prices: { Gasoline: 1, Electricity: 2, Diesel: 3 }, currency: 'USD' })
+    );
+
+    const data = {};
+    const uiState = { prices: {}, currency: { value: 'USD' } };
+
+    const jsonWriteFile = (p, tbl) => fs.writeFileSync(map(p), JSON.stringify(tbl));
+    const jsonReadFile = p => JSON.parse(fs.readFileSync(map(p), 'utf8'));
+
+    function loadPrices() {
+      const read = jsonReadFile(pricePath);
+      Object.assign(data, read);
+      uiState.prices = {};
+      Object.keys(read.prices).forEach(k => {
+        uiState.prices[k] = { 0: read.prices[k] };
+      });
+      uiState.currency.value = read.currency;
+    }
+
+    function savePrices() {
+      data.prices = {};
+      Object.keys(uiState.prices).forEach(k => {
+        data.prices[k] = uiState.prices[k][0];
+      });
+      data.currency = uiState.currency.value;
+      jsonWriteFile(pricePath, data);
+      loadPrices();
+    }
+
+    function removeFuelType(name) {
+      if (name === 'Gasoline' || name === 'Electricity') return;
+      delete uiState.prices[name];
+      savePrices();
+    }
+
+    loadPrices();
+    removeFuelType('Diesel');
+
+    const saved = jsonReadFile(pricePath);
+    assert.deepStrictEqual(saved, { prices: { Gasoline: 1, Electricity: 2 }, currency: 'USD' });
+  });
+});
+
 describe('Fuel Price Editor ordering', () => {
   it('lists fuel types alphabetically with currency last', () => {
     const order = [];
     const im = {
       InputFloat: name => order.push(name),
+      SameLine: () => {},
+      BeginDisabled: () => {},
+      EndDisabled: () => {},
+      Button: () => {},
       InputText: name => order.push(name)
     };
     const uiState = {
@@ -148,7 +204,14 @@ describe('Fuel Price Editor ordering', () => {
 
     function onUpdate() {
       const names = Object.keys(uiState.prices).sort();
-      names.forEach(name => im.InputFloat(name, uiState.prices[name]));
+      names.forEach(name => {
+        im.InputFloat(name, uiState.prices[name]);
+        im.SameLine();
+        const disabled = name === 'Gasoline' || name === 'Electricity';
+        if (disabled) im.BeginDisabled();
+        im.Button('Delete##' + name);
+        if (disabled) im.EndDisabled();
+      });
       im.InputText('Currency', uiState.currency);
     }
 
