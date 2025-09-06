@@ -558,7 +558,7 @@ describe('UI template styling', () => {
 
     global.bngApi = {
       engineLua: (code, cb) => {
-        if (code === 'be:getPlayerVehicleID(0) or 0') { if (cb) cb('1'); return; }
+        if (code === 'be:getPlayerVehicle(0) and 1 or 0') { if (cb) cb('1'); return; }
         assert.ok(code.startsWith('(function()'), 'Lua chunk should be wrapped in a function');
         assert.ok(code.includes('core_paths.getUserPath'));
         try {
