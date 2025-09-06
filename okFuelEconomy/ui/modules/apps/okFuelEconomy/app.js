@@ -258,11 +258,14 @@ function convertVolumePerDistance(lPerKm, mode) {
 }
 
 function formatFuelTypeLabel(fuelType) {
-  if (
-    typeof fuelType === 'string' &&
-    fuelType.toLowerCase().indexOf('electric') !== -1
-  ) {
-    return 'electric';
+  if (typeof fuelType === 'string') {
+    var lower = fuelType.toLowerCase();
+    if (lower.indexOf('electric') !== -1) {
+      return 'electric';
+    }
+    if (lower === 'compressedgas') {
+      return 'LPG/CNG';
+    }
   }
   return fuelType || '';
 }
