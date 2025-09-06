@@ -577,12 +577,15 @@ angular.module('beamng.apps')
           if (
             typeof window === 'undefined' ||
             typeof bngApi === 'undefined' ||
-            typeof bngApi.activeObjectLua !== 'function'
+            typeof bngApi.engineLua !== 'function'
           )
             return;
+
           var lua = [
             '(function()',
-            'local stor=energyStorage.getStorages and energyStorage.getStorages()',
+            'local veh=be:getPlayerVehicle(0)',
+            'if not veh then return jsonEncode({t="Food"}) end',
+            'local stor=energyStorage.getStorages and energyStorage.getStorages(veh)',
             'local t=""',
             'if stor then',
             '  for _,s in pairs(stor) do if s.energyType and s.energyType:lower()~="air" then t=s.energyType break end end',
@@ -592,68 +595,54 @@ angular.module('beamng.apps')
             'end)()'
           ].join('\n');
 
-          function handleFuelType(res) {
-            if (seq !== fetchSeq || onFoot) return;
+          bngApi.engineLua(lua, function (res) {
+            if (seq !== fetchSeq) return;
             var parsed = {};
             try { parsed = JSON.parse(res); } catch (e) {}
             $scope.$evalAsync(function () {
-              if (seq !== fetchSeq || onFoot) return;
-              lastFuelType = parsed.t || '';
-              $scope.fuelType = formatFuelTypeLabel(lastFuelType);
-              if ($scope.fuelType !== 'None' && $scope.fuelPrices[$scope.fuelType] == null) {
-                $scope.fuelPrices[$scope.fuelType] = 0;
-                if (typeof require === 'function' && loadFuelPriceConfig.userFile) {
-                  try {
-                    const fs = require('fs');
-                    const data = { prices: $scope.fuelPrices, currency: $scope.currency };
-                    fs.writeFileSync(loadFuelPriceConfig.userFile, JSON.stringify(data));
-                  } catch (e) {}
-                } else if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
-                  var cmd = 'extensions.load("fuelPriceEditor")';
-                  bngApi.engineLua(cmd, function () {
-                    bngApi.engineLua('extensions.fuelPriceEditor.ensureFuelType(' + JSON.stringify($scope.fuelType) + ')');
-                  });
-                }
-              }
-              $scope.liquidFuelPriceValue =
-                $scope.fuelType !== 'None' ? $scope.fuelPrices[$scope.fuelType] || 0 : 0;
-              applyAutoUnitMode(lastFuelType);
-              updateCostPrice();
-              refreshCostOutputs();
-            });
-          }
-
-          if (typeof bngApi.engineLua === 'function') {
-            bngApi.engineLua('be:getPlayerVehicleID(0) or 0', function (veh) {
-              var hasVeh = parseInt(String(veh).trim(), 10) || 0;
-              if (hasVeh === 0) {
-                $scope.$evalAsync(function () {
-                  lastFuelType = 'Food';
-                  $scope.fuelType = 'Food';
-                  $scope.liquidFuelPriceValue = 0;
-                  onFoot = true;
-                  foodFuel_kcal = FOOD_CAPACITY_KCAL;
-                  startFuel_l = FOOD_CAPACITY_KCAL;
-                  previousFuel_l = FOOD_CAPACITY_KCAL;
-                  distance_m = 0;
-                  lastTime_ms = performance.now();
-                  resetInstantHistory();
-                  resetAvgHistory();
-                  applyAutoUnitMode(lastFuelType);
-                  updateCostPrice();
-                  refreshCostOutputs();
-                });
+              if (seq !== fetchSeq) return;
+              if (parsed.t === 'Food') {
+                lastFuelType = 'Food';
+                $scope.fuelType = 'Food';
+                $scope.liquidFuelPriceValue = 0;
+                onFoot = true;
+                foodFuel_kcal = FOOD_CAPACITY_KCAL;
+                startFuel_l = FOOD_CAPACITY_KCAL;
+                previousFuel_l = FOOD_CAPACITY_KCAL;
+                distance_m = 0;
+                lastTime_ms = performance.now();
+                resetInstantHistory();
+                resetAvgHistory();
               } else {
                 onFoot = false;
                 foodFuel_kcal = null;
                 startFuel_l = null;
                 previousFuel_l = null;
-                bngApi.activeObjectLua(lua, handleFuelType);
+                lastFuelType = parsed.t || '';
+                $scope.fuelType = formatFuelTypeLabel(lastFuelType);
+                if ($scope.fuelType !== 'None' && $scope.fuelPrices[$scope.fuelType] == null) {
+                  $scope.fuelPrices[$scope.fuelType] = 0;
+                  if (typeof require === 'function' && loadFuelPriceConfig.userFile) {
+                    try {
+                      const fs = require('fs');
+                      const data = { prices: $scope.fuelPrices, currency: $scope.currency };
+                      fs.writeFileSync(loadFuelPriceConfig.userFile, JSON.stringify(data));
+                    } catch (e) {}
+                  } else if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+                    var cmd = 'extensions.load("fuelPriceEditor")';
+                    bngApi.engineLua(cmd, function () {
+                      bngApi.engineLua('extensions.fuelPriceEditor.ensureFuelType(' + JSON.stringify($scope.fuelType) + ')');
+                    });
+                  }
+                }
+                $scope.liquidFuelPriceValue =
+                  $scope.fuelType !== 'None' ? $scope.fuelPrices[$scope.fuelType] || 0 : 0;
               }
+              applyAutoUnitMode(lastFuelType);
+              updateCostPrice();
+              refreshCostOutputs();
             });
-          } else {
-            bngApi.activeObjectLua(lua, handleFuelType);
-          }
+          });
         }
       $scope.visible = {
         heading: true,

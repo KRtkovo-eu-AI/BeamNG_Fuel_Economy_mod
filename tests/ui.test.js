@@ -297,8 +297,7 @@ describe('UI template styling', () => {
     );
 
     global.bngApi = {
-      engineLua: (cmd, cb) => { if (cb) cb('1'); },
-      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Diesel' }))
+      engineLua: (cmd, cb) => { if (cb) cb('{"t":"Diesel"}'); }
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
@@ -333,10 +332,9 @@ describe('UI template styling', () => {
     );
 
     global.bngApi = {
-      engineLua: (cmd, cb) => { if (cb) cb('1'); },
-      activeObjectLua: (code, cb) => {
-        luaCode = code;
-        cb(JSON.stringify({ t: 'Diesel' }));
+      engineLua: (cmd, cb) => {
+        luaCode = cmd;
+        if (cb) cb('{"t":"Diesel"}');
       }
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
@@ -373,8 +371,7 @@ describe('UI template styling', () => {
     );
 
     global.bngApi = {
-      engineLua: (cmd, cb) => { if (cb) cb('1'); },
-      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Air' }))
+      engineLua: (cmd, cb) => { if (cb) cb('{"t":"Air"}'); }
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
@@ -408,8 +405,10 @@ describe('UI template styling', () => {
     fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5 }, currency: 'USD' }));
 
     global.bngApi = {
-      engineLua: (cmd, cb) => { engineCalls.push(cmd); if (cb) cb('1'); },
-      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: '' }))
+      engineLua: (cmd, cb) => {
+        engineCalls.push(cmd);
+        if (cb) cb('{"t":""}');
+      }
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
@@ -444,8 +443,7 @@ describe('UI template styling', () => {
     fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5 }, currency: 'USD' }));
 
     global.bngApi = {
-      engineLua: (code, cb) => { if (cb) cb('0'); },
-      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: '' }))
+      engineLua: (code, cb) => { if (cb) cb('{"t":"Food"}'); }
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
@@ -479,8 +477,9 @@ describe('UI template styling', () => {
     fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5 }, currency: 'USD' }));
 
     global.bngApi = {
-      engineLua: (code, cb) => { if (cb) cb(++engineCalls === 1 ? '1' : '0'); },
-      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'gasoline' }))
+      engineLua: (code, cb) => {
+        if (cb) cb(++engineCalls === 1 ? '{"t":"gasoline"}' : '{"t":"Food"}');
+      }
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
@@ -520,8 +519,9 @@ describe('UI template styling', () => {
     fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5 }, currency: 'USD' }));
 
     global.bngApi = {
-      engineLua: (code, cb) => { if (cb) cb(++engineCalls === 1 ? '0' : '1'); },
-      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'gasoline' }))
+      engineLua: (code, cb) => {
+        if (cb) cb(++engineCalls === 1 ? '{"t":"Food"}' : '{"t":"gasoline"}');
+      }
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
@@ -558,7 +558,7 @@ describe('UI template styling', () => {
 
     global.bngApi = {
       engineLua: (code, cb) => {
-        if (code === 'be:getPlayerVehicleID(0) or 0') { if (cb) cb('1'); return; }
+        if (code.includes('be:getPlayerVehicle(0)')) { if (cb) cb('{"t":"gasoline"}'); return; }
         assert.ok(code.startsWith('(function()'), 'Lua chunk should be wrapped in a function');
         assert.ok(code.includes('core_paths.getUserPath'));
         try {
