@@ -538,6 +538,7 @@ angular.module('beamng.apps')
           ($scope.unitMode === 'imperial' ? 'imperial' : 'metric');
         var manualUnit = false;
         var lastFuelType = '';
+        var fetchSeq = 0;
         $scope.setUnit = function (mode) {
           $scope.unitMode = mode;
           if (mode !== 'electric') {
@@ -571,6 +572,8 @@ angular.module('beamng.apps')
         }
 
         function fetchFuelType() {
+          fetchSeq++;
+          var seq = fetchSeq;
           if (
             typeof window === 'undefined' ||
             typeof bngApi === 'undefined' ||
@@ -590,9 +593,11 @@ angular.module('beamng.apps')
           ].join('\n');
 
           function handleFuelType(res) {
+            if (seq !== fetchSeq || onFoot) return;
             var parsed = {};
             try { parsed = JSON.parse(res); } catch (e) {}
             $scope.$evalAsync(function () {
+              if (seq !== fetchSeq || onFoot) return;
               lastFuelType = parsed.t || '';
               $scope.fuelType = formatFuelTypeLabel(lastFuelType);
               if ($scope.fuelType !== 'None' && $scope.fuelPrices[$scope.fuelType] == null) {
@@ -619,7 +624,7 @@ angular.module('beamng.apps')
           }
 
           if (typeof bngApi.engineLua === 'function') {
-            bngApi.engineLua('((be:getPlayerVehicle(0) or {}).jbeam and 1 or 0)', function (veh) {
+            bngApi.engineLua('be:getPlayerVehicleID(0) or 0', function (veh) {
               var hasVeh = parseInt(String(veh).trim(), 10) || 0;
               if (hasVeh === 0) {
                 $scope.$evalAsync(function () {
