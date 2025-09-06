@@ -524,23 +524,18 @@ angular.module('beamng.apps')
           if (
             typeof window === 'undefined' ||
             typeof bngApi === 'undefined' ||
-            typeof bngApi.engineLua !== 'function'
+            typeof bngApi.activeObjectLua !== 'function'
           )
             return;
           var lua = [
             '(function()',
-            'local vid=be:getPlayerVehicleID(0)',
-            'if not vid then return jsonEncode({}) end',
-            'local veh=be:getObjectByID(vid)',
-            'if not veh then return jsonEncode({}) end',
-            'local es=veh.energyStorage',
-            'local stor=es and es.getStorages and es:getStorages()',
+            'local stor=energyStorage.getStorages and energyStorage.getStorages()',
             'local t=""',
             'if stor then for _,s in pairs(stor) do if s.energyType then t=s.energyType break end end end',
             'return jsonEncode({t=t})',
             'end)()'
           ].join('\n');
-          bngApi.engineLua(lua, function (res) {
+          bngApi.activeObjectLua(lua, function (res) {
             var parsed = {};
             try { parsed = JSON.parse(res); } catch (e) {}
             $scope.$evalAsync(function () {
