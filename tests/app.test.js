@@ -22,7 +22,8 @@ const {
   formatEfficiency,
   formatFlow,
   MIN_VALID_SPEED_MPS,
-  resolveUnitModeForFuelType
+  resolveUnitModeForFuelType,
+  formatFuelTypeLabel
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('app.js utility functions', () => {
@@ -299,7 +300,7 @@ describe('app.js utility functions', () => {
   describe('resolveUnitModeForFuelType', () => {
     it('uses electric units for electric storages', () => {
       assert.strictEqual(
-        resolveUnitModeForFuelType('electricBattery', 'metric'),
+        resolveUnitModeForFuelType('electricEnergy', 'metric'),
         'electric'
       );
     });
@@ -308,6 +309,15 @@ describe('app.js utility functions', () => {
         resolveUnitModeForFuelType('diesel', 'imperial'),
         'imperial'
       );
+    });
+  });
+
+  describe('formatFuelTypeLabel', () => {
+    it('maps electric energy types to "electric"', () => {
+      assert.strictEqual(formatFuelTypeLabel('electricEnergy'), 'electric');
+    });
+    it('returns other types unchanged', () => {
+      assert.strictEqual(formatFuelTypeLabel('diesel'), 'diesel');
     });
   });
 });

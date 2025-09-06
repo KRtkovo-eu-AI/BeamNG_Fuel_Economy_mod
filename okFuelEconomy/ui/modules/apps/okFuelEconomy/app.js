@@ -257,6 +257,16 @@ function convertVolumePerDistance(lPerKm, mode) {
     : lPerKm;
 }
 
+function formatFuelTypeLabel(fuelType) {
+  if (
+    typeof fuelType === 'string' &&
+    fuelType.toLowerCase().indexOf('electric') !== -1
+  ) {
+    return 'electric';
+  }
+  return fuelType || '';
+}
+
 function resolveUnitModeForFuelType(fuelType, liquidMode) {
   if (
     typeof fuelType === 'string' &&
@@ -291,7 +301,8 @@ if (typeof module !== 'undefined') {
     convertVolumeToUnit,
     convertDistanceToUnit,
     convertVolumePerDistance,
-    resolveUnitModeForFuelType
+    resolveUnitModeForFuelType,
+    formatFuelTypeLabel
   };
 }
 
@@ -540,7 +551,7 @@ angular.module('beamng.apps')
             try { parsed = JSON.parse(res); } catch (e) {}
             $scope.$evalAsync(function () {
               lastFuelType = parsed.t || '';
-              $scope.fuelType = lastFuelType || '';
+              $scope.fuelType = formatFuelTypeLabel(lastFuelType);
               applyAutoUnitMode(lastFuelType);
             });
           });
