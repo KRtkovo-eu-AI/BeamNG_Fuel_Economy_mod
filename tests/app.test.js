@@ -21,7 +21,9 @@ const {
   formatConsumptionRate,
   formatEfficiency,
   formatFlow,
-  MIN_VALID_SPEED_MPS
+  MIN_VALID_SPEED_MPS,
+  resolveUnitModeForFuelType,
+  formatFuelTypeLabel
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('app.js utility functions', () => {
@@ -292,6 +294,33 @@ describe('app.js utility functions', () => {
     });
     it('formats flow in kW', () => {
       assert.strictEqual(formatFlow(5, 'electric', 1), '5.0 kW');
+    });
+  });
+
+  describe('resolveUnitModeForFuelType', () => {
+    it('uses electric units for electric storages', () => {
+      assert.strictEqual(
+        resolveUnitModeForFuelType('electricEnergy', 'metric'),
+        'electric'
+      );
+    });
+    it('falls back to preferred liquid units for non-electric', () => {
+      assert.strictEqual(
+        resolveUnitModeForFuelType('diesel', 'imperial'),
+        'imperial'
+      );
+    });
+  });
+
+  describe('formatFuelTypeLabel', () => {
+    it('maps electric energy types to "Electric"', () => {
+      assert.strictEqual(formatFuelTypeLabel('electricEnergy'), 'Electric');
+    });
+    it('maps compressed gas to "LPG/CNG"', () => {
+      assert.strictEqual(formatFuelTypeLabel('compressedGas'), 'LPG/CNG');
+    });
+    it('capitalizes other types', () => {
+      assert.strictEqual(formatFuelTypeLabel('diesel'), 'Diesel');
     });
   });
 });

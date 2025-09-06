@@ -32,6 +32,15 @@
       </td>
     </tr>
 
+    <tr ng-show="visible.fuelType">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Fuel type:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>{{ fuelType }}</span>
+      </td>
+    </tr>
+
     <tr ng-show="visible.costPrice">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Fuel price:
@@ -262,6 +271,7 @@
     <label><input type="checkbox" ng-model="visible.fuelUsed"> Fuel used</label><br>
     <label><input type="checkbox" ng-model="visible.fuelLeft"> Fuel left</label><br>
     <label><input type="checkbox" ng-model="visible.fuelCap"> Fuel capacity</label><br>
+    <label><input type="checkbox" ng-model="visible.fuelType"> Fuel type</label><br>
       <label><input type="checkbox" ng-model="visible.avgL100km"> Average {{ unitConsumptionUnit }}</label><br>
       <label><input type="checkbox" ng-model="visible.avgKmL"> Average {{ unitEfficiencyUnit }}</label><br>
       <label><input type="checkbox" ng-model="visible.avgGraph"> Average history</label><br>
