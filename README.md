@@ -31,6 +31,8 @@ Fuel cost calculations use values stored in `AppData/Local/BeamNG.drive/{version
 1. Use the in-game fuel price dialog to set the values directly. This UI writes to the same `fuelPrice.json` file.
 2. Manually edit `fuelPrice.json` yourself (for example `C:/Users/<your user>/AppData/Local/BeamNG.drive/<version>/settings/krtektm_fuelEconomy/fuelPrice.json` on Windows) and set the values inside the `prices` object (such as `Gasoline` and `Electricity`), optionally adding a `currency` label (e.g. `$`, `€`).
 
+Existing installations using the legacy `liquidFuelPrice` and `electricityPrice` fields are upgraded automatically when the app loads.
+
 The controller loads these prices at runtime and computes average cost per distance, trip average cost per distance, total fuel cost and trip total fuel cost when the relevant fields are enabled in settings.
 Trip costs accumulate only while their respective unit mode is active: liquid costs grow when using metric or imperial units, whereas electric costs grow when using the electric unit mode.
 Any edits to the file—whether done manually or via the dialog—while the game is running are picked up automatically so prices can be changed without restarting.

@@ -374,6 +374,7 @@ function loadFuelPriceConfig(callback) {
         prices,
         currency: data.currency || 'money'
       };
+      fs.writeFileSync(userFile, JSON.stringify(cfgObj));
       if (typeof callback === 'function') callback(cfgObj);
       return cfgObj;
     } catch (e) {

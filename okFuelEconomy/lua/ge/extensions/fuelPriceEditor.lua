@@ -11,28 +11,57 @@ local uiState = {
   currency = im.ArrayChar(32, 'money')
 }
 
+local function migrate(cfg)
+  local migrated = false
+  cfg.prices = cfg.prices or {}
+  if cfg.prices.Gasoline == nil and cfg.liquidFuelPrice ~= nil then
+    cfg.prices.Gasoline = cfg.liquidFuelPrice
+    cfg.liquidFuelPrice = nil
+    migrated = true
+  end
+  if cfg.prices.Electricity == nil and cfg.electricityPrice ~= nil then
+    cfg.prices.Electricity = cfg.electricityPrice
+    cfg.electricityPrice = nil
+    migrated = true
+  end
+  if cfg.prices.Gasoline == nil then
+    cfg.prices.Gasoline = 0
+    migrated = true
+  end
+  if cfg.prices.Electricity == nil then
+    cfg.prices.Electricity = 0
+    migrated = true
+  end
+  if cfg.currency == nil then
+    cfg.currency = 'money'
+    migrated = true
+  end
+  return cfg, migrated
+end
+
 local function ensureFile()
   if not FS:directoryExists(priceDir) then
     FS:directoryCreate(priceDir)
   end
   if not FS:fileExists(pricePath) then
     jsonWriteFile(pricePath, {prices = {Gasoline = 0, Electricity = 0}, currency = 'money'}, true)
+  else
+    local cfg = jsonReadFile(pricePath) or {}
+    local migrated
+    cfg, migrated = migrate(cfg)
+    if migrated then
+      jsonWriteFile(pricePath, cfg, true)
+    end
   end
 end
 
 local function loadPrices()
   data = jsonReadFile(pricePath) or {}
-  data.prices = data.prices or {}
-  if data.prices.Gasoline == nil and data.liquidFuelPrice ~= nil then
-    data.prices.Gasoline = data.liquidFuelPrice
-    data.liquidFuelPrice = nil
+  local migrated
+  data, migrated = migrate(data)
+  if migrated then
+    jsonWriteFile(pricePath, data, true)
   end
-  if data.prices.Electricity == nil and data.electricityPrice ~= nil then
-    data.prices.Electricity = data.electricityPrice
-    data.electricityPrice = nil
-  end
-  if data.prices.Gasoline == nil then data.prices.Gasoline = 0 end
-  if data.prices.Electricity == nil then data.prices.Electricity = 0 end
   uiState.prices = {}
   for k, v in pairs(data.prices) do
     uiState.prices[k] = im.FloatPtr(v or 0)
@@ -81,10 +110,14 @@ M.onFileChanged = onFileChanged
 
 function M.ensureFuelType(label)
   ensureFile()
-  local cfg = jsonReadFile(pricePath) or {prices = {}, currency = 'money'}
-  cfg.prices = cfg.prices or {}
+  local cfg = jsonReadFile(pricePath) or {}
+  local migrated
+  cfg, migrated = migrate(cfg)
   if cfg.prices[label] == nil then
     cfg.prices[label] = 0
+    migrated = true
+  end
+  if migrated then
     jsonWriteFile(pricePath, cfg, true)
     loadPrices()
   end
