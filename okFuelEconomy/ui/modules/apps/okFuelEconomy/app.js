@@ -832,10 +832,11 @@ angular.module('beamng.apps')
               ? $scope.electricityPriceValue
               : $scope.liquidFuelPriceValue;
           updateCostPrice(unitLabels, priceForMode);
-          var fuelUsed_l =
-            $scope.unitMode === 'electric'
-              ? tripFuelUsedElectric_l
-              : tripFuelUsedLiquid_l;
+          var fuelUsed_l = 0;
+          if (startFuel_l !== null && previousFuel_l !== null) {
+            fuelUsed_l = startFuel_l - previousFuel_l;
+            if (fuelUsed_l < 0) fuelUsed_l = 0;
+          }
           var fuelUsedUnit = convertVolumeToUnit(fuelUsed_l, $scope.unitMode);
           var totalCostVal = fuelUsedUnit * priceForMode;
           $scope.totalCost = totalCostVal.toFixed(2) + ' ' + $scope.currency;
