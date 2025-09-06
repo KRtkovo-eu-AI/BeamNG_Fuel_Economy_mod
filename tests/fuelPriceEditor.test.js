@@ -209,7 +209,8 @@ describe('Fuel Price Editor ordering', () => {
         im.SameLine();
         const disabled = name === 'Gasoline' || name === 'Electricity';
         if (disabled) im.BeginDisabled();
-        im.Button('Delete##' + name);
+        const label = ((im.Icons && (im.Icons.Trash || im.Icons.Delete)) || 'Delete') + '##' + name;
+        im.Button(label);
         if (disabled) im.EndDisabled();
       });
       im.InputText('Currency', uiState.currency);
