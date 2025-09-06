@@ -133,3 +133,26 @@ describe('Fuel Price Editor saving', () => {
     assert.strictEqual(uiState.currency.value, 'USD');
   });
 });
+
+describe('Fuel Price Editor ordering', () => {
+  it('lists fuel types alphabetically with currency last', () => {
+    const order = [];
+    const im = {
+      InputFloat: name => order.push(name),
+      InputText: name => order.push(name)
+    };
+    const uiState = {
+      prices: { Gasoline: { 0: 0 }, Diesel: { 0: 0 }, Electricity: { 0: 0 } },
+      currency: {}
+    };
+
+    function onUpdate() {
+      const names = Object.keys(uiState.prices).sort();
+      names.forEach(name => im.InputFloat(name, uiState.prices[name]));
+      im.InputText('Currency', uiState.currency);
+    }
+
+    onUpdate();
+    assert.deepStrictEqual(order, ['Diesel', 'Electricity', 'Gasoline', 'Currency']);
+  });
+});
