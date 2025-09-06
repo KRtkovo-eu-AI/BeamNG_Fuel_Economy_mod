@@ -530,19 +530,21 @@ angular.module('beamng.apps')
           var lua = [
             '(function()',
             'local vid=be:getPlayerVehicleID(0)',
-            'if not vid then return "" end',
+            'if not vid then return jsonEncode({}) end',
             'local veh=be:getObjectByID(vid)',
-            'if not veh then return "" end',
+            'if not veh then return jsonEncode({}) end',
             'local es=veh.energyStorage',
             'local stor=es and es.getStorages and es:getStorages()',
             'local t=""',
             'if stor then for _,s in pairs(stor) do if s.energyType then t=s.energyType break end end end',
-            'return t',
+            'return jsonEncode({t=t})',
             'end)()'
           ].join('\n');
           bngApi.engineLua(lua, function (res) {
+            var parsed = {};
+            try { parsed = JSON.parse(res); } catch (e) {}
             $scope.$evalAsync(function () {
-              lastFuelType = res || '';
+              lastFuelType = parsed.t || '';
               $scope.fuelType = lastFuelType || '';
               applyAutoUnitMode(lastFuelType);
             });
