@@ -67,19 +67,20 @@ describe('UI template styling', () => {
     assert.ok(html.includes('{{ avgCost }}'));
     assert.ok(html.includes('{{ totalCost }}'));
     assert.ok(html.includes('Liquid: {{ tripAvgCostLiquid }}'));
-    assert.ok(html.includes('Electric: {{ tripAvgCostElectric }}'));
+    assert.ok(html.includes('Electricity: {{ tripAvgCostElectric }}'));
     assert.ok(html.includes('Liquid: {{ tripTotalCostLiquid }}'));
-    assert.ok(html.includes('Electric: {{ tripTotalCostElectric }}'));
+    assert.ok(html.includes('Electricity: {{ tripTotalCostElectric }}'));
     assert.ok(html.includes('Liquid: {{ tripFuelUsedLiquid }}'));
-    assert.ok(html.includes('Electric: {{ tripFuelUsedElectric }}'));
+    assert.ok(html.includes('Electricity: {{ tripFuelUsedElectric }}'));
   });
 
   it('loads fuel price editor via controller function', async () => {
     let directiveDef;
     let luaCmd;
-    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
-    global.StreamsManager = { add: () => {}, remove: () => {} };
-    global.UiUnits = { buildString: () => '' };
+      global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+      global.StreamsManager = { add: () => {}, remove: () => {} };
+      global.UiUnits = { buildString: () => '' };
+      global.window = {};
     global.bngApi = { engineLua: cmd => { luaCmd = cmd; } };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
@@ -123,8 +124,9 @@ describe('UI template styling', () => {
   it('exposes fuel prices and currency in fuelPrice.json', () => {
     const priceConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'fuelPrice.json');
     const cfg = JSON.parse(fs.readFileSync(priceConfigPath, 'utf8'));
-    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'liquidFuelPrice'));
-    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'electricityPrice'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'prices'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg.prices, 'Gasoline'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg.prices, 'Electricity'));
     assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'currency'));
   });
 
@@ -144,7 +146,7 @@ describe('UI template styling', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 2.25, electricityPrice: 0.5, currency: 'CZK' })
+      JSON.stringify({ prices: { Gasoline: 2.25, Electricity: 0.5 }, currency: 'CZK' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -157,6 +159,38 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.liquidFuelPriceValue, 2.25);
     assert.strictEqual($scope.electricityPriceValue, 0.5);
     assert.strictEqual($scope.currency, 'CZK');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+  });
+
+  it('migrates legacy fuelPrice.json via app.js', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    const verDir = path.join(tmp, '0.97', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 5, electricityPrice: 2, currency: 'CAD' }));
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(resolve => setImmediate(resolve));
+
+    assert.strictEqual($scope.liquidFuelPriceValue, 5);
+    assert.strictEqual($scope.electricityPriceValue, 2);
+    assert.strictEqual($scope.currency, 'CAD');
+    const saved = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    assert.deepStrictEqual(saved, { prices: { Gasoline: 5, Electricity: 2 }, currency: 'CAD' });
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
@@ -176,7 +210,7 @@ describe('UI template styling', () => {
     const verDir = path.join(tmp, '0.98', 'settings', 'krtektm_fuelEconomy');
     fs.mkdirSync(verDir, { recursive: true });
     const cfgPath = path.join(verDir, 'fuelPrice.json');
-    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 1, electricityPrice: 0.2, currency: 'USD' }));
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 1, Electricity: 0.2 }, currency: 'USD' }));
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -189,7 +223,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.electricityPriceValue, 0.2);
     assert.strictEqual($scope.currency, 'USD');
 
-    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 3, electricityPrice: 0.8, currency: 'EUR' }));
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 3, Electricity: 0.8 }, currency: 'EUR' }));
     await new Promise(r => setTimeout(r, 60));
     assert.strictEqual($scope.liquidFuelPriceValue, 3);
     assert.strictEqual($scope.electricityPriceValue, 0.8);
@@ -205,6 +239,119 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_FUEL_POLL_MS;
   });
 
+  it('defaults new fuel types to zero cost', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '0.99', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({ prices: { Gasoline: 5, Electricity: 1 }, currency: 'USD' })
+    );
+
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Diesel' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.strictEqual($scope.fuelPrices.Diesel, 0);
+    assert.strictEqual($scope.liquidFuelPriceValue, 0);
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
+  it('ignores Air storage when other fuel types exist', async () => {
+    let directiveDef, luaCode;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '1.00', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({ prices: { Gasoline: 5, Electricity: 1 }, currency: 'USD' })
+    );
+
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => {
+        luaCode = code;
+        cb(JSON.stringify({ t: 'Diesel' }));
+      }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.ok(luaCode.includes('s.energyType and s.energyType:lower()~="air"'));
+    assert.strictEqual($scope.fuelType, 'Diesel');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
+  it('adds Air fuel type when it is the only energy source', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '1.01', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({ prices: { Gasoline: 5, Electricity: 1 }, currency: 'USD' })
+    );
+
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Air' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.strictEqual($scope.fuelType, 'Air');
+    assert.strictEqual($scope.fuelPrices.Air, 0);
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
@@ -213,7 +360,7 @@ describe('UI template styling', () => {
     const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
     const cfgPath = path.join(tmp, 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
     fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
-    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 4, electricityPrice: 1.2, currency: 'Kč' }));
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 4, Electricity: 1.2 }, currency: 'Kč' }));
 
     global.bngApi = {
       engineLua: (code, cb) => {
@@ -222,7 +369,7 @@ describe('UI template styling', () => {
         try {
           cb(fs.readFileSync(cfgPath, 'utf8'));
         } catch (e) {
-          cb(JSON.stringify({ liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' }));
+          cb(JSON.stringify({ prices: { Gasoline: 0, Electricity: 0 }, currency: 'money' }));
         }
       }
     };
@@ -244,7 +391,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.electricityPriceValue, 1.2);
     assert.strictEqual($scope.currency, 'Kč');
 
-    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 5, electricityPrice: 1.5, currency: '€' }));
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5, Electricity: 1.5 }, currency: '€' }));
     await new Promise(r => setTimeout(r, 60));
     assert.strictEqual($scope.liquidFuelPriceValue, 5);
     assert.strictEqual($scope.electricityPriceValue, 1.5);
@@ -302,7 +449,7 @@ describe('UI template styling', () => {
 
     const cfgPath = path.join(tmp, '0.50', 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
     const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-    assert.strictEqual(cfg.liquidFuelPrice, 0);
+    assert.strictEqual(cfg.prices.Gasoline, 0);
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
@@ -411,7 +558,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0.5 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -443,7 +590,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0.5 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -526,7 +673,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0.5 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -571,7 +718,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0.5 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -627,7 +774,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -685,7 +832,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -759,7 +906,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0 }, currency: 'USD' })
     );
 
     function loadController() {
@@ -830,7 +977,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 32.5, electricityPrice: 0, currency: 'money' })
+      JSON.stringify({ prices: { Gasoline: 32.5, Electricity: 0 }, currency: 'money' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];

@@ -313,8 +313,8 @@ describe('app.js utility functions', () => {
   });
 
   describe('formatFuelTypeLabel', () => {
-    it('maps electric energy types to "Electric"', () => {
-      assert.strictEqual(formatFuelTypeLabel('electricEnergy'), 'Electric');
+    it('maps electric energy types to "Electricity"', () => {
+      assert.strictEqual(formatFuelTypeLabel('electricEnergy'), 'Electricity');
     });
     it('maps compressed gas to "LPG/CNG"', () => {
       assert.strictEqual(formatFuelTypeLabel('compressedGas'), 'LPG/CNG');

@@ -199,6 +199,7 @@ test('restart and manual reset cycle', () => {
     const $scope = { $on: (n, cb) => { $scope['on_' + n] = cb; }, $evalAsync: fn => fn() };
     controller({ debug: () => {} }, $scope);
     if (prevDir === undefined) delete process.env.KRTEKTM_BNG_USER_DIR; else process.env.KRTEKTM_BNG_USER_DIR = prevDir;
+    $scope.fuelPrices.Gasoline = 2;
     $scope.liquidFuelPriceValue = 2; // ensure costs are non-zero
     return { $scope, setTime: t => { now = t; } };
   }

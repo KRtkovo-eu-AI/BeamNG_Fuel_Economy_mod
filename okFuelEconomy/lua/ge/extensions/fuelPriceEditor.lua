@@ -7,30 +7,73 @@ local pricePath = '/settings/krtektm_fuelEconomy/fuelPrice.json'
 local priceDir = '/settings/krtektm_fuelEconomy/'
 local data = {}
 local uiState = {
-  liquid = im.FloatPtr(0),
-  electric = im.FloatPtr(0),
+  prices = {},
   currency = im.ArrayChar(32, 'money')
 }
+
+local function migrate(cfg)
+  local migrated = false
+  cfg.prices = cfg.prices or {}
+  if cfg.prices.Gasoline == nil and cfg.liquidFuelPrice ~= nil then
+    cfg.prices.Gasoline = cfg.liquidFuelPrice
+    cfg.liquidFuelPrice = nil
+    migrated = true
+  end
+  if cfg.prices.Electricity == nil and cfg.electricityPrice ~= nil then
+    cfg.prices.Electricity = cfg.electricityPrice
+    cfg.electricityPrice = nil
+    migrated = true
+  end
+  if cfg.prices.Gasoline == nil then
+    cfg.prices.Gasoline = 0
+    migrated = true
+  end
+  if cfg.prices.Electricity == nil then
+    cfg.prices.Electricity = 0
+    migrated = true
+  end
+  if cfg.currency == nil then
+    cfg.currency = 'money'
+    migrated = true
+  end
+  return cfg, migrated
+end
 
 local function ensureFile()
   if not FS:directoryExists(priceDir) then
     FS:directoryCreate(priceDir)
   end
   if not FS:fileExists(pricePath) then
-    jsonWriteFile(pricePath, {liquidFuelPrice = 0, electricityPrice = 0, currency = 'money'}, true)
+    jsonWriteFile(pricePath, {prices = {Gasoline = 0, Electricity = 0}, currency = 'money'}, true)
+  else
+    local cfg = jsonReadFile(pricePath) or {}
+    local migrated
+    cfg, migrated = migrate(cfg)
+    if migrated then
+      jsonWriteFile(pricePath, cfg, true)
+    end
   end
 end
 
 local function loadPrices()
   data = jsonReadFile(pricePath) or {}
-  uiState.liquid = im.FloatPtr(data.liquidFuelPrice or 0)
-  uiState.electric = im.FloatPtr(data.electricityPrice or 0)
+  local migrated
+  data, migrated = migrate(data)
+  if migrated then
+    jsonWriteFile(pricePath, data, true)
+  end
+  uiState.prices = {}
+  for k, v in pairs(data.prices) do
+    uiState.prices[k] = im.FloatPtr(v or 0)
+  end
   uiState.currency = im.ArrayChar(32, data.currency or 'money')
 end
 
 local function savePrices()
-  data.liquidFuelPrice = uiState.liquid[0]
-  data.electricityPrice = uiState.electric[0]
+  data.prices = data.prices or {}
+  for k, ptr in pairs(uiState.prices) do
+    data.prices[k] = ptr[0]
+  end
   data.currency = ffi.string(uiState.currency)
   jsonWriteFile(pricePath, data, true)
   loadPrices()
@@ -38,9 +81,9 @@ end
 
 local function onUpdate()
   im.Begin('Fuel Price Editor')
-
-  im.InputFloat('Liquid fuel price', uiState.liquid)
-  im.InputFloat('Electricity price', uiState.electric)
+  for name, ptr in pairs(uiState.prices) do
+    im.InputFloat(name, ptr)
+  end
   im.InputText('Currency', uiState.currency)
 
   if im.Button('Save') then
@@ -64,5 +107,20 @@ end
 M.onUpdate = onUpdate
 M.onExtensionLoaded = onExtensionLoaded
 M.onFileChanged = onFileChanged
+
+function M.ensureFuelType(label)
+  ensureFile()
+  local cfg = jsonReadFile(pricePath) or {}
+  local migrated
+  cfg, migrated = migrate(cfg)
+  if cfg.prices[label] == nil then
+    cfg.prices[label] = 0
+    migrated = true
+  end
+  if migrated then
+    jsonWriteFile(pricePath, cfg, true)
+    loadPrices()
+  end
+end
 
 return M
