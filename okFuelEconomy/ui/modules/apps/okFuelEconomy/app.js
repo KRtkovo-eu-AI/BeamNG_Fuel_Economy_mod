@@ -619,7 +619,7 @@ angular.module('beamng.apps')
           }
 
           if (typeof bngApi.engineLua === 'function') {
-            bngApi.engineLua('be:getPlayerVehicleID(0) or 0', function (veh) {
+            bngApi.engineLua('be:getPlayerVehicle(0)~=nil and 1 or 0', function (veh) {
               var hasVeh = parseInt(String(veh).trim(), 10) || 0;
               if (hasVeh === 0) {
                 $scope.$evalAsync(function () {
