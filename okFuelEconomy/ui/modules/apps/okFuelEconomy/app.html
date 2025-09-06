@@ -265,6 +265,24 @@
   <!-- Settings dialog -->
   <div ng-if="settingsOpen"
        ng-attr-style="{{ 'position:absolute; top:68px; right:4px; z-index:10; background:rgba(0,0,0,0.85); padding:8px; border-radius:6px;' + (useCustomStyles ? ' color:#aeeaff; border:1px solid #5fdcff;' : ' color:#fff; border:1px solid #ccc; background:#333;') }}">
+    <p id="fuelPriceNotice"
+       ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
+      <a href=""
+         ng-click="openFuelPriceEditor($event)"
+         ng-attr-style="{{ useCustomStyles ? ' color:#aeeaff;' : '' }}">Open Fuel Price Editor</a>
+    </p>
+    <div ng-attr-style="{{ 'position:relative;' + (useCustomStyles ? '' : '') }}">
+      <label>Units:
+        <span ng-click="unitMenuOpen = !unitMenuOpen"
+              ng-attr-style="{{ 'cursor:pointer; text-decoration:underline;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">{{ unitModeLabels[unitMode] }}</span>
+      </label>
+      <ul ng-if="unitMenuOpen"
+          ng-attr-style="{{ 'list-style:none; margin:2px 0 0; padding:0; position:absolute; right:0; background:rgba(0,0,0,0.9); border:1px solid;' + (useCustomStyles ? ' border-color:#5fdcff; color:#aeeaff;' : ' border-color:#ccc; color:#fff;') }}">
+        <li ng-repeat="(value,label) in unitModeLabels"
+            ng-click="setUnit(value)"
+            ng-attr-style="{{ 'padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' background:rgba(0,200,255,0.15);' : '') }}">{{ label }}</li>
+      </ul>
+    </div><br>
     <label><input type="checkbox" ng-model="visible.heading"> Heading</label><br>
     <label><input type="checkbox" ng-model="visible.distanceMeasured"> Distance measured</label><br>
     <label><input type="checkbox" ng-model="visible.distanceEcu"> Distance from ECU</label><br>
@@ -272,51 +290,33 @@
     <label><input type="checkbox" ng-model="visible.fuelLeft"> Fuel left</label><br>
     <label><input type="checkbox" ng-model="visible.fuelCap"> Fuel capacity</label><br>
     <label><input type="checkbox" ng-model="visible.fuelType"> Fuel type</label><br>
-      <label><input type="checkbox" ng-model="visible.avgL100km"> Average {{ unitConsumptionUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.avgKmL"> Average {{ unitEfficiencyUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.avgGraph"> Average history</label><br>
-      <label><input type="checkbox" ng-model="visible.avgKmLGraph"> Average {{ unitEfficiencyUnit }} history</label><br>
-      <label><input type="checkbox" ng-model="visible.instantLph"> Instant {{ unitFlowUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.instantL100km"> Instant {{ unitConsumptionUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.instantKmL"> Instant {{ unitEfficiencyUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.instantGraph"> Instant history</label><br>
-      <label><input type="checkbox" ng-model="visible.instantKmLGraph"> Instant {{ unitEfficiencyUnit }} history</label><br>
-      <label><input type="checkbox" ng-model="visible.range"> Range</label><br>
-      <label><input type="checkbox" ng-model="visible.tripAvgL100km"> Trip average {{ unitConsumptionUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.tripAvgKmL"> Trip average {{ unitEfficiencyUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.tripGraph"> Trip average history</label><br>
-      <label><input type="checkbox" ng-model="visible.tripKmLGraph"> Trip average {{ unitEfficiencyUnit }} history</label><br>
-      <label><input type="checkbox" ng-model="visible.tripDistance"> Trip distance</label><br>
-      <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
-      <label><input type="checkbox" ng-model="visible.tripFuelUsed"> Trip fuel used</label><br>
-      <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
-      <label><input type="checkbox" ng-model="visible.costPrice"> Fuel price</label><br>
-      <label><input type="checkbox" ng-model="visible.avgCost"> Average fuel cost per {{ unitDistanceUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.totalCost"> Total fuel cost</label><br>
-      <label><input type="checkbox" ng-model="visible.tripAvgCost"> Trip average fuel cost per {{ unitDistanceUnit }}</label><br>
-      <label><input type="checkbox" ng-model="visible.tripTotalCost"> Trip total fuel cost</label><br>
-      <p id="fuelPriceNotice"
-         ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
-        <a href=""
-           ng-click="openFuelPriceEditor($event)"
-           ng-attr-style="{{ useCustomStyles ? ' color:#aeeaff;' : '' }}">Open Fuel Price Editor</a>
-      </p>
-      <div ng-attr-style="{{ 'position:relative;' + (useCustomStyles ? '' : '') }}">
-        <label>Units:
-          <span ng-click="unitMenuOpen = !unitMenuOpen"
-                ng-attr-style="{{ 'cursor:pointer; text-decoration:underline;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">{{ unitModeLabels[unitMode] }}</span>
-        </label>
-        <ul ng-if="unitMenuOpen"
-            ng-attr-style="{{ 'list-style:none; margin:2px 0 0; padding:0; position:absolute; right:0; background:rgba(0,0,0,0.9); border:1px solid;' + (useCustomStyles ? ' border-color:#5fdcff; color:#aeeaff;' : ' border-color:#ccc; color:#fff;') }}">
-          <li ng-repeat="(value,label) in unitModeLabels"
-              ng-click="setUnit(value)"
-              ng-attr-style="{{ 'padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' background:rgba(0,200,255,0.15);' : '') }}">{{ label }}</li>
-        </ul>
-      </div><br>
-      <button id="settingsSaveButton" ng-click="saveSettings()"
-              ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">
-        <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
-      </button>
-      <p ng-attr-style="{{ useCustomStyles ? 'margin-top:4px; color:#aeeaff;' : '' }}">Project version: 1.0.7</p>
+    <label><input type="checkbox" ng-model="visible.costPrice"> Fuel price</label><br>
+    <label><input type="checkbox" ng-model="visible.avgCost"> Average fuel cost per {{ unitDistanceUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.totalCost"> Total fuel cost</label><br>
+    <label><input type="checkbox" ng-model="visible.avgL100km"> Average {{ unitConsumptionUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.avgKmL"> Average {{ unitEfficiencyUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.avgGraph"> Average history</label><br>
+    <label><input type="checkbox" ng-model="visible.avgKmLGraph"> Average {{ unitEfficiencyUnit }} history</label><br>
+    <label><input type="checkbox" ng-model="visible.instantLph"> Instant {{ unitFlowUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.instantL100km"> Instant {{ unitConsumptionUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.instantKmL"> Instant {{ unitEfficiencyUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.instantGraph"> Instant history</label><br>
+    <label><input type="checkbox" ng-model="visible.instantKmLGraph"> Instant {{ unitEfficiencyUnit }} history</label><br>
+    <label><input type="checkbox" ng-model="visible.range"> Range</label><br>
+    <label><input type="checkbox" ng-model="visible.tripAvgL100km"> Trip average {{ unitConsumptionUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.tripAvgKmL"> Trip average {{ unitEfficiencyUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.tripGraph"> Trip average history</label><br>
+    <label><input type="checkbox" ng-model="visible.tripKmLGraph"> Trip average {{ unitEfficiencyUnit }} history</label><br>
+    <label><input type="checkbox" ng-model="visible.tripDistance"> Trip distance</label><br>
+    <label><input type="checkbox" ng-model="visible.tripRange"> Trip range</label><br>
+    <label><input type="checkbox" ng-model="visible.tripFuelUsed"> Trip fuel used</label><br>
+    <label><input type="checkbox" ng-model="visible.tripAvgCost"> Trip average fuel cost per {{ unitDistanceUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.tripTotalCost"> Trip total fuel cost</label><br>
+    <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
+    <button id="settingsSaveButton" ng-click="saveSettings()"
+            ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">
+      <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
+    </button>
+    <p ng-attr-style="{{ useCustomStyles ? 'margin-top:4px; color:#aeeaff;' : '' }}">Project version: 1.0.8</p>
   </div>
 </div>
