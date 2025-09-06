@@ -261,11 +261,12 @@ function formatFuelTypeLabel(fuelType) {
   if (typeof fuelType === 'string') {
     var lower = fuelType.toLowerCase();
     if (lower.indexOf('electric') !== -1) {
-      return 'electric';
+      return 'Electric';
     }
     if (lower === 'compressedgas') {
       return 'LPG/CNG';
     }
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
   }
   return fuelType || '';
 }

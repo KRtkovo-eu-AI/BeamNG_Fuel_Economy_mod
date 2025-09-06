@@ -313,14 +313,14 @@ describe('app.js utility functions', () => {
   });
 
   describe('formatFuelTypeLabel', () => {
-    it('maps electric energy types to "electric"', () => {
-      assert.strictEqual(formatFuelTypeLabel('electricEnergy'), 'electric');
+    it('maps electric energy types to "Electric"', () => {
+      assert.strictEqual(formatFuelTypeLabel('electricEnergy'), 'Electric');
     });
     it('maps compressed gas to "LPG/CNG"', () => {
       assert.strictEqual(formatFuelTypeLabel('compressedGas'), 'LPG/CNG');
     });
-    it('returns other types unchanged', () => {
-      assert.strictEqual(formatFuelTypeLabel('diesel'), 'diesel');
+    it('capitalizes other types', () => {
+      assert.strictEqual(formatFuelTypeLabel('diesel'), 'Diesel');
     });
   });
 });
