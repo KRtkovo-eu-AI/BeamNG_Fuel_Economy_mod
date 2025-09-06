@@ -14,8 +14,7 @@ describe('Fuel Price Editor saving', () => {
 
     const data = {};
     const uiState = {
-      liquid: { 0: 0 },
-      electric: { 0: 0 },
+      prices: { Gasoline: { 0: 0 }, Electricity: { 0: 0 } },
       currency: { value: 'money' }
     };
 
@@ -30,19 +29,24 @@ describe('Fuel Price Editor saving', () => {
 
     function ensureFile() {
       if (!FS.directoryExists(priceDir)) FS.directoryCreate(priceDir);
-      if (!FS.fileExists(pricePath)) jsonWriteFile(pricePath, { liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' });
+      if (!FS.fileExists(pricePath)) jsonWriteFile(pricePath, { prices: { Gasoline: 0, Electricity: 0 }, currency: 'money' });
     }
 
     function loadPrices() {
-      Object.assign(data, jsonReadFile(pricePath));
-      uiState.liquid[0] = data.liquidFuelPrice;
-      uiState.electric[0] = data.electricityPrice;
-      uiState.currency.value = data.currency;
+      const read = jsonReadFile(pricePath);
+      Object.assign(data, read);
+      uiState.prices = {};
+      Object.keys(read.prices).forEach(k => {
+        uiState.prices[k] = { 0: read.prices[k] };
+      });
+      uiState.currency.value = read.currency;
     }
 
     function savePrices() {
-      data.liquidFuelPrice = uiState.liquid[0];
-      data.electricityPrice = uiState.electric[0];
+      data.prices = {};
+      Object.keys(uiState.prices).forEach(k => {
+        data.prices[k] = uiState.prices[k][0];
+      });
       data.currency = uiState.currency.value;
       jsonWriteFile(pricePath, data);
       loadPrices();
@@ -50,12 +54,12 @@ describe('Fuel Price Editor saving', () => {
 
     ensureFile();
     loadPrices();
-    uiState.liquid[0] = 3.7;
-    uiState.electric[0] = 1.6;
+    uiState.prices.Gasoline[0] = 3.7;
+    uiState.prices.Electricity[0] = 1.6;
     uiState.currency.value = 'EUR';
     savePrices();
 
     const saved = jsonReadFile(pricePath);
-    assert.deepStrictEqual(saved, { liquidFuelPrice: 3.7, electricityPrice: 1.6, currency: 'EUR' });
+    assert.deepStrictEqual(saved, { prices: { Gasoline: 3.7, Electricity: 1.6 }, currency: 'EUR' });
   });
 });

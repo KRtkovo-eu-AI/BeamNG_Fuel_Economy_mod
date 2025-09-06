@@ -123,8 +123,9 @@ describe('UI template styling', () => {
   it('exposes fuel prices and currency in fuelPrice.json', () => {
     const priceConfigPath = path.join(__dirname, '..', 'okFuelEconomy', 'ui', 'modules', 'apps', 'okFuelEconomy', 'fuelPrice.json');
     const cfg = JSON.parse(fs.readFileSync(priceConfigPath, 'utf8'));
-    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'liquidFuelPrice'));
-    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'electricityPrice'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'prices'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg.prices, 'Gasoline'));
+    assert.ok(Object.prototype.hasOwnProperty.call(cfg.prices, 'Electricity'));
     assert.ok(Object.prototype.hasOwnProperty.call(cfg, 'currency'));
   });
 
@@ -144,7 +145,7 @@ describe('UI template styling', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 2.25, electricityPrice: 0.5, currency: 'CZK' })
+      JSON.stringify({ prices: { Gasoline: 2.25, Electricity: 0.5 }, currency: 'CZK' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -176,7 +177,7 @@ describe('UI template styling', () => {
     const verDir = path.join(tmp, '0.98', 'settings', 'krtektm_fuelEconomy');
     fs.mkdirSync(verDir, { recursive: true });
     const cfgPath = path.join(verDir, 'fuelPrice.json');
-    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 1, electricityPrice: 0.2, currency: 'USD' }));
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 1, Electricity: 0.2 }, currency: 'USD' }));
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
@@ -189,7 +190,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.electricityPriceValue, 0.2);
     assert.strictEqual($scope.currency, 'USD');
 
-    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 3, electricityPrice: 0.8, currency: 'EUR' }));
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 3, Electricity: 0.8 }, currency: 'EUR' }));
     await new Promise(r => setTimeout(r, 60));
     assert.strictEqual($scope.liquidFuelPriceValue, 3);
     assert.strictEqual($scope.electricityPriceValue, 0.8);
@@ -213,7 +214,7 @@ describe('UI template styling', () => {
     const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
     const cfgPath = path.join(tmp, 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
     fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
-    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 4, electricityPrice: 1.2, currency: 'Kč' }));
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 4, Electricity: 1.2 }, currency: 'Kč' }));
 
     global.bngApi = {
       engineLua: (code, cb) => {
@@ -222,7 +223,7 @@ describe('UI template styling', () => {
         try {
           cb(fs.readFileSync(cfgPath, 'utf8'));
         } catch (e) {
-          cb(JSON.stringify({ liquidFuelPrice: 0, electricityPrice: 0, currency: 'money' }));
+          cb(JSON.stringify({ prices: { Gasoline: 0, Electricity: 0 }, currency: 'money' }));
         }
       }
     };
@@ -244,7 +245,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.electricityPriceValue, 1.2);
     assert.strictEqual($scope.currency, 'Kč');
 
-    fs.writeFileSync(cfgPath, JSON.stringify({ liquidFuelPrice: 5, electricityPrice: 1.5, currency: '€' }));
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5, Electricity: 1.5 }, currency: '€' }));
     await new Promise(r => setTimeout(r, 60));
     assert.strictEqual($scope.liquidFuelPriceValue, 5);
     assert.strictEqual($scope.electricityPriceValue, 1.5);
@@ -302,7 +303,7 @@ describe('UI template styling', () => {
 
     const cfgPath = path.join(tmp, '0.50', 'settings', 'krtektm_fuelEconomy', 'fuelPrice.json');
     const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
-    assert.strictEqual(cfg.liquidFuelPrice, 0);
+    assert.strictEqual(cfg.prices.Gasoline, 0);
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
@@ -411,7 +412,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0.5 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -443,7 +444,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0.5 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -526,7 +527,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0.5 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -571,7 +572,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0.5, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0.5 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -627,7 +628,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -685,7 +686,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0 }, currency: 'USD' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -759,7 +760,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 1.5, electricityPrice: 0, currency: 'USD' })
+      JSON.stringify({ prices: { Gasoline: 1.5, Electricity: 0 }, currency: 'USD' })
     );
 
     function loadController() {
@@ -830,7 +831,7 @@ describe('controller integration', () => {
     fs.mkdirSync(verDir, { recursive: true });
     fs.writeFileSync(
       path.join(verDir, 'fuelPrice.json'),
-      JSON.stringify({ liquidFuelPrice: 32.5, electricityPrice: 0, currency: 'money' })
+      JSON.stringify({ prices: { Gasoline: 32.5, Electricity: 0 }, currency: 'money' })
     );
 
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];

@@ -312,8 +312,7 @@ if (typeof module !== 'undefined') {
 
 function loadFuelPriceConfig(callback) {
   var defaults = {
-    liquidFuelPrice: 0,
-    electricityPrice: 0,
+    prices: { Gasoline: 0, Electricity: 0 },
     currency: 'money'
   };
 
@@ -353,15 +352,26 @@ function loadFuelPriceConfig(callback) {
       );
       fs.mkdirSync(settingsDir, { recursive: true });
       const userFile = path.join(settingsDir, 'fuelPrice.json');
+      loadFuelPriceConfig.userFile = userFile;
       if (!fs.existsSync(userFile)) {
         fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
         if (typeof callback === 'function') callback(defaults);
         return defaults;
       }
       const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+      var prices = {};
+      if (data.prices && typeof data.prices === 'object') {
+        Object.keys(data.prices).forEach(k => {
+          prices[k] = parseFloat(data.prices[k]) || 0;
+        });
+      } else {
+        if (typeof data.liquidFuelPrice !== 'undefined') prices.Gasoline = parseFloat(data.liquidFuelPrice) || 0;
+        if (typeof data.electricityPrice !== 'undefined') prices.Electricity = parseFloat(data.electricityPrice) || 0;
+      }
+      if (prices.Gasoline === undefined) prices.Gasoline = 0;
+      if (prices.Electricity === undefined) prices.Electricity = 0;
       const cfgObj = {
-        liquidFuelPrice: parseFloat(data.liquidFuelPrice) || 0,
-        electricityPrice: parseFloat(data.electricityPrice) || 0,
+        prices,
         currency: data.currency || 'money'
       };
       if (typeof callback === 'function') callback(cfgObj);
@@ -381,8 +391,14 @@ function loadFuelPriceConfig(callback) {
         'FS:directoryCreate(dir)',
         "local p=dir..'fuelPrice.json'",
         'local cfg=jsonReadFile(p)',
-        "if not cfg then cfg={liquidFuelPrice=0,electricityPrice=0,currency='money'} jsonWriteFile(p,cfg) end",
-        "return jsonEncode({liquidFuelPrice=tonumber(cfg.liquidFuelPrice) or 0,electricityPrice=tonumber(cfg.electricityPrice) or 0,currency=cfg.currency or 'money'})",
+        "if not cfg then cfg={prices={Gasoline=0,Electricity=0},currency='money'} jsonWriteFile(p,cfg) end",
+        "if not cfg.prices then cfg.prices={Gasoline=0,Electricity=0} end",
+        "if cfg.liquidFuelPrice then cfg.prices.Gasoline=cfg.liquidFuelPrice cfg.liquidFuelPrice=nil end",
+        "if cfg.electricityPrice then cfg.prices.Electricity=cfg.electricityPrice cfg.electricityPrice=nil end",
+        "if cfg.prices.Gasoline==nil then cfg.prices.Gasoline=0 end",
+        "if cfg.prices.Electricity==nil then cfg.prices.Electricity=0 end",
+        'jsonWriteFile(p,cfg)',
+        "return jsonEncode({prices=cfg.prices,currency=cfg.currency or 'money'})",
         'end)()'
       ].join('\n');
       bngApi.engineLua(lua, function (res) {
@@ -411,6 +427,7 @@ angular.module('beamng.apps')
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
 
+        $scope.fuelPrices = { Gasoline: 0, Electricity: 0 };
         $scope.liquidFuelPriceValue = 0;
         $scope.electricityPriceValue = 0;
         $scope.currency = 'money';
@@ -436,8 +453,9 @@ angular.module('beamng.apps')
 
         loadFuelPriceConfig(function (cfg) {
           var applyInit = function () {
-            $scope.liquidFuelPriceValue = cfg.liquidFuelPrice;
-            $scope.electricityPriceValue = cfg.electricityPrice;
+            $scope.fuelPrices = cfg.prices || { Gasoline: 0, Electricity: 0 };
+            $scope.liquidFuelPriceValue = $scope.fuelPrices.Gasoline || 0;
+            $scope.electricityPriceValue = $scope.fuelPrices.Electricity || 0;
             $scope.currency = cfg.currency;
             updateCostPrice();
             setTimeout(refreshCostOutputs, 0);
@@ -452,14 +470,15 @@ angular.module('beamng.apps')
       }
         var priceTimer = setInterval(function () {
           loadFuelPriceConfig(function (cfg) {
+            var pricesChanged = JSON.stringify(cfg.prices || {}) !== JSON.stringify($scope.fuelPrices);
             if (
-              cfg.liquidFuelPrice !== $scope.liquidFuelPriceValue ||
-              cfg.electricityPrice !== $scope.electricityPriceValue ||
+              pricesChanged ||
               cfg.currency !== $scope.currency
             ) {
               var apply = function () {
-                $scope.liquidFuelPriceValue = cfg.liquidFuelPrice;
-                $scope.electricityPriceValue = cfg.electricityPrice;
+                $scope.fuelPrices = cfg.prices || {};
+                $scope.liquidFuelPriceValue = $scope.fuelPrices[$scope.fuelType] || $scope.fuelPrices.Gasoline || 0;
+                $scope.electricityPriceValue = $scope.fuelPrices.Electricity || 0;
                 $scope.currency = cfg.currency;
                 updateCostPrice();
                 refreshCostOutputs();
@@ -556,7 +575,25 @@ angular.module('beamng.apps')
             $scope.$evalAsync(function () {
               lastFuelType = parsed.t || '';
               $scope.fuelType = formatFuelTypeLabel(lastFuelType);
+              if ($scope.fuelPrices[$scope.fuelType] == null) {
+                $scope.fuelPrices[$scope.fuelType] = 0;
+                if (typeof require === 'function' && loadFuelPriceConfig.userFile) {
+                  try {
+                    const fs = require('fs');
+                    const data = { prices: $scope.fuelPrices, currency: $scope.currency };
+                    fs.writeFileSync(loadFuelPriceConfig.userFile, JSON.stringify(data));
+                  } catch (e) {}
+                } else if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+                  var cmd = 'extensions.load("fuelPriceEditor")';
+                  bngApi.engineLua(cmd, function () {
+                    bngApi.engineLua('extensions.fuelPriceEditor.ensureFuelType(' + JSON.stringify($scope.fuelType) + ')');
+                  });
+                }
+              }
+              $scope.liquidFuelPriceValue = $scope.fuelPrices[$scope.fuelType] || 0;
               applyAutoUnitMode(lastFuelType);
+              updateCostPrice();
+              refreshCostOutputs();
             });
           });
         }

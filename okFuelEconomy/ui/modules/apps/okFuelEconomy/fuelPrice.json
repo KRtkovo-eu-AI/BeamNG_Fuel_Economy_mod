@@ -1,5 +1,7 @@
 {
-  "liquidFuelPrice": 0,
-  "electricityPrice": 0,
+  "prices": {
+    "Gasoline": 0,
+    "Electricity": 0
+  },
   "currency": "money"
 }
