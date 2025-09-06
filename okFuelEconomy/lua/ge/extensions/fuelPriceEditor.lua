@@ -100,7 +100,8 @@ local function onUpdate()
     im.SameLine()
     local disabled = name == 'Gasoline' or name == 'Electricity'
     if disabled then im.BeginDisabled() end
-    if im.Button('Delete##' .. name) then
+    local label = (im.Icons and (im.Icons.Trash or im.Icons.Delete) or 'Delete') .. '##' .. name
+    if im.Button(label) then
       removeFuelType(name)
     end
     if disabled then im.EndDisabled() end
