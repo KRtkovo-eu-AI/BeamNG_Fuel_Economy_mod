@@ -352,6 +352,43 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_FUEL_POLL_MS;
   });
 
+  it('displays None for empty fuel type and does not add price entry', async () => {
+    let directiveDef;
+    const engineCalls = [];
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '1.02', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5 }, currency: 'USD' }));
+
+    global.bngApi = {
+      engineLua: cmd => engineCalls.push(cmd),
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: '' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.strictEqual($scope.fuelType, 'None');
+    assert.ok(!('None' in $scope.fuelPrices));
+    assert.ok(!('' in $scope.fuelPrices));
+    assert.ok(engineCalls.every(c => !c.includes('ensureFuelType')));
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

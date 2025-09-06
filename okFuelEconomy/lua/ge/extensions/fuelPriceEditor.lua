@@ -81,8 +81,13 @@ end
 
 local function onUpdate()
   im.Begin('Fuel Price Editor')
-  for name, ptr in pairs(uiState.prices) do
-    im.InputFloat(name, ptr)
+  local names = {}
+  for name, _ in pairs(uiState.prices) do
+    table.insert(names, name)
+  end
+  table.sort(names)
+  for _, name in ipairs(names) do
+    im.InputFloat(name, uiState.prices[name])
   end
   im.InputText('Currency', uiState.currency)
 

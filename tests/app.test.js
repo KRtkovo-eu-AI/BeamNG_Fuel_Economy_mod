@@ -322,5 +322,8 @@ describe('app.js utility functions', () => {
     it('capitalizes other types', () => {
       assert.strictEqual(formatFuelTypeLabel('diesel'), 'Diesel');
     });
+    it('returns "None" for empty fuel types', () => {
+      assert.strictEqual(formatFuelTypeLabel(''), 'None');
+    });
   });
 });

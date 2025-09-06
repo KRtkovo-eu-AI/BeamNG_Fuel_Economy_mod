@@ -260,6 +260,9 @@ function convertVolumePerDistance(lPerKm, mode) {
 function formatFuelTypeLabel(fuelType) {
   if (typeof fuelType === 'string') {
     var lower = fuelType.toLowerCase();
+    if (!lower) {
+      return 'None';
+    }
     if (lower.indexOf('electric') !== -1) {
       return 'Electricity';
     }
@@ -268,7 +271,7 @@ function formatFuelTypeLabel(fuelType) {
     }
     return lower.charAt(0).toUpperCase() + lower.slice(1);
   }
-  return fuelType || '';
+  return fuelType || 'None';
 }
 
 function resolveUnitModeForFuelType(fuelType, liquidMode) {
@@ -583,7 +586,7 @@ angular.module('beamng.apps')
             $scope.$evalAsync(function () {
               lastFuelType = parsed.t || '';
               $scope.fuelType = formatFuelTypeLabel(lastFuelType);
-              if ($scope.fuelPrices[$scope.fuelType] == null) {
+              if ($scope.fuelType !== 'None' && $scope.fuelPrices[$scope.fuelType] == null) {
                 $scope.fuelPrices[$scope.fuelType] = 0;
                 if (typeof require === 'function' && loadFuelPriceConfig.userFile) {
                   try {
@@ -598,7 +601,8 @@ angular.module('beamng.apps')
                   });
                 }
               }
-              $scope.liquidFuelPriceValue = $scope.fuelPrices[$scope.fuelType] || 0;
+              $scope.liquidFuelPriceValue =
+                $scope.fuelType !== 'None' ? $scope.fuelPrices[$scope.fuelType] || 0 : 0;
               applyAutoUnitMode(lastFuelType);
               updateCostPrice();
               refreshCostOutputs();
@@ -699,7 +703,7 @@ angular.module('beamng.apps')
       $scope.instantHistory = '';
       $scope.instantKmLHistory = '';
       $scope.costPrice = '';
-      $scope.fuelType = '';
+      $scope.fuelType = 'None';
       $scope.avgCost = '';
       $scope.totalCost = '';
       $scope.tripAvgCostLiquid = '';
@@ -987,7 +991,7 @@ angular.module('beamng.apps')
         hardReset(true);
         manualUnit = false;
         lastFuelType = '';
-        $scope.fuelType = '';
+        $scope.fuelType = 'None';
         fetchFuelType();
       });
 

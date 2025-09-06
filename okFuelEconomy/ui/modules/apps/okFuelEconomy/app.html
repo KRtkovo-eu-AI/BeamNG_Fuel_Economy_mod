@@ -283,6 +283,10 @@
             ng-attr-style="{{ 'padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' background:rgba(0,200,255,0.15);' : '') }}">{{ label }}</li>
       </ul>
     </div><br>
+    <button id="settingsSaveButton" ng-click="saveSettings()"
+            ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : 'color: #ff7722; border: 1px solid #ff7722;') }}">
+      <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
+    </button><br><br>
     <label><input type="checkbox" ng-model="visible.heading"> Heading</label><br>
     <label><input type="checkbox" ng-model="visible.distanceMeasured"> Distance measured</label><br>
     <label><input type="checkbox" ng-model="visible.distanceEcu"> Distance from ECU</label><br>
@@ -312,11 +316,11 @@
     <label><input type="checkbox" ng-model="visible.tripFuelUsed"> Trip fuel used</label><br>
     <label><input type="checkbox" ng-model="visible.tripAvgCost"> Trip average fuel cost per {{ unitDistanceUnit }}</label><br>
     <label><input type="checkbox" ng-model="visible.tripTotalCost"> Trip total fuel cost</label><br>
-    <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br>
+    <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label><br><br>
     <button id="settingsSaveButton" ng-click="saveSettings()"
-            ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : '') }}">
+            ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : 'color: #ff7722; border: 1px solid #ff7722;') }}">
       <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
-    </button>
-    <p ng-attr-style="{{ useCustomStyles ? 'margin-top:4px; color:#aeeaff;' : '' }}">Project version: 1.0.8</p>
+    </button><br><br>
+    <p ng-attr-style="{{ useCustomStyles ? 'margin-top:4px; color:#aeeaff; font-size: 11px; font-style: italic;' : '' }}">Fuel Economy v1.0.8</p>
   </div>
 </div>
