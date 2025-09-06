@@ -460,6 +460,7 @@ angular.module('beamng.apps')
             $scope.currency = cfg.currency;
             updateCostPrice();
             setTimeout(refreshCostOutputs, 0);
+            fetchFuelType();
           };
           if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(applyInit); else applyInit();
         });
@@ -478,7 +479,11 @@ angular.module('beamng.apps')
             ) {
               var apply = function () {
                 $scope.fuelPrices = cfg.prices || {};
-                $scope.liquidFuelPriceValue = $scope.fuelPrices[$scope.fuelType] || $scope.fuelPrices.Gasoline || 0;
+                var ftPrice = $scope.fuelPrices[$scope.fuelType];
+                $scope.liquidFuelPriceValue =
+                  typeof ftPrice === 'number'
+                    ? ftPrice
+                    : $scope.fuelPrices.Gasoline || 0;
                 $scope.electricityPriceValue = $scope.fuelPrices.Electricity || 0;
                 $scope.currency = cfg.currency;
                 updateCostPrice();
@@ -543,7 +548,6 @@ angular.module('beamng.apps')
         }
         updateUnitLabels();
         updateCostPrice();
-        fetchFuelType();
 
         function applyAutoUnitMode(type) {
           var desired = resolveUnitModeForFuelType(type, preferredLiquidUnit);

@@ -77,9 +77,10 @@ describe('UI template styling', () => {
   it('loads fuel price editor via controller function', async () => {
     let directiveDef;
     let luaCmd;
-    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
-    global.StreamsManager = { add: () => {}, remove: () => {} };
-    global.UiUnits = { buildString: () => '' };
+      global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+      global.StreamsManager = { add: () => {}, remove: () => {} };
+      global.UiUnits = { buildString: () => '' };
+      global.window = {};
     global.bngApi = { engineLua: cmd => { luaCmd = cmd; } };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
@@ -234,6 +235,42 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.electricityPriceValue, 0);
     assert.strictEqual($scope.currency, 'money');
 
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
+  it('defaults new fuel types to zero cost', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '0.99', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({ prices: { Gasoline: 5, Electricity: 1 }, currency: 'USD' })
+    );
+
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Diesel' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.strictEqual($scope.fuelPrices.Diesel, 0);
+    assert.strictEqual($scope.liquidFuelPriceValue, 0);
     delete process.env.KRTEKTM_BNG_USER_DIR;
     delete process.env.KRTEKTM_FUEL_POLL_MS;
   });
