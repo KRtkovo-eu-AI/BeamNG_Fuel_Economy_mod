@@ -619,9 +619,9 @@ angular.module('beamng.apps')
           }
 
           if (typeof bngApi.engineLua === 'function') {
-            bngApi.engineLua('be:getPlayerVehicle(0)~=nil', function (veh) {
-              var hasVeh = String(veh).trim() === 'true';
-              if (!hasVeh) {
+            bngApi.engineLua('be:getPlayerVehicleID(0) or 0', function (veh) {
+              var vehId = parseInt(String(veh).trim(), 10) || 0;
+              if (vehId <= 0) {
                 $scope.$evalAsync(function () {
                   lastFuelType = 'Food';
                   $scope.fuelType = 'Food';
