@@ -192,6 +192,14 @@ function getUnitLabels(mode) {
         efficiency: 'km/kWh',
         flow: 'kW'
       };
+    case 'kcal':
+      return {
+        distance: 'km',
+        volume: 'kCal',
+        consumption: 'kCal/100km',
+        efficiency: 'km/kCal',
+        flow: 'kCal/h'
+      };
     default:
       return {
         distance: 'km',
@@ -275,11 +283,10 @@ function formatFuelTypeLabel(fuelType) {
 }
 
 function resolveUnitModeForFuelType(fuelType, liquidMode) {
-  if (
-    typeof fuelType === 'string' &&
-    fuelType.toLowerCase().indexOf('electric') !== -1
-  ) {
-    return 'electric';
+  if (typeof fuelType === 'string') {
+    var lower = fuelType.toLowerCase();
+    if (lower.indexOf('electric') !== -1) return 'electric';
+    if (lower === 'food') return 'kcal';
   }
   return liquidMode;
 }
@@ -521,7 +528,8 @@ angular.module('beamng.apps')
       $scope.unitModeLabels = {
         metric: 'Metric (L, km)',
         imperial: 'Imperial (gal, mi)',
-        electric: 'Electric (kWh, km)'
+        electric: 'Electric (kWh, km)',
+        kcal: 'Food (kCal, km)'
       };
         $scope.unitMenuOpen = false;
         $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
@@ -580,7 +588,8 @@ angular.module('beamng.apps')
             'return jsonEncode({t=t})',
             'end)()'
           ].join('\n');
-          bngApi.activeObjectLua(lua, function (res) {
+
+          function handleFuelType(res) {
             var parsed = {};
             try { parsed = JSON.parse(res); } catch (e) {}
             $scope.$evalAsync(function () {
@@ -607,7 +616,26 @@ angular.module('beamng.apps')
               updateCostPrice();
               refreshCostOutputs();
             });
-          });
+          }
+
+          if (typeof bngApi.engineLua === 'function') {
+            bngApi.engineLua('be:getPlayerVehicle(0)', function (veh) {
+              if (!veh || veh === 'nil') {
+                $scope.$evalAsync(function () {
+                  lastFuelType = 'Food';
+                  $scope.fuelType = 'Food';
+                  $scope.liquidFuelPriceValue = 0;
+                  applyAutoUnitMode(lastFuelType);
+                  updateCostPrice();
+                  refreshCostOutputs();
+                });
+              } else {
+                bngApi.activeObjectLua(lua, handleFuelType);
+              }
+            });
+          } else {
+            bngApi.activeObjectLua(lua, handleFuelType);
+          }
         }
       $scope.visible = {
         heading: true,

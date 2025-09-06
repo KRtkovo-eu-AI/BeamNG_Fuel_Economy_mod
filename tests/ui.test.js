@@ -297,7 +297,7 @@ describe('UI template styling', () => {
     );
 
     global.bngApi = {
-      engineLua: () => {},
+      engineLua: (cmd, cb) => { if (cb) cb('1'); },
       activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Diesel' }))
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
@@ -333,7 +333,7 @@ describe('UI template styling', () => {
     );
 
     global.bngApi = {
-      engineLua: () => {},
+      engineLua: (cmd, cb) => { if (cb) cb('1'); },
       activeObjectLua: (code, cb) => {
         luaCode = code;
         cb(JSON.stringify({ t: 'Diesel' }));
@@ -373,7 +373,7 @@ describe('UI template styling', () => {
     );
 
     global.bngApi = {
-      engineLua: () => {},
+      engineLua: (cmd, cb) => { if (cb) cb('1'); },
       activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Air' }))
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
@@ -408,7 +408,7 @@ describe('UI template styling', () => {
     fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5 }, currency: 'USD' }));
 
     global.bngApi = {
-      engineLua: cmd => engineCalls.push(cmd),
+      engineLua: (cmd, cb) => { engineCalls.push(cmd); if (cb) cb('1'); },
       activeObjectLua: (code, cb) => cb(JSON.stringify({ t: '' }))
     };
     global.localStorage = { getItem: () => null, setItem: () => {} };
@@ -430,6 +430,40 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_FUEL_POLL_MS;
   });
 
+  it('shows Food fuel type and kCal units when on foot', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '1.02', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5 }, currency: 'USD' }));
+
+    global.bngApi = {
+      engineLua: (code, cb) => { if (cb) cb('nil'); },
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: '' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.strictEqual($scope.fuelType, 'Food');
+    assert.strictEqual($scope.unitMode, 'kcal');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
@@ -442,6 +476,7 @@ describe('UI template styling', () => {
 
     global.bngApi = {
       engineLua: (code, cb) => {
+        if (code === 'be:getPlayerVehicle(0)') { if (cb) cb('1'); return; }
         assert.ok(code.startsWith('(function()'), 'Lua chunk should be wrapped in a function');
         assert.ok(code.includes('core_paths.getUserPath'));
         try {
