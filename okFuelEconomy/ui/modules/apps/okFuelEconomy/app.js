@@ -625,11 +625,23 @@ angular.module('beamng.apps')
                   lastFuelType = 'Food';
                   $scope.fuelType = 'Food';
                   $scope.liquidFuelPriceValue = 0;
+                  onFoot = true;
+                  foodFuel_kcal = FOOD_CAPACITY_KCAL;
+                  startFuel_l = FOOD_CAPACITY_KCAL;
+                  previousFuel_l = FOOD_CAPACITY_KCAL;
+                  distance_m = 0;
+                  lastTime_ms = performance.now();
+                  resetInstantHistory();
+                  resetAvgHistory();
                   applyAutoUnitMode(lastFuelType);
                   updateCostPrice();
                   refreshCostOutputs();
                 });
               } else {
+                onFoot = false;
+                foodFuel_kcal = null;
+                startFuel_l = null;
+                previousFuel_l = null;
                 bngApi.activeObjectLua(lua, handleFuelType);
               }
             });
@@ -763,6 +775,13 @@ angular.module('beamng.apps')
       var INSTANT_UPDATE_INTERVAL = 250;
       var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
       var MAX_EFFICIENCY = 100; // [km/L] cap unrealistic efficiency
+
+      var onFoot = false;
+      var FOOD_CAPACITY_KCAL = 2000;
+      var FOOD_IDLE_KCAL_H = 80;
+      var FOOD_WALK_KCAL_H = 250;
+      var FOOD_RUN_KCAL_H = 600;
+      var foodFuel_kcal = null;
 
       $scope.vehicleNameStr = "";
 
@@ -1015,6 +1034,66 @@ angular.module('beamng.apps')
           $scope.avgKmLHistory = '';
       };
 
+      function updateOnFoot(streams) {
+        var now_ms = performance.now();
+        var dt = Math.max(0, (now_ms - lastTime_ms) / 1000);
+        lastTime_ms = now_ms;
+
+        var speed_mps = resolveSpeed(
+          streams && streams.electrics ? streams.electrics.wheelspeed : 0,
+          streams && streams.electrics ? streams.electrics.airspeed : 0,
+          EPS_SPEED
+        );
+
+        if (foodFuel_kcal === null) {
+          foodFuel_kcal = FOOD_CAPACITY_KCAL;
+          startFuel_l = FOOD_CAPACITY_KCAL;
+          previousFuel_l = FOOD_CAPACITY_KCAL;
+        }
+
+        distance_m += speed_mps * dt;
+
+        var rate_h;
+        if (speed_mps < 0.5) {
+          rate_h = FOOD_IDLE_KCAL_H * (0.95 + 0.1 * Math.sin(now_ms / 1000));
+        } else if (speed_mps < 2) {
+          rate_h = FOOD_WALK_KCAL_H;
+        } else {
+          rate_h = FOOD_RUN_KCAL_H;
+        }
+        var rate_s = rate_h / 3600;
+        foodFuel_kcal = Math.max(0, foodFuel_kcal - rate_s * dt);
+        var fuel_used_l = startFuel_l - foodFuel_kcal;
+
+        var inst_l_per_h = rate_s * 3600;
+        var inst_l_per_100km = speed_mps > EPS_SPEED ? calculateInstantConsumption(rate_s, speed_mps) : 0;
+        var eff = Number.isFinite(inst_l_per_100km) && inst_l_per_100km > 0 ? 100 / inst_l_per_100km : MAX_EFFICIENCY;
+        eff = Math.min(eff, MAX_EFFICIENCY);
+
+        var avg_l_per_100km_ok = calculateAverageConsumption(fuel_used_l, distance_m);
+        var rangeVal = calculateRange(foodFuel_kcal, avg_l_per_100km_ok, speed_mps, EPS_SPEED);
+        var rangeStr = Number.isFinite(rangeVal) ? formatDistance(rangeVal, $scope.unitMode, 0) : 'Infinity';
+
+        $scope.data1 = formatDistance(distance_m, $scope.unitMode, 1);
+        $scope.fuelUsed = formatVolume(fuel_used_l, $scope.unitMode, 2);
+        $scope.fuelLeft = formatVolume(foodFuel_kcal, $scope.unitMode, 2);
+        $scope.fuelCap = formatVolume(FOOD_CAPACITY_KCAL, $scope.unitMode, 1);
+        $scope.avgL100km = formatConsumptionRate(avg_l_per_100km_ok, $scope.unitMode, 1);
+        $scope.avgKmL = formatEfficiency(eff, $scope.unitMode, 2);
+        $scope.instantLph = formatFlow(inst_l_per_h, $scope.unitMode, 1);
+        $scope.instantL100km = Number.isFinite(inst_l_per_100km)
+          ? formatConsumptionRate(inst_l_per_100km, $scope.unitMode, 1)
+          : 'Infinity';
+        $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
+        $scope.data4 = rangeStr;
+        $scope.totalCost = '0.00 ' + $scope.currency;
+        $scope.avgCost = '0.00 ' + $scope.currency + '/' + getUnitLabels($scope.unitMode).distance;
+
+        previousFuel_l = foodFuel_kcal;
+        lastDistance_m = distance_m;
+        initialized = true;
+      }
+
       $scope.$on('VehicleFocusChanged', function () {
         $log.debug('<ok-fuel-economy> vehicle changed -> reset trip');
         hardReset(true);
@@ -1026,6 +1105,10 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
+          if (onFoot) {
+            updateOnFoot(streams || {});
+            return;
+          }
           if (!streams.engineInfo || !streams.electrics) return;
 
           if (!lastFuelType) fetchFuelType();
