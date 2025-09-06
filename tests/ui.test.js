@@ -275,6 +275,83 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_FUEL_POLL_MS;
   });
 
+  it('ignores Air storage when other fuel types exist', async () => {
+    let directiveDef, luaCode;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '1.00', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({ prices: { Gasoline: 5, Electricity: 1 }, currency: 'USD' })
+    );
+
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => {
+        luaCode = code;
+        cb(JSON.stringify({ t: 'Diesel' }));
+      }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.ok(luaCode.includes('s.energyType and s.energyType:lower()~="air"'));
+    assert.strictEqual($scope.fuelType, 'Diesel');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
+  it('adds Air fuel type when it is the only energy source', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '1.01', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(
+      cfgPath,
+      JSON.stringify({ prices: { Gasoline: 5, Electricity: 1 }, currency: 'USD' })
+    );
+
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Air' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.strictEqual($scope.fuelType, 'Air');
+    assert.strictEqual($scope.fuelPrices.Air, 0);
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

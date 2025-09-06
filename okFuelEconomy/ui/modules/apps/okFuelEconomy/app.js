@@ -570,7 +570,10 @@ angular.module('beamng.apps')
             '(function()',
             'local stor=energyStorage.getStorages and energyStorage.getStorages()',
             'local t=""',
-            'if stor then for _,s in pairs(stor) do if s.energyType then t=s.energyType break end end end',
+            'if stor then',
+            '  for _,s in pairs(stor) do if s.energyType and s.energyType:lower()~="air" then t=s.energyType break end end',
+            '  if t=="" then for _,s in pairs(stor) do if s.energyType then t=s.energyType break end end end',
+            'end',
             'return jsonEncode({t=t})',
             'end)()'
           ].join('\n');
