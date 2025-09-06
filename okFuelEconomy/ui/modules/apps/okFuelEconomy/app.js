@@ -1107,6 +1107,10 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
+          if (!onFoot && (!streams.engineInfo || !streams.electrics)) {
+            fetchFuelType();
+            return;
+          }
           if (onFoot) {
             if (streams.engineInfo && streams.electrics) {
               onFoot = false;

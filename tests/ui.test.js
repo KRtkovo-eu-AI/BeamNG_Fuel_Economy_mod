@@ -464,6 +464,47 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_FUEL_POLL_MS;
   });
 
+  it('switches to Food fuel type when engine data disappears', async () => {
+    let directiveDef;
+    let engineCalls = 0;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'fuel-'));
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+    process.env.KRTEKTM_FUEL_POLL_MS = '20';
+    const verDir = path.join(tmp, '1.02', 'settings', 'krtektm_fuelEconomy');
+    fs.mkdirSync(verDir, { recursive: true });
+    const cfgPath = path.join(verDir, 'fuelPrice.json');
+    fs.writeFileSync(cfgPath, JSON.stringify({ prices: { Gasoline: 5 }, currency: 'USD' }));
+
+    global.bngApi = {
+      engineLua: (code, cb) => { if (cb) cb(++engineCalls === 1 ? '1' : 'nil'); },
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'gasoline' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const listeners = {};
+    const $scope = { $on: (ev, fn) => { listeners[ev] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.strictEqual($scope.fuelType, 'Gasoline');
+
+    listeners.streamsUpdate({}, {});
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.strictEqual($scope.fuelType, 'Food');
+    assert.strictEqual($scope.unitMode, 'kcal');
+
+    delete process.env.KRTEKTM_BNG_USER_DIR;
+    delete process.env.KRTEKTM_FUEL_POLL_MS;
+  });
+
   it('recovers to vehicle fuel type when engine data appears', async () => {
     let directiveDef;
     let engineCalls = 0;
