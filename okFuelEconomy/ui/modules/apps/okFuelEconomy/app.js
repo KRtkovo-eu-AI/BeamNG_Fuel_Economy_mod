@@ -529,7 +529,12 @@ angular.module('beamng.apps')
             return;
           var lua = [
             '(function()',
-            'local stor=energyStorage and energyStorage.getStorages and energyStorage.getStorages()',
+            'local vid=be:getPlayerVehicleID(0)',
+            'if not vid then return "" end',
+            'local veh=be:getObjectByID(vid)',
+            'if not veh then return "" end',
+            'local es=veh.energyStorage',
+            'local stor=es and es.getStorages and es:getStorages()',
             'local t=""',
             'if stor then for _,s in pairs(stor) do if s.energyType then t=s.energyType break end end end',
             'return t',
