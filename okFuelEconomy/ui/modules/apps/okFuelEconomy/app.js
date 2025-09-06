@@ -195,10 +195,10 @@ function getUnitLabels(mode) {
     case 'kcal':
       return {
         distance: 'km',
-        volume: 'kCal',
-        consumption: 'kCal/100km',
-        efficiency: 'km/kCal',
-        flow: 'kCal/h'
+        volume: 'kcal',
+        consumption: 'kcal/100km',
+        efficiency: 'km/kcal',
+        flow: 'kcal/h'
       };
     default:
       return {
@@ -529,7 +529,7 @@ angular.module('beamng.apps')
         metric: 'Metric (L, km)',
         imperial: 'Imperial (gal, mi)',
         electric: 'Electric (kWh, km)',
-        kcal: 'Food (kCal, km)'
+        kcal: 'Food (kcal, km)'
       };
         $scope.unitMenuOpen = false;
         $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
@@ -619,8 +619,9 @@ angular.module('beamng.apps')
           }
 
           if (typeof bngApi.engineLua === 'function') {
-            bngApi.engineLua('be:getPlayerVehicle(0)', function (veh) {
-              if (!veh || veh === 'nil') {
+            bngApi.engineLua('return be:getPlayerVehicleID(0) or 0', function (veh) {
+              var vid = parseInt(veh, 10);
+              if (!vid || vid <= 0) {
                 $scope.$evalAsync(function () {
                   lastFuelType = 'Food';
                   $scope.fuelType = 'Food';
@@ -1057,20 +1058,21 @@ angular.module('beamng.apps')
         if (speed_mps < 0.5) {
           rate_h = FOOD_IDLE_KCAL_H * (0.95 + 0.1 * Math.sin(now_ms / 1000));
         } else if (speed_mps < 2) {
-          rate_h = FOOD_WALK_KCAL_H;
+          rate_h = FOOD_WALK_KCAL_H * (0.95 + 0.1 * Math.sin(now_ms / 900));
         } else {
-          rate_h = FOOD_RUN_KCAL_H;
+          rate_h = FOOD_RUN_KCAL_H * (0.9 + 0.2 * Math.sin(now_ms / 800));
         }
         var rate_s = rate_h / 3600;
         foodFuel_kcal = Math.max(0, foodFuel_kcal - rate_s * dt);
         var fuel_used_l = startFuel_l - foodFuel_kcal;
 
-        var inst_l_per_h = rate_s * 3600;
-        var inst_l_per_100km = speed_mps > EPS_SPEED ? calculateInstantConsumption(rate_s, speed_mps) : 0;
+        var inst_l_per_h = rate_h;
+        var speed_kmh = speed_mps * 3.6;
+        var inst_l_per_100km = speed_kmh > 0.1 ? (rate_h * 100) / speed_kmh : 0;
         var eff = Number.isFinite(inst_l_per_100km) && inst_l_per_100km > 0 ? 100 / inst_l_per_100km : MAX_EFFICIENCY;
         eff = Math.min(eff, MAX_EFFICIENCY);
 
-        var avg_l_per_100km_ok = calculateAverageConsumption(fuel_used_l, distance_m);
+        var avg_l_per_100km_ok = distance_m > 1 ? calculateAverageConsumption(fuel_used_l, distance_m) : inst_l_per_100km;
         var rangeVal = calculateRange(foodFuel_kcal, avg_l_per_100km_ok, speed_mps, EPS_SPEED);
         var rangeStr = Number.isFinite(rangeVal) ? formatDistance(rangeVal, $scope.unitMode, 0) : 'Infinity';
 
@@ -1106,8 +1108,14 @@ angular.module('beamng.apps')
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
           if (onFoot) {
-            updateOnFoot(streams || {});
-            return;
+            if (streams.engineInfo && streams.electrics) {
+              onFoot = false;
+              lastFuelType = '';
+              fetchFuelType();
+            } else {
+              updateOnFoot(streams || {});
+              return;
+            }
           }
           if (!streams.engineInfo || !streams.electrics) return;
 
