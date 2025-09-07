@@ -1025,6 +1025,9 @@ angular.module('beamng.apps')
         $scope.avgL100km = formatConsumptionRate(0, mode, 1);
         $scope.avgKmL = formatEfficiency(0, mode, 2);
         $scope.data4 = formatDistance(0, mode, 0);
+        $scope.instantLph = formatFlow(0, mode, 1);
+        $scope.instantL100km = formatConsumptionRate(0, mode, 1);
+        $scope.instantKmL = formatEfficiency(0, mode, 2);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
@@ -1039,6 +1042,9 @@ angular.module('beamng.apps')
         $scope.avgL100km = formatConsumptionRate(0, mode, 1);
         $scope.avgKmL = formatEfficiency(0, mode, 2);
         $scope.data4 = formatDistance(0, mode, 0);
+        $scope.instantLph = formatFlow(0, mode, 1);
+        $scope.instantL100km = formatConsumptionRate(0, mode, 1);
+        $scope.instantKmL = formatEfficiency(0, mode, 2);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;

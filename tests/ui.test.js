@@ -476,6 +476,9 @@ describe('UI template styling', () => {
     assert.ok(luaCode.includes('hasTire'));
     assert.strictEqual($scope.fuelType, 'Food');
     assert.strictEqual($scope.unitFlowUnit, 'kcal/h');
+    assert.strictEqual($scope.instantLph, '0.0 kcal/h');
+    assert.strictEqual($scope.instantL100km, '0.0 kcal/100km');
+    assert.strictEqual($scope.instantKmL, '0.00 km/kcal');
   });
 
   it('restores vehicle units when re-entering a car before engine start', async () => {
@@ -508,6 +511,9 @@ describe('UI template styling', () => {
 
     // initial on-foot state
     assert.strictEqual($scope.unitFlowUnit, 'kcal/h');
+    assert.strictEqual($scope.instantLph, '0.0 kcal/h');
+    assert.strictEqual($scope.instantL100km, '0.0 kcal/100km');
+    assert.strictEqual($scope.instantKmL, '0.00 km/kcal');
 
     // simulate entering a vehicle where fuel type is not yet known
     handlers['VehicleFocusChanged']();
@@ -519,6 +525,9 @@ describe('UI template styling', () => {
     await new Promise(r => setTimeout(r, 50));
     assert.strictEqual($scope.fuelType, 'Gasoline');
     assert.strictEqual($scope.unitFlowUnit, 'L/h');
+    assert.strictEqual($scope.instantLph, '0.0 L/h');
+    assert.strictEqual($scope.instantL100km, '0.0 L/100km');
+    assert.strictEqual($scope.instantKmL, '0.00 km/L');
     assert.strictEqual($scope.fuelUsed, '0.00 L');
     assert.strictEqual($scope.fuelLeft, '0.00 L');
     assert.strictEqual($scope.fuelCap, '0.0 L');
