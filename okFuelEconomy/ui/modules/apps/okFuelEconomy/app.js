@@ -630,6 +630,7 @@ angular.module('beamng.apps')
             var parsed = {};
             try { parsed = JSON.parse(res); } catch (e) {}
             $scope.$evalAsync(function () {
+              var prevType = lastFuelType;
               lastFuelType = parsed.t || '';
               $scope.fuelType = formatFuelTypeLabel(lastFuelType);
               if ($scope.fuelType !== 'None' && $scope.fuelPrices[$scope.fuelType] == null) {
@@ -655,10 +656,17 @@ angular.module('beamng.apps')
                 $scope.electricityPriceValue = 0;
               }
               applyAutoUnitMode(lastFuelType);
-              updateCostPrice();
-              refreshCostOutputs();
               if (lastFuelType && lastFuelType.toLowerCase() === 'food') {
+                updateCostPrice();
+                refreshCostOutputs();
                 resetOnFootOutputs();
+              } else {
+                updateCostPrice();
+                if (prevType !== lastFuelType) {
+                  var mode = getActiveUnitMode();
+                  resetVehicleOutputs(mode);
+                }
+                refreshCostOutputs();
               }
             });
           });
@@ -1026,6 +1034,20 @@ angular.module('beamng.apps')
         $scope.tripTotalCostElectric = '';
         $scope.tripFuelUsedLiquid = '';
         $scope.tripFuelUsedElectric = '';
+      }
+
+      function resetVehicleOutputs(mode) {
+        hardReset(true);
+        var labels = getUnitLabels(mode);
+        $scope.fuelUsed = formatVolume(0, mode, 2);
+        $scope.fuelLeft = formatVolume(0, mode, 2);
+        $scope.fuelCap = formatVolume(0, mode, 1);
+        $scope.avgL100km = formatConsumptionRate(0, mode, 1);
+        $scope.avgKmL = formatEfficiency(0, mode, 2);
+        $scope.data4 = formatDistance(0, mode, 0);
+        $scope.totalCost = '0.00 ' + $scope.currency;
+        $scope.avgCost =
+          '0.00 ' + $scope.currency + '/' + labels.distance;
       }
 
       $scope.reset = function () {

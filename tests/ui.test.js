@@ -519,6 +519,11 @@ describe('UI template styling', () => {
     await new Promise(r => setTimeout(r, 50));
     assert.strictEqual($scope.fuelType, 'Gasoline');
     assert.strictEqual($scope.unitFlowUnit, 'L/h');
+    assert.strictEqual($scope.fuelUsed, '0.00 L');
+    assert.strictEqual($scope.fuelLeft, '0.00 L');
+    assert.strictEqual($scope.fuelCap, '0.0 L');
+    assert.strictEqual($scope.avgL100km, '0.0 L/100km');
+    assert.strictEqual($scope.avgKmL, '0.00 km/L');
   });
 
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
