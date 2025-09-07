@@ -418,6 +418,10 @@ function classifyCO2(gPerKm) {
   return 'G';
 }
 
+function meetsEuCo2Limit(gPerKm) {
+  return Number.isFinite(gPerKm) && gPerKm <= 120;
+}
+
 function formatFuelTypeLabel(fuelType) {
   if (typeof fuelType === 'string') {
     var lower = fuelType.toLowerCase();
@@ -486,6 +490,7 @@ if (typeof module !== 'undefined') {
     calculateCO2gPerKm,
     formatCO2,
     classifyCO2,
+    meetsEuCo2Limit,
     resolveUnitModeForFuelType,
     resolveFuelType,
     formatFuelTypeLabel,
@@ -1223,6 +1228,7 @@ angular.module('beamng.apps')
         $scope.avgKmL = formatEfficiency(0, mode, 2);
         $scope.avgCO2 = formatCO2(0, 0, mode);
         $scope.avgCo2Class = classifyCO2(0);
+        $scope.avgCo2Compliant = meetsEuCo2Limit(0);
         $scope.data4 = formatDistance(0, mode, 0);
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
@@ -1244,6 +1250,7 @@ angular.module('beamng.apps')
         $scope.avgKmL = formatEfficiency(0, mode, 2);
         $scope.avgCO2 = formatCO2(0, 0, mode);
         $scope.avgCo2Class = classifyCO2(0);
+        $scope.avgCo2Compliant = meetsEuCo2Limit(0);
         $scope.data4 = formatDistance(0, mode, 0);
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
@@ -1333,6 +1340,7 @@ angular.module('beamng.apps')
             $scope.avgKmL = formatEfficiency(res.efficiency, mode, 2);
             $scope.avgCO2 = formatCO2(0, 0, mode);
             $scope.avgCo2Class = classifyCO2(0);
+            $scope.avgCo2Compliant = meetsEuCo2Limit(0);
             $scope.data4 = formatDistance(Infinity, mode, 0);
             $scope.totalCost = (used_kcal * price).toFixed(2) + ' ' + $scope.currency;
             $scope.avgCost =
@@ -1670,6 +1678,7 @@ angular.module('beamng.apps')
           var avgCo2Val = calculateCO2gPerKm(avg_l_per_100km_ok, $scope.fuelType);
           $scope.avgCO2 = formatCO2(avgCo2Val, 0, mode);
           $scope.avgCo2Class = classifyCO2(avgCo2Val);
+          $scope.avgCo2Compliant = meetsEuCo2Limit(avgCo2Val);
           $scope.data4 = rangeStr;
           $scope.data6 = formatDistance(trip_m, mode, 1);
           $scope.tripAvgL100km = formatConsumptionRate(overall_median, mode, 1);

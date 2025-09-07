@@ -562,6 +562,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.co2Class, 'A');
     assert.strictEqual($scope.avgCO2, '0 g/km');
     assert.strictEqual($scope.avgCo2Class, 'A');
+    assert.strictEqual($scope.avgCo2Compliant, true);
   });
 
   it('computes traveled distance when on foot', async () => {
@@ -850,6 +851,7 @@ describe('UI template styling', () => {
         assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
       }
     });
+    assert.ok(html.includes('avgCo2Compliant ?'));
     assert.ok(html.includes('{{ vehicleNameStr }}'));
     assert.ok(html.includes('strong ng-if="visible.heading"'));
     assert.ok(html.includes('ng-click="reset($event)"'));
@@ -1674,6 +1676,7 @@ describe('controller integration', () => {
     assert.notStrictEqual($scope.instantKmLHistory, '');
     assert.ok(val <= 100, `instantKmL not capped: ${$scope.instantKmL}`);
   });
+
 
   it('maxes efficiency when idling at a standstill', () => {
     let directiveDef;

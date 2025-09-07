@@ -84,7 +84,7 @@
         Average CO2 emissions:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        {{ avgCO2 }}<span ng-if="avgCo2Class"> | {{ avgCo2Class }}</span>
+        {{ avgCO2 }}<span ng-if="avgCo2Class"> | {{ avgCo2Class }} {{ avgCo2Compliant ? '✓' : '✗' }}</span>
       </td>
     </tr>
 
