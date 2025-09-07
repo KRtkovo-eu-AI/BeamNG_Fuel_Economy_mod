@@ -2125,6 +2125,55 @@ describe('controller integration', () => {
     assert.strictEqual($scope.avgCo2Compliant, true);
   });
 
+  it('drops EU compliance after an extended stop lowers average speed below 18 km/h', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, engineRunning: true, trip: 0 }
+    };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    $scope.reset();
+
+    // drive at compliant speed for 5 s
+    streams.electrics.wheelspeed = 11.11;
+    streams.electrics.airspeed = 11.11;
+    for (let i = 0; i < 5; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, true);
+
+    // stop and let average speed decay below threshold
+    streams.electrics.engineRunning = true;
+    streams.electrics.wheelspeed = 0;
+    streams.electrics.airspeed = 0;
+    for (let i = 0; i < 10; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, false);
+  });
+
   it('recovers EU compliance after a brief overspeed followed by extended cruising', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

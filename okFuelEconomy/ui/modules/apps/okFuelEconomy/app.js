@@ -1336,7 +1336,9 @@ angular.module('beamng.apps')
             );
             var deltaDistance = speed_mps * dt;
             distance_m += deltaDistance;
-            speedAvg.time += dt;
+            if (speed_mps > EPS_SPEED || distance_m > 0) {
+              speedAvg.time += dt;
+            }
             // Record resolved speed with timestamp for EU compliance window.
             speedAvg.queue.push({ speed: Math.abs(speed_mps), time: now_ms });
             while (
@@ -1435,7 +1437,7 @@ angular.module('beamng.apps')
           var capacity_l = streams.engineInfo[12];
           var throttle = streams.electrics.throttle_input || 0;
           var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
-          if (engineRunning) {
+          if (engineRunning || distance_m > 0) {
             speedAvg.time += dt;
           }
           if (!engineRunning && engineWasRunning) {
