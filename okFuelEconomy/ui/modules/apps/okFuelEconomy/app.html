@@ -79,6 +79,15 @@
       </td>
     </tr>
 
+    <tr ng-if="visible.avgCO2">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Average CO2 emissions:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        {{ avgCO2 }}<span ng-if="avgCo2Class"> | {{ avgCo2Class }}</span>
+      </td>
+    </tr>
+
     <tr ng-if="visible.avgGraph">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Average history:
@@ -308,6 +317,7 @@
     <label><input type="checkbox" ng-model="visible.totalCost"> Total fuel cost</label><br>
     <label><input type="checkbox" ng-model="visible.avgL100km"> Average {{ unitConsumptionUnit }}</label><br>
     <label><input type="checkbox" ng-model="visible.avgKmL"> Average {{ unitEfficiencyUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.avgCO2"> Average CO2 emissions</label><br>
     <label><input type="checkbox" ng-model="visible.avgGraph"> Average history</label><br>
     <label><input type="checkbox" ng-model="visible.avgKmLGraph"> Average {{ unitEfficiencyUnit }} history</label><br>
     <label><input type="checkbox" ng-model="visible.instantLph"> Instant {{ unitFlowUnit }}</label><br>

@@ -867,6 +867,7 @@ angular.module('beamng.apps')
         fuelType: true,
         avgL100km: true,
         avgKmL: true,
+        avgCO2: true,
         avgGraph: true,
         avgKmLGraph: true,
         instantLph: true,
@@ -1220,6 +1221,8 @@ angular.module('beamng.apps')
         $scope.fuelCap = formatVolume(0, mode, 1);
         $scope.avgL100km = formatConsumptionRate(0, mode, 1);
         $scope.avgKmL = formatEfficiency(0, mode, 2);
+        $scope.avgCO2 = formatCO2(0, 0, mode);
+        $scope.avgCo2Class = classifyCO2(0);
         $scope.data4 = formatDistance(0, mode, 0);
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
@@ -1239,6 +1242,8 @@ angular.module('beamng.apps')
         $scope.fuelCap = formatVolume(0, mode, 1);
         $scope.avgL100km = formatConsumptionRate(0, mode, 1);
         $scope.avgKmL = formatEfficiency(0, mode, 2);
+        $scope.avgCO2 = formatCO2(0, 0, mode);
+        $scope.avgCo2Class = classifyCO2(0);
         $scope.data4 = formatDistance(0, mode, 0);
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
@@ -1326,6 +1331,8 @@ angular.module('beamng.apps')
             $scope.instantKmL = formatEfficiency(res.efficiency, mode, 2);
             $scope.avgL100km = formatConsumptionRate(res.instPer100km, mode, 1);
             $scope.avgKmL = formatEfficiency(res.efficiency, mode, 2);
+            $scope.avgCO2 = formatCO2(0, 0, mode);
+            $scope.avgCo2Class = classifyCO2(0);
             $scope.data4 = formatDistance(Infinity, mode, 0);
             $scope.totalCost = (used_kcal * price).toFixed(2) + ' ' + $scope.currency;
             $scope.avgCost =
@@ -1660,6 +1667,9 @@ angular.module('beamng.apps')
             mode,
             2
           );
+          var avgCo2Val = calculateCO2gPerKm(avg_l_per_100km_ok, $scope.fuelType);
+          $scope.avgCO2 = formatCO2(avgCo2Val, 0, mode);
+          $scope.avgCo2Class = classifyCO2(avgCo2Val);
           $scope.data4 = rangeStr;
           $scope.data6 = formatDistance(trip_m, mode, 1);
           $scope.tripAvgL100km = formatConsumptionRate(overall_median, mode, 1);
