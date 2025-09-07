@@ -888,7 +888,7 @@ describe('UI template styling', () => {
 
     assert.ok(html.includes('ng-if="avgCo2Compliant && avgCo2Class"'));
     ['A','B','C','D','E','F','G'].forEach(cls => {
-      assert.ok(html.includes(`<svg ng-if="co2Class === '${cls}'"`), `missing svg ${cls}`);
+      assert.ok(html.includes(`<svg ng-if="tripCo2Class === '${cls}'"`), `missing svg ${cls}`);
     });
     assert.ok(!html.includes('<use'));
     assert.ok(!html.includes('ng-if="tripCo2Class"'));
@@ -951,7 +951,7 @@ describe('controller integration', () => {
     global.UiUnits = { buildString: (type, val, prec) => (val.toFixed ? val.toFixed(prec) : String(val)) };
     global.bngApi = { engineLua: () => '' };
     const store = {
-      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyOverall: JSON.stringify({ queue: [], co2Queue: [], distance: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
       okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
     };
     global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = v; } };
@@ -1210,8 +1210,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
-    assert.strictEqual($scope.tripAvgCO2, '239 g/km');
-    assert.strictEqual($scope.tripCo2Class, 'G');
+    assert.strictEqual($scope.tripAvgCO2, '60 g/km');
+    assert.strictEqual($scope.tripCo2Class, 'A');
     assert.strictEqual($scope.tripTotalCO2, '4.78 kg');
 
     $scope.resetOverall();
@@ -1514,7 +1514,7 @@ describe('controller integration', () => {
     global.bngApi = { engineLua: () => '' };
     global.localStorage = {
       getItem: key => key === 'okFuelEconomyOverall'
-        ? JSON.stringify({ queue: [400, 600, 800], distance: 123, fuelUsedLiquid: 0, fuelUsedElectric: 0, tripCo2: 1765.296 })
+        ? JSON.stringify({ queue: [400, 600, 800], co2Queue: [9568, 14352, 19136], distance: 123, fuelUsedLiquid: 0, fuelUsedElectric: 0, tripCo2: 1765.296 })
         : null,
       setItem: () => {}
     };

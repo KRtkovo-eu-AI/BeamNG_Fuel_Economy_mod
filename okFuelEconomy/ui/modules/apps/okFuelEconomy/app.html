@@ -387,8 +387,7 @@
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         {{ tripAvgCO2 }} |
-        <span ng-init="co2Class = tripCo2Class">
-            <svg ng-if="co2Class === 'A'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 44.643 25.093" xmlns="http://www.w3.org/2000/svg">
+        <svg ng-if="tripCo2Class === 'A'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 44.643 25.093" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                           <style type="text/css">
                            <![CDATA[
@@ -417,7 +416,7 @@
                          </g>
                         </g>
                       </svg>
-                      <svg ng-if="co2Class === 'B'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 63.054 35.441" xmlns="http://www.w3.org/2000/svg">
+                      <svg ng-if="tripCo2Class === 'B'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 63.054 35.441" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                           <style type="text/css">
                            <![CDATA[
@@ -446,7 +445,7 @@
                          </g>
                         </g>
                       </svg>
-                      <svg ng-if="co2Class === 'C'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 108.384 60.92" xmlns="http://www.w3.org/2000/svg">
+                      <svg ng-if="tripCo2Class === 'C'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 108.384 60.92" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                           <style type="text/css">
                            <![CDATA[
@@ -475,7 +474,7 @@
                          </g>
                         </g>
                       </svg>
-                      <svg ng-if="co2Class === 'D'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 366.531 206.016" xmlns="http://www.w3.org/2000/svg">
+                      <svg ng-if="tripCo2Class === 'D'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 366.531 206.016" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                           <style type="text/css">
                            <![CDATA[
@@ -504,7 +503,7 @@
                          </g>
                         </g>
                       </svg>
-                      <svg ng-if="co2Class === 'E'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 265.829 149.415" xmlns="http://www.w3.org/2000/svg">
+                      <svg ng-if="tripCo2Class === 'E'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 265.829 149.415" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                           <style type="text/css">
                            <![CDATA[
@@ -533,7 +532,7 @@
                          </g>
                         </g>
                       </svg>
-                      <svg ng-if="co2Class === 'F'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 96.67 54.335" xmlns="http://www.w3.org/2000/svg">
+                      <svg ng-if="tripCo2Class === 'F'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 96.67 54.335" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                           <style type="text/css">
                            <![CDATA[
@@ -562,7 +561,7 @@
                          </g>
                         </g>
                       </svg>
-                      <svg ng-if="co2Class === 'G'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 59.373 33.372" xmlns="http://www.w3.org/2000/svg">
+                      <svg ng-if="tripCo2Class === 'G'" class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle; margin-bottom: 2px; shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd" viewBox="0 0 59.373 33.372" xmlns="http://www.w3.org/2000/svg">
                         <defs>
                           <style type="text/css">
                            <![CDATA[
@@ -593,7 +592,6 @@
                          </g>
                         </g>
                       </svg>
-                    </span>
       </td>
     </tr>
 
