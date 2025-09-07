@@ -867,10 +867,10 @@ describe('UI template styling', () => {
     assert.ok(html.includes('save</span>'));
 
     assert.ok(html.includes('ng-if="avgCo2Compliant && avgCo2Class"'));
-    assert.ok(html.includes('{{ avgCO2 }}<span ng-if="avgCo2Compliant && avgCo2Class"> | <svg class="euStarIcon"'));
+    assert.ok(html.includes('{{ avgCO2 }}<span ng-if="avgCo2Compliant && avgCo2Class"> | <img class="euCo2ClassIcon"'));
+    assert.ok(html.includes('ng-src="modules/apps/okFuelEconomy/eu_co2_classes/{{ avgCo2Class }}.svg"'));
     assert.ok(html.includes('{{ instantCO2 }}'));
     assert.ok(!html.includes('{{ co2Class }}'));
-    assert.ok(html.includes('fill:currentColor'));
   });
 
   it('allows toggling visibility of heading and subfields', () => {
