@@ -717,7 +717,6 @@ angular.module('beamng.apps')
       });
 
       // Settings for visible fields
-      var SETTINGS_KEY = 'okFuelEconomyVisible';
       var UNIT_MODE_KEY = 'okFuelEconomyUnitMode';
       var STYLE_KEY = 'okFuelEconomyUseCustomStyles';
       var PREFERRED_UNIT_KEY = 'okFuelEconomyPreferredUnit';
@@ -726,14 +725,9 @@ angular.module('beamng.apps')
         $scope.useCustomStyles = !$scope.useCustomStyles;
         try { localStorage.setItem(STYLE_KEY, $scope.useCustomStyles ? "true" : "false"); } catch (e) {}
       };
-      $scope.settingsOpen = false;
-      $scope.openFuelPriceEditor = function ($event) {
+      $scope.openFuelEconomySettings = function ($event) {
         $event.preventDefault();
-        var liquid = preferredLiquidUnit === 'imperial' ? 'gal' : 'L';
-        fuelPriceEditorLoaded = true;
-        bngApi.engineLua(
-          'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("' + liquid + '")'
-        );
+        bngApi.engineLua('extensions.load("fuelEconomySettings")');
       };
       $scope.unitModeLabels = {
         metric: 'Metric (L, km)',
@@ -760,6 +754,7 @@ angular.module('beamng.apps')
         }
         $scope.setUnit = function (mode) {
           $scope.unitMode = mode;
+          try { localStorage.setItem(UNIT_MODE_KEY, mode); } catch (e) {}
           if (mode !== 'electric') {
             preferredLiquidUnit = mode;
             try { localStorage.setItem(PREFERRED_UNIT_KEY, preferredLiquidUnit); } catch (e) {}
@@ -878,82 +873,122 @@ angular.module('beamng.apps')
             });
           });
         }
-      $scope.visible = {
-        heading: true,
-        distanceMeasured: true,
-        distanceEcu: true,
-        fuelUsed: true,
-        fuelLeft: true,
-        fuelCap: true,
-        fuelType: true,
-        avgL100km: true,
-        avgKmL: true,
-        avgCO2: true,
-        avgGraph: true,
-        avgKmLGraph: true,
-        instantLph: true,
-        instantL100km: true,
-        instantKmL: true,
-        instantCO2: true,
-        instantGraph: true,
-        instantKmLGraph: true,
-        range: true,
-        tripAvgL100km: true,
-        tripAvgKmL: true,
-        tripAvgCO2: true,
-        tripTotalCO2: false,
-        tripGraph: true,
-        tripKmLGraph: true,
-        tripDistance: true,
-        tripRange: true,
-        tripFuelUsed: false,
-        tripReset: true,
-        costPrice: false,
-        avgCost: false,
-        totalCost: false,
-        tripAvgCost: false,
-        tripTotalCost: false
-      };
-      try {
-        var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-        if (s && typeof s === 'object') {
-          // backward compatibility for old "instant" flag
-          if ('instant' in s && !('instantLph' in s) && !('instantL100km' in s) && !('instantKmL' in s)) {
-            s.instantLph = s.instantL100km = s.instantKmL = s.instant;
-            delete s.instant;
-          }
-          // backward compatibility for old avg flag
-          if ('avg' in s && !('avgL100km' in s) && !('avgKmL' in s)) {
-            s.avgL100km = s.avgKmL = s.avg;
-            delete s.avg;
-          }
-          // backward compatibility for old tripAvg flag
-          if ('tripAvg' in s && !('tripAvgL100km' in s) && !('tripAvgKmL' in s)) {
-            s.tripAvgL100km = s.tripAvgKmL = s.tripAvg;
-            delete s.tripAvg;
-          }
-          if ('avgCostTotal' in s) { delete s.avgCostTotal; }
-          if ('avgCostPerDistance' in s) { s.avgCost = s.avgCostPerDistance; delete s.avgCostPerDistance; }
-          if ('tripAvgCostTotal' in s) { s.tripTotalCost = s.tripAvgCostTotal; delete s.tripAvgCostTotal; }
-          if ('tripAvgCostPerDistance' in s) { s.tripAvgCost = s.tripAvgCostPerDistance; delete s.tripAvgCostPerDistance; }
-          if ('costTotal' in s) { s.totalCost = s.costTotal; delete s.costTotal; }
-          if ('costPerDistance' in s) { s.avgCost = s.costPerDistance; delete s.costPerDistance; }
-          if ('tripCostTotal' in s) { s.tripTotalCost = s.tripCostTotal; delete s.tripCostTotal; }
-          if ('tripCostPerDistance' in s) { s.tripAvgCost = s.tripCostPerDistance; delete s.tripCostPerDistance; }
-          Object.assign($scope.visible, s);
-        }
-      } catch (e) { /* ignore */ }
+      var defaultOrder = [
+        'heading',
+        'distanceMeasured',
+        'distanceEcu',
+        'fuelUsed',
+        'fuelLeft',
+        'fuelCap',
+        'fuelType',
+        'costPrice',
+        'avgCost',
+        'totalCost',
+        'avgL100km',
+        'avgKmL',
+        'avgGraph',
+        'avgKmLGraph',
+        'avgCO2',
+        'instantLph',
+        'instantL100km',
+        'instantKmL',
+        'instantGraph',
+        'instantKmLGraph',
+        'instantCO2',
+        'range',
+        'tripAvgL100km',
+        'tripAvgKmL',
+        'tripAvgCO2',
+        'tripTotalCO2',
+        'tripGraph',
+        'tripKmLGraph',
+        'tripDistance',
+        'tripRange',
+        'tripFuelUsed',
+        'tripAvgCost',
+        'tripTotalCost',
+        'tripReset'
+      ];
+      $scope.widgetOrder = defaultOrder.slice();
+      $scope.visible = {};
+      defaultOrder.forEach(function (k) { $scope.visible[k] = true; });
 
-      $scope.saveSettings = function () {
-        try {
-          localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible));
-          localStorage.setItem(UNIT_MODE_KEY, $scope.unitMode);
-          if ($scope.unitMode !== 'electric') {
-            localStorage.setItem(PREFERRED_UNIT_KEY, $scope.unitMode);
-          }
-        } catch (e) { /* ignore */ }
-        $scope.settingsOpen = false;
+      var rowMap = {
+        heading: 'heading',
+        distanceMeasured: 'row-distance',
+        distanceEcu: 'row-distance',
+        fuelUsed: 'row-fuel',
+        fuelLeft: 'row-fuel',
+        fuelCap: 'row-fuel',
+        fuelType: 'row-fuelType',
+        costPrice: 'row-costPrice',
+        avgCost: 'row-avgCost',
+        totalCost: 'row-totalCost',
+        avgL100km: 'row-avgConsumption',
+        avgKmL: 'row-avgConsumption',
+        avgGraph: 'row-avgGraph',
+        avgKmLGraph: 'row-avgKmLGraph',
+        avgCO2: 'row-avgCO2',
+        instantLph: 'row-instantCombined',
+        instantL100km: 'row-instantCombined',
+        instantKmL: 'row-instantCombined',
+        instantGraph: 'row-instantGraph',
+        instantKmLGraph: 'row-instantKmLGraph',
+        instantCO2: 'row-instantCO2',
+        range: 'row-range',
+        tripAvgL100km: 'row-tripAvgCombined',
+        tripAvgKmL: 'row-tripAvgCombined',
+        tripAvgCO2: 'row-tripAvgCO2',
+        tripTotalCO2: 'row-tripTotalCO2',
+        tripGraph: 'row-tripGraph',
+        tripKmLGraph: 'row-tripKmLGraph',
+        tripDistance: 'row-tripDistance',
+        tripRange: 'row-tripRange',
+        tripFuelUsed: 'row-tripFuelUsed',
+        tripAvgCost: 'row-tripAvgCost',
+        tripTotalCost: 'row-tripTotalCost',
+        tripReset: 'row-tripReset'
       };
+
+      function applyOrder() {
+        var container = document.getElementById('fuelEconomyContainer');
+        var table = document.getElementById('fuelEconomyTable');
+        var seen = {};
+        $scope.widgetOrder.forEach(function (key) {
+          var id = rowMap[key];
+          if (!id || seen[id]) return;
+          seen[id] = true;
+          if (id === 'heading') {
+            var head = document.getElementById('heading');
+            if (head) container.insertBefore(head, table);
+          } else {
+            var row = document.getElementById(id);
+            if (row) table.appendChild(row);
+          }
+        });
+      }
+
+      function loadSettings() {
+        if (typeof bngApi === 'undefined' || typeof bngApi.engineLua !== 'function') {
+          applyOrder();
+          return;
+        }
+        bngApi.engineLua('jsonReadFile("/settings/krtektm_fuelEconomy/settings.json")', function (res) {
+          var cfg = {};
+          try { cfg = JSON.parse(res); } catch (e) {}
+          $scope.$evalAsync(function () {
+            if (Array.isArray(cfg.order)) $scope.widgetOrder = cfg.order;
+            if (cfg.visible) Object.assign($scope.visible, cfg.visible);
+            applyOrder();
+          });
+        });
+      }
+
+      window.reloadFuelEconomySettings = function () {
+        $scope.$evalAsync(loadSettings);
+      };
+
+      loadSettings();
 
       // UI outputs
       $scope.data1 = ''; // distance measured
