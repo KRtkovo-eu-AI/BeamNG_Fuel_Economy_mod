@@ -29,7 +29,7 @@ const segments = [
   { name: 'summer', duration: 100, speed: 25, flow: 0.0025, throttle: 0.5 },
   { name: 'desert', duration: 100, speed: 8, flow: 0.0035, throttle: 0.5 },
   { name: 'engineBrake', duration: 100, speed: 15, flow: 0.004, throttle: 0, expectIdleSame: true },
-  { name: 'coast', duration: 100, speed: 20, flow: 0, throttle: 0, expectZero: true },
+  { name: 'coast', duration: 100, speed: 20, flow: 0, throttle: 0, expectIdle: true },
   { name: 'sport', duration: 100, speed: 30, flow: 0.004, throttle: 0.8 },
   { name: 'offroad', duration: 100, speed: 12, flow: 0.003, throttle: 0.6 },
   { name: 'combined', duration: 100, speed: 22, flow: 0.0022, throttle: 0.5 }
@@ -70,7 +70,7 @@ function runCycle() {
         idleFlow,
         EPS_SPEED
       );
-      if (seg.expectZero) {
+      if (seg.expectZero || seg.expectIdle) {
         if (t === 0) startFlow = flow;
         if (t === seg.duration - 1) endFlow = flow;
       }
@@ -94,6 +94,10 @@ function runCycle() {
     if (seg.expectZero) {
       assert.strictEqual(startFlow, 0);
       assert.strictEqual(endFlow, 0);
+    }
+    if (seg.expectIdle) {
+      assert.ok(startFlow > endFlow);
+      assert.ok(Math.abs(endFlow - idleFlow) < 1e-6);
     }
   }
 
@@ -140,7 +144,8 @@ test('30-second random stress simulation', { timeout: 70000 }, async () => {
     }
     flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, EPS_SPEED);
     if (throttle <= 0.05 && speed > EPS_SPEED && raw === 0 && idleFlow > 0) {
-      assert.strictEqual(flowRate, 0);
+      const expected = lastFlow + (idleFlow - lastFlow) * 0.1;
+      assert.ok(Math.abs(flowRate - expected) < 1e-9);
     }
     const inst = calculateInstantConsumption(flowRate, speed);
 

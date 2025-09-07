@@ -45,10 +45,11 @@ function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
 
 // Resolve the fuel flow when sensor readings are static.
 // - While accelerating (throttle > 0) keep the last measured flow.
-// - While coasting with zero throttle and no fuel use, report zero to
-//   immediately reflect engine-off or fuel-cut states.
-// - Otherwise ease the previous reading toward the stored idle flow so the
-//   value keeps updating instead of freezing at the last accelerating reading.
+// - While coasting or idling with zero throttle and no fresh reading,
+//   gradually approach the stored idle flow so the value continues
+//   updating instead of snapping to zero.
+// - Still allow true zero flow for engine-off or fuel-cut situations
+//   when the idle flow is unknown.
 function smoothFuelFlow(
   fuelFlow_lps,
   speed_mps,
@@ -70,12 +71,16 @@ function smoothFuelFlow(
     // Always use fresh positive readings, even with zero throttle.
     return fuelFlow_lps;
   }
+  const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
+
   if (throttle <= 0.05) {
-    // Engine off or fuel cut: no consumption.
+    // Coasting or idling with a stale sensor reading.
+    if (target > 0) {
+      return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
+    }
+    // Unknown idle flow – treat as engine off/fuel cut.
     return 0;
   }
-
-  const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
 
   if (speed_mps > EPS_SPEED) {
     // Throttle applied but sensor static – keep the last flow.
@@ -148,10 +153,10 @@ function resolveAverageConsumption(
     if (speed_mps > MIN_VALID_SPEED_MPS) {
       return calculateAverageConsumption(fuel_used_l, distance_m);
     }
-    // When moving slower than the minimum threshold, keep the previous
-    // average if available so the reading doesn't instantly drop to the
-    // idle estimate. Fall back to the instant rate if no history exists yet.
-    return previousAvgTrip || previousAvg || inst_l_per_100km;
+    // Below the minimum speed, ease toward the instant rate so the
+    // average continues reflecting idle consumption instead of freezing.
+    var base = previousAvgTrip || previousAvg || inst_l_per_100km;
+    return base + (inst_l_per_100km - base) * 0.1;
   }
   return previousAvgTrip || previousAvg || 0;
 }

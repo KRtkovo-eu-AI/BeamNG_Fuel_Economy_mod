@@ -146,11 +146,11 @@ describe('app.js utility functions', () => {
       const res = smoothFuelFlow(0, 5, 0.6, last, 0.002, EPS_SPEED);
       assert.strictEqual(res, last);
     });
-    it('returns zero when coasting without fuel', () => {
+    it('eases toward idle when coasting without sensor flow', () => {
       const last = 0.03;
       const idle = 0.005;
       const res = smoothFuelFlow(0, 5, 0, last, idle, EPS_SPEED);
-      assert.strictEqual(res, 0);
+      assert.ok(Math.abs(res - (last + (idle - last) * 0.1)) < 1e-9);
     });
     it('updates to new positive flow', () => {
       const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, EPS_SPEED);
@@ -160,17 +160,18 @@ describe('app.js utility functions', () => {
       const res = smoothFuelFlow(0.015, 20, 0, 0.01, 0.005, EPS_SPEED);
       assert.strictEqual(res, 0.015);
     });
-    it('returns zero when stopped without fuel', () => {
-      const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, EPS_SPEED);
-      assert.strictEqual(res, 0);
-    });
-    it('drops to zero during prolonged coasting', () => {
+    it('eases toward idle when stopped without sensor flow', () => {
+      const last = 0.01;
       const idle = 0.005;
-      let last = 0.02;
-      const flow1 = smoothFuelFlow(0, 20, 0, last, idle, EPS_SPEED);
-      const flow2 = smoothFuelFlow(0, 20, 0, flow1, idle, EPS_SPEED);
-      assert.strictEqual(flow1, 0);
-      assert.strictEqual(flow2, 0);
+      const res = smoothFuelFlow(0, 0, 0, last, idle, EPS_SPEED);
+      assert.ok(Math.abs(res - (last + (idle - last) * 0.1)) < 1e-9);
+    });
+    it('approaches idle during prolonged coasting', () => {
+      const idle = 0.005;
+      let flow = 0.02;
+      flow = smoothFuelFlow(0, 20, 0, flow, idle, EPS_SPEED);
+      flow = smoothFuelFlow(0, 20, 0, flow, idle, EPS_SPEED);
+      assert.ok(flow > idle && flow < 0.02);
     });
     it('resets immediately when idle is unknown', () => {
       let last = 0.03;
@@ -225,17 +226,19 @@ describe('app.js utility functions', () => {
       );
       assert.strictEqual(avg, calculateAverageConsumption(1, 1000));
     });
-    it('keeps previous average at low speed when available', () => {
+    it('eases toward instant rate at low speed when previous average exists', () => {
+      const inst = 8;
+      const prev = 5;
       const avg = resolveAverageConsumption(
         true,
         MIN_VALID_SPEED_MPS / 2,
         0,
         0,
-        8,
-        5,
+        inst,
+        prev,
         7
       );
-      assert.strictEqual(avg, 5);
+      assert.ok(Math.abs(avg - (prev + (inst - prev) * 0.1)) < 1e-9);
     });
     it('falls back to instant rate when no previous average exists', () => {
       const inst = 8;

@@ -1035,7 +1035,7 @@ describe('controller integration', () => {
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
-  it('keeps trip average cost steady while stationary', async () => {
+  it('updates trip average cost while stationary', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
@@ -1074,8 +1074,10 @@ describe('controller integration', () => {
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
-    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
+    const liquid = parseFloat($scope.tripAvgCostLiquid);
+    const electric = parseFloat($scope.tripAvgCostElectric);
+    assert.ok(liquid < 0.15);
+    assert.ok(electric < 0.05);
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
