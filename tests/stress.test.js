@@ -231,6 +231,73 @@ test('accelerated multi-scenario stress simulation', { timeout: 120000 }, async 
   await Promise.all(scenarios.map(runScenario));
 });
 
+// Long running randomised simulation lasting around 30 seconds
+// Simulates repeated vehicle resets without trip resets
+// and varying driving conditions in random order.
+test('30-second random stress simulation', { timeout: 70000 }, async () => {
+  const EPS_SPEED = 0.005;
+  let fuel = capacity;
+  let prev = fuel;
+  let trip = 0;
+  let distance = 0;
+  const queue = [];
+  let lastFlow = 0;
+  let lastMeasuredFlow = 0;
+  let idleFlow = 0.001;
+
+  const end = Date.now() + 30_000; // run for ~30s
+  while (Date.now() < end) {
+    const speed = Math.random() * 40; // m/s
+    const throttle = Math.random();
+    const raw = throttle > 0.1 ? Math.random() * 0.005 : 0; // L/s change
+    const current = fuel - raw * dt;
+    let flowRate = calculateFuelFlow(current, prev, dt);
+    if (flowRate > 0) {
+      lastMeasuredFlow = flowRate;
+    }
+    if (speed <= EPS_SPEED && throttle <= 0.05 && flowRate > 0) {
+      idleFlow = flowRate;
+    }
+    flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, EPS_SPEED);
+    if (throttle <= 0.05 && speed > EPS_SPEED && raw === 0 && idleFlow > 0) {
+      assert.strictEqual(flowRate, 0);
+    }
+    const inst = calculateInstantConsumption(flowRate, speed);
+
+    if (speed < MIN_VALID_SPEED_MPS) {
+      assert.strictEqual(inst, (flowRate * 3600) / 4);
+    } else {
+      assert.ok(Number.isFinite(inst));
+    }
+
+    queue.push(inst);
+    trimQueue(queue, 500);
+
+    distance += speed * dt;
+    trip += speed * dt;
+    fuel = current;
+    prev = current;
+    lastFlow = flowRate;
+
+    // Occasionally simulate a vehicle reset (fuel to full, distance reset) but keep trip
+    if (Math.random() < 0.1) {
+      fuel = capacity;
+      prev = null;
+      distance = 0;
+    }
+
+    const avg = distance > 0 ? ((capacity - fuel) / distance) * 100000 : -1;
+    const range = calculateRange(fuel, avg, speed, EPS_SPEED);
+    assert.ok(Number.isFinite(range) || range === Infinity);
+
+    // small delay so the loop lasts ~30 seconds
+    await new Promise(r => setTimeout(r, 10));
+  }
+
+  assert.ok(trip > 0);
+  assert.ok(Number.isFinite(trip));
+});
+
 // Ensure trip values persist across restart cycles and only reset on manual request
 test('restart and manual reset cycle', () => {
   let directiveDef;
