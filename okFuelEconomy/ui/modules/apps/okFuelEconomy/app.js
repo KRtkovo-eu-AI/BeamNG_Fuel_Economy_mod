@@ -944,6 +944,7 @@ angular.module('beamng.apps')
               ? $scope.electricityPriceValue
               : $scope.liquidFuelPriceValue;
           updateCostPrice(unitLabels, priceForMode);
+          if (mode === 'food') return;
           var fuelUsed_l = 0;
           if (startFuel_l !== null && previousFuel_l !== null) {
             fuelUsed_l = startFuel_l - previousFuel_l;
@@ -970,6 +971,9 @@ angular.module('beamng.apps')
             tripCostLiquid.toFixed(2) + ' ' + $scope.currency;
           $scope.tripTotalCostElectric =
             tripCostElectric.toFixed(2) + ' ' + $scope.currency;
+        }
+        if (typeof module !== 'undefined') {
+          module.exports.refreshCostOutputs = refreshCostOutputs;
         }
 
       // --------- Average history persistence (NEW) ----------
