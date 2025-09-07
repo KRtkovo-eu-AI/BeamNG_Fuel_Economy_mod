@@ -29,12 +29,14 @@ describe('Food mode simulation', () => {
     assert.ok(walk.efficiency > run.efficiency);
   });
 
-  it('oscillates pseudo-randomly around baseline', () => {
-    const r1 = simulateFood(0, 1, FOOD_CAPACITY_KCAL, 0).rate;
-    const r2 = simulateFood(0, 1, FOOD_CAPACITY_KCAL, 1).rate;
-    assert.notStrictEqual(r1, r2);
-    assert.ok(r1 > 70 && r1 < 90);
-    assert.ok(r2 > 70 && r2 < 90);
+  it('shows heartbeat-like pulses at rest', () => {
+    const base = simulateFood(0, 1, FOOD_CAPACITY_KCAL, 0).rate;
+    const rates = [];
+    for (let t = 0; t < 5; t += 0.1) {
+      rates.push(simulateFood(0, 0.1, FOOD_CAPACITY_KCAL, t).rate);
+    }
+    const peaks = rates.filter((r) => r > base * 1.2);
+    assert.ok(peaks.length >= 3);
   });
 
   it('applies food price to cost calculations', () => {

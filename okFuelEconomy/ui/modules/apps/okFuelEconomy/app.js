@@ -175,7 +175,16 @@ function simulateFood(speed_mps, dtSeconds, energy_kcal, timeSeconds) {
   var t = timeSeconds || 0;
   var noise = Math.sin(t * 12.9898) * 43758.5453;
   noise = noise - Math.floor(noise);
-  var osc = 1 + 0.05 * Math.sin(t) + (noise - 0.5) * 0.1;
+  var osc;
+  if (state === 'rest') {
+    var beat = Math.pow(
+      0.5 + 0.5 * Math.sin(t * 2 * Math.PI * 1.2),
+      8
+    );
+    osc = 1 + beat * 0.25;
+  } else {
+    osc = 1 + 0.05 * Math.sin(t) + (noise - 0.5) * 0.1;
+  }
   var rate = base * osc; // kcal/h
   var used = (rate / 3600) * dtSeconds;
   var remaining = Math.max(0, energy_kcal - used);
