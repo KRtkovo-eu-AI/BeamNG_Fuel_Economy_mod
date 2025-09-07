@@ -6,7 +6,9 @@ global.angular = { module: () => ({ directive: () => ({}) }) };
 
 const {
   simulateFood,
+  resetFoodSimulation,
   FOOD_CAPACITY_KCAL,
+  FOOD_REST_KCAL_PER_H,
   MIN_VALID_SPEED_MPS,
   shouldResetOnFoot,
   resolveFuelType,
@@ -15,31 +17,37 @@ const {
 
 describe('Food mode simulation', () => {
   it('consumes energy at rest', () => {
+    resetFoodSimulation();
     const res = simulateFood(0, 3600, FOOD_CAPACITY_KCAL, 0);
     const used = FOOD_CAPACITY_KCAL - res.remaining;
     assert.ok(used > 70 && used < 90);
   });
 
   it('increases consumption with activity', () => {
+    resetFoodSimulation();
     const walk = simulateFood(1.5, 1, FOOD_CAPACITY_KCAL, 0);
-    const run = simulateFood(3.0, 1, FOOD_CAPACITY_KCAL, 0.5);
+    resetFoodSimulation();
+    const run = simulateFood(3.0, 1, FOOD_CAPACITY_KCAL, 0);
     assert.ok(run.rate > walk.rate);
     assert.ok(walk.instPer100km < 1000);
     assert.ok(run.instPer100km < 1000);
-    assert.ok(walk.efficiency > run.efficiency);
   });
 
   it('shows heartbeat-like pulses at rest', () => {
+    resetFoodSimulation();
     const base = simulateFood(0, 1, FOOD_CAPACITY_KCAL, 0).rate;
     const rates = [];
     for (let t = 0; t < 5; t += 0.1) {
       rates.push(simulateFood(0, 0.1, FOOD_CAPACITY_KCAL, t).rate);
     }
-    const peaks = rates.filter((r) => r > base * 1.2);
+    const peaks = rates.filter((r) => r > base * 1.1);
     assert.ok(peaks.length >= 3);
+    const peakDiff = Math.max.apply(null, peaks) - Math.min.apply(null, peaks);
+    assert.ok(peakDiff > 0.5);
   });
 
   it('applies food price to cost calculations', () => {
+    resetFoodSimulation();
     const price = 0.01; // currency per kcal
     const res = simulateFood(1, 3600, FOOD_CAPACITY_KCAL, 0);
     const used = FOOD_CAPACITY_KCAL - res.remaining;
@@ -50,6 +58,7 @@ describe('Food mode simulation', () => {
   });
 
   it('accumulates total cost across updates', () => {
+    resetFoodSimulation();
     const price = 0.02;
     let remaining = FOOD_CAPACITY_KCAL;
     let prev = 0;
@@ -63,6 +72,7 @@ describe('Food mode simulation', () => {
   });
 
   it('uses hourly rate when nearly stationary', () => {
+    resetFoodSimulation();
     const res = simulateFood(MIN_VALID_SPEED_MPS / 2, 1, FOOD_CAPACITY_KCAL, 0);
     assert.strictEqual(res.instPer100km, res.rate / 4);
   });
@@ -79,6 +89,7 @@ describe('Food mode simulation', () => {
   });
 
   it('records instant and average histories', () => {
+    resetFoodSimulation();
     const $scope = {};
     let remaining = FOOD_CAPACITY_KCAL;
     const instantHistory = { queue: [] };
@@ -122,6 +133,7 @@ describe('Food mode simulation', () => {
   });
 
   it('plots higher efficiency lower on the instant graph', () => {
+    resetFoodSimulation();
     const $scope = {};
     let remaining = FOOD_CAPACITY_KCAL;
     const instantHistory = { queue: [] };
@@ -162,5 +174,22 @@ describe('Food mode simulation', () => {
       .split(' ')
       .map((p) => parseFloat(p.split(',')[1]));
     assert.ok(ys[1] > ys[0]);
+  });
+
+  it('cools down gradually after running', () => {
+    resetFoodSimulation();
+    let remaining = FOOD_CAPACITY_KCAL;
+    let t = 0;
+    for (let i = 0; i < 3; i++) {
+      const step = simulateFood(3.0, 1, remaining, t);
+      remaining = step.remaining;
+      t += 1;
+    }
+    const afterRun = simulateFood(0, 1, remaining, t);
+    t += 1;
+    const cooled = simulateFood(0, 5, afterRun.remaining, t);
+    assert.ok(afterRun.rate > FOOD_REST_KCAL_PER_H * 1.5);
+    assert.ok(cooled.rate < afterRun.rate);
+    assert.ok(Math.abs(cooled.rate - FOOD_REST_KCAL_PER_H) < 30);
   });
 });

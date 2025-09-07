@@ -9,6 +9,11 @@ var FOOD_CAPACITY_KCAL = 2000;
 var FOOD_REST_KCAL_PER_H = 80;
 var FOOD_WALK_KCAL_PER_H = 300;
 var FOOD_RUN_KCAL_PER_H = 600;
+var foodBaseRate;
+
+function resetFoodSimulation() {
+  foodBaseRate = undefined;
+}
 
 function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
   if (dtSeconds <= 0 || previousFuel === null) return 0;
@@ -166,26 +171,26 @@ function simulateFood(speed_mps, dtSeconds, energy_kcal, timeSeconds) {
   var state = 'rest';
   if (speed_mps >= 2.5) state = 'run';
   else if (speed_mps >= 0.5) state = 'walk';
-  var base =
+  var target =
     state === 'run'
       ? FOOD_RUN_KCAL_PER_H
       : state === 'walk'
       ? FOOD_WALK_KCAL_PER_H
       : FOOD_REST_KCAL_PER_H;
+  if (foodBaseRate == null) foodBaseRate = target;
+  var blend = Math.min(dtSeconds / 5, 1);
+  foodBaseRate += (target - foodBaseRate) * blend;
   var t = timeSeconds || 0;
-  var noise = Math.sin(t * 12.9898) * 43758.5453;
-  noise = noise - Math.floor(noise);
-  var osc;
-  if (state === 'rest') {
-    var beat = Math.pow(
-      0.5 + 0.5 * Math.sin(t * 2 * Math.PI * 1.2),
-      8
-    );
-    osc = 1 + beat * 0.25;
-  } else {
-    osc = 1 + 0.05 * Math.sin(t) + (noise - 0.5) * 0.1;
+  function noise(seed) {
+    var x = Math.sin((t + seed) * 12.9898) * 43758.5453;
+    return x - Math.floor(x);
   }
-  var rate = base * osc; // kcal/h
+  var freqBase = state === 'run' ? 2.4 : state === 'walk' ? 1.8 : 1.2;
+  var freq = freqBase * (1 + (noise(0) - 0.5) * 0.1);
+  var beat = Math.pow(0.5 + 0.5 * Math.sin(t * freq * 2 * Math.PI), 8);
+  var amp = 0.25 + (noise(1) - 0.5) * 0.05;
+  var jitter = 1 + (noise(2) - 0.5) * 0.02;
+  var rate = foodBaseRate * jitter * (1 + beat * amp); // kcal/h
   var used = (rate / 3600) * dtSeconds;
   var remaining = Math.max(0, energy_kcal - used);
   var speed = Math.abs(speed_mps);
@@ -440,7 +445,9 @@ if (typeof module !== 'undefined') {
     resolveFuelType,
     formatFuelTypeLabel,
     simulateFood,
+    resetFoodSimulation,
     FOOD_CAPACITY_KCAL,
+    FOOD_REST_KCAL_PER_H,
     shouldResetOnFoot,
     updateFoodHistories
   };
@@ -1145,6 +1152,7 @@ angular.module('beamng.apps')
 
       function resetOnFootOutputs() {
         hardReset(true);
+        resetFoodSimulation();
         foodFuel_kcal = FOOD_CAPACITY_KCAL;
         var mode = 'food';
         var labels = getUnitLabels(mode);
