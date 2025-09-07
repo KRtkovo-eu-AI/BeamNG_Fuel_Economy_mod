@@ -1363,7 +1363,6 @@ angular.module('beamng.apps')
             var topSpeedValid = topSpeed_kph <= 120;
             $scope.avgCo2Compliant =
               distance_m > 0 &&
-              meetsEuCo2Limit(0) &&
               avgSpeed_kph >= 18 &&
               avgSpeed_kph <= 65 &&
               topSpeedValid;
@@ -1712,7 +1711,6 @@ angular.module('beamng.apps')
           var topSpeedValid = topSpeed_kph <= 120;
           $scope.avgCo2Compliant =
             distance_m > 0 &&
-            meetsEuCo2Limit(avgCo2Val) &&
             avgSpeed_kph >= 18 &&
             avgSpeed_kph <= 65 &&
             topSpeedValid;
