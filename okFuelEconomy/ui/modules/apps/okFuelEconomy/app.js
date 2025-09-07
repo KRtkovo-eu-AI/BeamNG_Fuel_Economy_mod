@@ -984,9 +984,11 @@ angular.module('beamng.apps')
         });
       }
 
-      window.reloadFuelEconomySettings = function () {
-        $scope.$evalAsync(loadSettings);
-      };
+      if (typeof window !== 'undefined') {
+        window.reloadFuelEconomySettings = function () {
+          $scope.$evalAsync(loadSettings);
+        };
+      }
 
       loadSettings();
 
