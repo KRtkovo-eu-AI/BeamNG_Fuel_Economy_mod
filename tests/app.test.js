@@ -23,7 +23,8 @@ const {
   formatFlow,
   MIN_VALID_SPEED_MPS,
   resolveUnitModeForFuelType,
-  formatFuelTypeLabel
+  formatFuelTypeLabel,
+  getUnitLabels
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('app.js utility functions', () => {
@@ -310,6 +311,12 @@ describe('app.js utility functions', () => {
         'imperial'
       );
     });
+    it('uses food units for Food fuel type', () => {
+      assert.strictEqual(
+        resolveUnitModeForFuelType('Food', 'metric'),
+        'food'
+      );
+    });
   });
 
   describe('formatFuelTypeLabel', () => {
@@ -324,6 +331,33 @@ describe('app.js utility functions', () => {
     });
     it('returns "None" for empty fuel types', () => {
       assert.strictEqual(formatFuelTypeLabel(''), 'None');
+    });
+  });
+
+  describe('getUnitLabels', () => {
+    it('provides kcal-based labels for food mode', () => {
+      assert.deepStrictEqual(getUnitLabels('food'), {
+        distance: 'km',
+        volume: 'kcal',
+        consumption: 'kcal/100km',
+        efficiency: 'km/kcal',
+        flow: 'kcal/h'
+      });
+    });
+  });
+
+  describe('formatting for food mode', () => {
+    it('formats volume values in kcal', () => {
+      assert.strictEqual(formatVolume(123.456, 'food', 1), '123.5 kcal');
+    });
+    it('formats consumption rates in kcal/100km', () => {
+      assert.strictEqual(
+        formatConsumptionRate(12.34, 'food', 1),
+        '12.3 kcal/100km'
+      );
+    });
+    it('formats efficiency in km/kcal', () => {
+      assert.strictEqual(formatEfficiency(56.789, 'food', 2), '56.79 km/kcal');
     });
   });
 });
