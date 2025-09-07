@@ -566,7 +566,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.avgCo2Compliant, false);
 
     handlers['streamsUpdate'](null, { electrics: { wheelspeed: 0, airspeed: 0, trip: 0 }, engineInfo: Array(15).fill(0) });
-    assert.strictEqual($scope.avgCo2Compliant, true);
+    assert.strictEqual($scope.avgCo2Compliant, false);
   });
 
   it('computes traveled distance when on foot', async () => {
@@ -2054,7 +2054,7 @@ describe('controller integration', () => {
     assert.ok(avg.queue[0] < 1000);
   });
 
-  it('only marks EU CO2 compliance after driving', () => {
+  it('requires EU speed window for CO2 compliance', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
@@ -2087,8 +2087,14 @@ describe('controller integration', () => {
     now = 2000;
     streams.electrics.wheelspeed = 10;
     streams.electrics.airspeed = 10;
+    $scope.on_streamsUpdate(null, streams); // below top-speed requirement
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    now = 3000;
+    streams.electrics.wheelspeed = 33.3333333333;
+    streams.electrics.airspeed = 33.3333333333;
     streams.engineInfo[11] = 49.9995;
-    $scope.on_streamsUpdate(null, streams); // moving with low consumption
+    $scope.on_streamsUpdate(null, streams); // meets speed window and low CO2
     assert.strictEqual($scope.avgCo2Compliant, true);
   });
 

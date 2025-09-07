@@ -970,6 +970,8 @@ angular.module('beamng.apps')
       var distance_m = 0;
       var lastDistance_m = 0;
       var lastTime_ms = performance.now();
+      var totalTime_s = 0;
+      var topSpeed_mps = 0;
       var startFuel_l = null;
       var previousFuel_l = null;
       var tripFuelUsedLiquid_l = 0;
@@ -1184,6 +1186,8 @@ angular.module('beamng.apps')
       function hardReset(preserveTripFuel) {
         distance_m = 0;
         lastDistance_m = 0;
+        totalTime_s = 0;
+        topSpeed_mps = 0;
         startFuel_l = null;
         previousFuel_l = null;
         lastCapacity_l = null;
@@ -1321,6 +1325,8 @@ angular.module('beamng.apps')
             );
             var deltaDistance = speed_mps * dt;
             distance_m += deltaDistance;
+            totalTime_s += dt;
+            if (speed_mps > topSpeed_mps) topSpeed_mps = speed_mps;
             var res = simulateFood(speed_mps, dt, foodFuel_kcal, now_ms / 1000);
             foodFuel_kcal = res.remaining;
             var mode = 'food';
@@ -1340,7 +1346,15 @@ angular.module('beamng.apps')
             $scope.avgKmL = formatEfficiency(res.efficiency, mode, 2);
             $scope.avgCO2 = formatCO2(0, 0, mode);
             $scope.avgCo2Class = classifyCO2(0);
-            $scope.avgCo2Compliant = meetsEuCo2Limit(0);
+            var avgSpeed_kph = totalTime_s > 0 ? (distance_m / totalTime_s) * 3.6 : 0;
+            var topSpeed_kph = topSpeed_mps * 3.6;
+            var topSpeedValid = topSpeed_kph >= 119.5 && topSpeed_kph <= 120.5;
+            $scope.avgCo2Compliant =
+              distance_m > 0 &&
+              meetsEuCo2Limit(0) &&
+              avgSpeed_kph >= 18 &&
+              avgSpeed_kph <= 65 &&
+              topSpeedValid;
             $scope.data4 = formatDistance(Infinity, mode, 0);
             $scope.totalCost = (used_kcal * price).toFixed(2) + ' ' + $scope.currency;
             $scope.avgCost =
@@ -1382,6 +1396,8 @@ angular.module('beamng.apps')
           );
           var deltaDistance = speed_mps * dt;
           var trip_m = streams.electrics.trip || 0;
+          totalTime_s += dt;
+          if (speed_mps > topSpeed_mps) topSpeed_mps = speed_mps;
 
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
@@ -1678,8 +1694,15 @@ angular.module('beamng.apps')
           var avgCo2Val = calculateCO2gPerKm(avg_l_per_100km_ok, $scope.fuelType);
           $scope.avgCO2 = formatCO2(avgCo2Val, 0, mode);
           $scope.avgCo2Class = classifyCO2(avgCo2Val);
+          var avgSpeed_kph = totalTime_s > 0 ? (distance_m / totalTime_s) * 3.6 : 0;
+          var topSpeed_kph = topSpeed_mps * 3.6;
+          var topSpeedValid = topSpeed_kph >= 119.5 && topSpeed_kph <= 120.5;
           $scope.avgCo2Compliant =
-            distance_m > 0 && meetsEuCo2Limit(avgCo2Val);
+            distance_m > 0 &&
+            meetsEuCo2Limit(avgCo2Val) &&
+            avgSpeed_kph >= 18 &&
+            avgSpeed_kph <= 65 &&
+            topSpeedValid;
           $scope.data4 = rangeStr;
           $scope.data6 = formatDistance(trip_m, mode, 1);
           $scope.tripAvgL100km = formatConsumptionRate(overall_median, mode, 1);
