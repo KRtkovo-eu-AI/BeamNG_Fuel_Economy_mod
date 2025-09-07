@@ -345,4 +345,19 @@ describe('app.js utility functions', () => {
       });
     });
   });
+
+  describe('formatting for food mode', () => {
+    it('formats volume values in kcal', () => {
+      assert.strictEqual(formatVolume(123.456, 'food', 1), '123.5 kcal');
+    });
+    it('formats consumption rates in kcal/100km', () => {
+      assert.strictEqual(
+        formatConsumptionRate(12.34, 'food', 1),
+        '12.3 kcal/100km'
+      );
+    });
+    it('formats efficiency in km/kcal', () => {
+      assert.strictEqual(formatEfficiency(56.789, 'food', 2), '56.79 km/kcal');
+    });
+  });
 });

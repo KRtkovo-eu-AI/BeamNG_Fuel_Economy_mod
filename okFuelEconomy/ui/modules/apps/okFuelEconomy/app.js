@@ -578,6 +578,15 @@ angular.module('beamng.apps')
 
         function applyAutoUnitMode(type) {
           var desired = resolveUnitModeForFuelType(type, preferredLiquidUnit);
+          if (desired === 'food') {
+            if ($scope.unitMode !== 'food') {
+              $scope.unitMode = 'food';
+              updateUnitLabels();
+              updateCostPrice();
+              refreshCostOutputs();
+            }
+            return;
+          }
           if (!manualUnit && desired !== $scope.unitMode) {
             $scope.unitMode = desired;
             updateUnitLabels();
