@@ -325,6 +325,12 @@ function resolveUnitModeForFuelType(fuelType, liquidMode) {
   return liquidMode;
 }
 
+function shouldResetOnFoot(prevType, currentType) {
+  if (!currentType) return false;
+  var lower = currentType.toLowerCase();
+  return lower === 'food' && prevType !== currentType;
+}
+
 if (typeof module !== 'undefined') {
   module.exports = {
     EPS_SPEED,
@@ -352,7 +358,8 @@ if (typeof module !== 'undefined') {
     resolveUnitModeForFuelType,
     formatFuelTypeLabel,
     simulateFood,
-    FOOD_CAPACITY_KCAL
+    FOOD_CAPACITY_KCAL,
+    shouldResetOnFoot
   };
 }
 
@@ -691,7 +698,9 @@ angular.module('beamng.apps')
               if (lastFuelType && lastFuelType.toLowerCase() === 'food') {
                 updateCostPrice();
                 refreshCostOutputs();
-                resetOnFootOutputs();
+                if (shouldResetOnFoot(prevType, lastFuelType)) {
+                  resetOnFootOutputs();
+                }
               } else {
                 updateCostPrice();
                 if (prevType !== lastFuelType) {

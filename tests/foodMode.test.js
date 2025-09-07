@@ -7,7 +7,8 @@ global.angular = { module: () => ({ directive: () => ({}) }) };
 const {
   simulateFood,
   FOOD_CAPACITY_KCAL,
-  MIN_VALID_SPEED_MPS
+  MIN_VALID_SPEED_MPS,
+  shouldResetOnFoot
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('Food mode simulation', () => {
@@ -28,5 +29,11 @@ describe('Food mode simulation', () => {
   it('uses hourly rate when nearly stationary', () => {
     const res = simulateFood(MIN_VALID_SPEED_MPS / 2, 1, FOOD_CAPACITY_KCAL, 0);
     assert.strictEqual(res.instPer100km, res.rate / 4);
+  });
+
+  it('resets only when switching to food fuel type', () => {
+    assert.strictEqual(shouldResetOnFoot('Gasoline', 'Food'), true);
+    assert.strictEqual(shouldResetOnFoot('Food', 'Food'), false);
+    assert.strictEqual(shouldResetOnFoot('Food', 'Gasoline'), false);
   });
 });
