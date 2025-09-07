@@ -585,7 +585,7 @@ angular.module('beamng.apps')
             '(function()',
             'local veh=be:getPlayerVehicle(0)',
             'if not veh then return jsonEncode({t="Food"}) end',
-            'local stor=energyStorage.getStorages and energyStorage.getStorages(veh)',
+            'local stor=energyStorage and energyStorage.getStorages and energyStorage.getStorages(veh)',
             'local t=""',
             'if stor then',
             '  for _,s in pairs(stor) do if s.energyType and s.energyType:lower()~="air" then t=s.energyType break end end',
