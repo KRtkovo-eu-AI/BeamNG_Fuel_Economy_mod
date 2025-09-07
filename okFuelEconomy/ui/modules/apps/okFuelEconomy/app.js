@@ -66,11 +66,11 @@ function smoothFuelFlow(
     // Negative flow means energy is being returned (regen) – use directly.
     return fuelFlow_lps;
   }
-  if (fuelFlow_lps > 0 && throttle > 0.05) {
-    // A fresh reading while throttle is applied – use it directly.
+  if (fuelFlow_lps > 0) {
+    // Always use fresh positive readings, even with zero throttle.
     return fuelFlow_lps;
   }
-  if (fuelFlow_lps <= 0 && throttle <= 0.05) {
+  if (throttle <= 0.05) {
     // Engine off or fuel cut: no consumption.
     return 0;
   }
@@ -78,15 +78,11 @@ function smoothFuelFlow(
   const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
 
   if (speed_mps > EPS_SPEED) {
-    if (throttle <= 0.05) {
-      // Coasting with zero throttle – blend previous value toward idle.
-      return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
-    }
     // Throttle applied but sensor static – keep the last flow.
     return lastFuelFlow_lps;
   }
 
-  // Vehicle stopped: smoothly approach idle flow.
+  // Vehicle stopped with throttle: smoothly approach idle flow.
   return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
 }
 
@@ -149,9 +145,13 @@ function resolveAverageConsumption(
   previousAvg
 ) {
   if (engineRunning) {
-    return speed_mps > MIN_VALID_SPEED_MPS
-      ? calculateAverageConsumption(fuel_used_l, distance_m)
-      : inst_l_per_100km;
+    if (speed_mps > MIN_VALID_SPEED_MPS) {
+      return calculateAverageConsumption(fuel_used_l, distance_m);
+    }
+    // When moving slower than the minimum threshold, keep the previous
+    // average if available so the reading doesn't instantly drop to the
+    // idle estimate. Fall back to the instant rate if no history exists yet.
+    return previousAvgTrip || previousAvg || inst_l_per_100km;
   }
   return previousAvgTrip || previousAvg || 0;
 }

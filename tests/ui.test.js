@@ -1074,8 +1074,8 @@ describe('controller integration', () => {
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.tripAvgCostLiquid, '0.08 USD/km');
-    assert.strictEqual($scope.tripAvgCostElectric, '0.03 USD/km');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });

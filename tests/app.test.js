@@ -156,6 +156,10 @@ describe('app.js utility functions', () => {
       const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, EPS_SPEED);
       assert.strictEqual(res, 0.02);
     });
+    it('uses new positive flow even with zero throttle', () => {
+      const res = smoothFuelFlow(0.015, 20, 0, 0.01, 0.005, EPS_SPEED);
+      assert.strictEqual(res, 0.015);
+    });
     it('returns zero when stopped without fuel', () => {
       const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, EPS_SPEED);
       assert.strictEqual(res, 0);
@@ -221,7 +225,19 @@ describe('app.js utility functions', () => {
       );
       assert.strictEqual(avg, calculateAverageConsumption(1, 1000));
     });
-    it('falls back to instant rate at low speed', () => {
+    it('keeps previous average at low speed when available', () => {
+      const avg = resolveAverageConsumption(
+        true,
+        MIN_VALID_SPEED_MPS / 2,
+        0,
+        0,
+        8,
+        5,
+        7
+      );
+      assert.strictEqual(avg, 5);
+    });
+    it('falls back to instant rate when no previous average exists', () => {
       const inst = 8;
       const avg = resolveAverageConsumption(
         true,
