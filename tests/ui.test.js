@@ -2074,28 +2074,31 @@ describe('controller integration', () => {
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
     controllerFn({ debug: () => {} }, $scope);
 
-    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 800, trip: 0 } };
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, engineRunning: false, trip: 0 }
+    };
     streams.engineInfo[11] = 50;
     streams.engineInfo[12] = 60;
 
     $scope.reset();
 
-    now = 1000;
-    $scope.on_streamsUpdate(null, streams); // idle, no distance
+    now = 10000;
+    $scope.on_streamsUpdate(null, streams); // engine off, time passes
     assert.strictEqual($scope.avgCo2Compliant, false);
 
-    now = 2000;
+    now = 11000;
+    streams.electrics.engineRunning = true;
     streams.electrics.wheelspeed = 10;
     streams.electrics.airspeed = 10;
-    $scope.on_streamsUpdate(null, streams); // below top-speed requirement
-    assert.strictEqual($scope.avgCo2Compliant, false);
-
-    now = 3000;
-    streams.electrics.wheelspeed = 33.3333333333;
-    streams.electrics.airspeed = 33.3333333333;
-    streams.engineInfo[11] = 49.9995;
-    $scope.on_streamsUpdate(null, streams); // meets speed window and low CO2
+    $scope.on_streamsUpdate(null, streams); // within speed window
     assert.strictEqual($scope.avgCo2Compliant, true);
+
+    now = 11001;
+    streams.electrics.wheelspeed = 40;
+    streams.electrics.airspeed = 40;
+    $scope.on_streamsUpdate(null, streams); // exceeds EU top speed
+    assert.strictEqual($scope.avgCo2Compliant, false);
   });
 
   });

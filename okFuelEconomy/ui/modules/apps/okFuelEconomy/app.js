@@ -1348,7 +1348,7 @@ angular.module('beamng.apps')
             $scope.avgCo2Class = classifyCO2(0);
             var avgSpeed_kph = totalTime_s > 0 ? (distance_m / totalTime_s) * 3.6 : 0;
             var topSpeed_kph = topSpeed_mps * 3.6;
-            var topSpeedValid = topSpeed_kph >= 119.5 && topSpeed_kph <= 120.5;
+            var topSpeedValid = topSpeed_kph <= 120;
             $scope.avgCo2Compliant =
               distance_m > 0 &&
               meetsEuCo2Limit(0) &&
@@ -1396,7 +1396,6 @@ angular.module('beamng.apps')
           );
           var deltaDistance = speed_mps * dt;
           var trip_m = streams.electrics.trip || 0;
-          totalTime_s += dt;
           if (speed_mps > topSpeed_mps) topSpeed_mps = speed_mps;
 
           var currentFuel_l = streams.engineInfo[11];
@@ -1407,7 +1406,9 @@ angular.module('beamng.apps')
             resetInstantHistory();
           }
           engineWasRunning = engineRunning;
-          if (!engineRunning) {
+          if (engineRunning) {
+            totalTime_s += dt;
+          } else {
             idleFuelFlow_lps = 0;
           }
 
@@ -1422,10 +1423,12 @@ angular.module('beamng.apps')
           if (startFuel_l === null) {
             startFuel_l = currentFuel_l;
             distance_m = 0;
+            totalTime_s = 0;
           }
           if (previousFuel_l === null) {
             previousFuel_l = currentFuel_l;
             distance_m = 0;
+            totalTime_s = 0;
           }
 
           if (currentFuel_l <= 0 && previousFuel_l > 0.1) {
@@ -1438,6 +1441,7 @@ angular.module('beamng.apps')
             previousFuel_l = currentFuel_l;
             fuel_used_l = 0;
             distance_m = 0;
+            totalTime_s = 0;
           }
 
           if (engineRunning) {
@@ -1473,6 +1477,7 @@ angular.module('beamng.apps')
 
           if (distance_m === 0 && lastDistance_m > 0) {
             resetAvgHistory();
+            totalTime_s = 0;
           }
 
           if (engineRunning) {
@@ -1696,7 +1701,7 @@ angular.module('beamng.apps')
           $scope.avgCo2Class = classifyCO2(avgCo2Val);
           var avgSpeed_kph = totalTime_s > 0 ? (distance_m / totalTime_s) * 3.6 : 0;
           var topSpeed_kph = topSpeed_mps * 3.6;
-          var topSpeedValid = topSpeed_kph >= 119.5 && topSpeed_kph <= 120.5;
+          var topSpeedValid = topSpeed_kph <= 120;
           $scope.avgCo2Compliant =
             distance_m > 0 &&
             meetsEuCo2Limit(avgCo2Val) &&
