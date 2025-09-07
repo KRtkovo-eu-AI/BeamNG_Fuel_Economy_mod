@@ -115,7 +115,10 @@ describe('UI template styling', () => {
     controllerFn({ debug: () => {} }, $scope);
 
     $scope.openFuelPriceEditor({ preventDefault() {} });
-    assert.equal(luaCmd, 'extensions.load("fuelPriceEditor")');
+    assert.equal(
+      luaCmd,
+      'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("L")'
+    );
   });
 
   it('persists style preference to localStorage', () => {

@@ -11,6 +11,14 @@ local uiState = {
   currency = im.ArrayChar(32, 'money')
 }
 
+local liquidUnit = 'L'
+
+local function unitLabel(name)
+  if name == 'Electricity' then return 'kWh' end
+  if name == 'Food' then return 'kcal' end
+  return liquidUnit
+end
+
 local function migrate(cfg)
   local migrated = false
   cfg.prices = cfg.prices or {}
@@ -96,7 +104,8 @@ local function onUpdate()
   end
   table.sort(names)
   for _, name in ipairs(names) do
-    im.InputFloat(name, uiState.prices[name])
+    local unit = unitLabel(name)
+    im.InputFloat(string.format('%s (%s)##%s', name, unit, name), uiState.prices[name])
     im.SameLine()
     local disabled = name == 'Gasoline' or name == 'Electricity'
     if disabled then im.BeginDisabled() end
@@ -128,6 +137,14 @@ end
 M.onUpdate = onUpdate
 M.onExtensionLoaded = onExtensionLoaded
 M.onFileChanged = onFileChanged
+
+function M.setLiquidUnit(unit)
+  if unit == 'gal' then
+    liquidUnit = 'gal'
+  else
+    liquidUnit = 'L'
+  end
+end
 
 function M.ensureFuelType(label)
   ensureFile()

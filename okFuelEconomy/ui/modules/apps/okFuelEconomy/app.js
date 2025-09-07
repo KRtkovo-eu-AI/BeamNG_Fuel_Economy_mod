@@ -534,7 +534,10 @@ angular.module('beamng.apps')
       $scope.settingsOpen = false;
       $scope.openFuelPriceEditor = function ($event) {
         $event.preventDefault();
-        bngApi.engineLua('extensions.load("fuelPriceEditor")');
+        var liquid = preferredLiquidUnit === 'imperial' ? 'gal' : 'L';
+        bngApi.engineLua(
+          'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("' + liquid + '")'
+        );
       };
       $scope.unitModeLabels = {
         metric: 'Metric (L, km)',
