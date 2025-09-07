@@ -870,10 +870,13 @@ describe('UI template styling', () => {
 
     assert.ok(html.includes('ng-if="avgCo2Compliant && avgCo2Class"'));
     assert.ok(
-      html.includes("{{ avgCO2 }}<span ng-if=\"avgCo2Compliant && avgCo2Class\"> | <ng-include class=\"euCo2ClassIcon\" src=\"'modules/apps/okFuelEconomy/eu_co2_classes/' + avgCo2Class + '.svg'\" style=\"display:inline-block; width:1em; height:1em; vertical-align:-0.1em;\"></ng-include></span>")
+      html.includes('{{ avgCO2 }}<span ng-if="avgCo2Compliant && avgCo2Class"> | <svg class="euCo2ClassIcon" style="display:inline-block; width:1em; height:1em; vertical-align:-0.1em;"><use ng-attr-xlink:href')
     );
-    assert.ok(html.includes('modules/apps/okFuelEconomy/eu_co2_classes/'));
+    ['A','B','C','D','E','F','G'].forEach(cls => {
+      assert.ok(html.includes(`symbol id="eu-co2-${cls}"`), `missing symbol ${cls}`);
+    });
     assert.ok(html.includes('{{ instantCO2 }}'));
+    assert.ok(!html.includes('modules/apps/okFuelEconomy/eu_co2_classes/'));
     assert.ok(!html.includes('{{ co2Class }}'));
   });
 
