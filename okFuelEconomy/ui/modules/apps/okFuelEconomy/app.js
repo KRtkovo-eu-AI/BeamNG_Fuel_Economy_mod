@@ -566,6 +566,10 @@ angular.module('beamng.apps')
           if (mode !== 'electric') {
             preferredLiquidUnit = mode;
             try { localStorage.setItem(PREFERRED_UNIT_KEY, preferredLiquidUnit); } catch (e) {}
+            var liquid = preferredLiquidUnit === 'imperial' ? 'gal' : 'L';
+            bngApi.engineLua(
+              'extensions.fuelPriceEditor.setLiquidUnit("' + liquid + '")'
+            );
           }
           manualUnit = true;
           updateUnitLabels();

@@ -121,6 +121,33 @@ describe('UI template styling', () => {
     );
   });
 
+  it('updates editor liquid units when preference changes', () => {
+    let directiveDef;
+    const cmds = [];
+      global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+      global.StreamsManager = { add: () => {}, remove: () => {} };
+      global.UiUnits = { buildString: () => '' };
+      global.window = {};
+    global.bngApi = { engineLua: cmd => { cmds.push(cmd); } };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+
+    $scope.openFuelPriceEditor({ preventDefault() {} });
+    cmds.length = 0;
+    $scope.setUnit('imperial');
+    $scope.setUnit('metric');
+
+    assert.deepStrictEqual(cmds, [
+      'extensions.fuelPriceEditor.setLiquidUnit("gal")',
+      'extensions.fuelPriceEditor.setLiquidUnit("L")'
+    ]);
+  });
+
   it('persists style preference to localStorage', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
