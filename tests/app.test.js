@@ -10,6 +10,7 @@ const {
   smoothFuelFlow,
   trimQueue,
   calculateMedian,
+  calculateAverage,
   calculateAverageConsumption,
   calculateRange,
   buildQueueGraphPoints,
@@ -21,11 +22,17 @@ const {
   formatConsumptionRate,
   formatEfficiency,
   formatFlow,
+  calculateCO2gPerKm,
+  formatCO2,
+  classifyCO2,
+  meetsEuCo2Limit,
   MIN_VALID_SPEED_MPS,
   resolveUnitModeForFuelType,
   formatFuelTypeLabel,
   getUnitLabels
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+
+const KM_PER_MILE = 1.60934;
 
 describe('app.js utility functions', () => {
   describe('calculateFuelFlow', () => {
@@ -97,6 +104,25 @@ describe('app.js utility functions', () => {
       const idle = 0.25;
       const queue = Array(1000).fill(idle).concat([20, 30, 40, 50]);
       assert.strictEqual(calculateMedian(queue), 30);
+    });
+  });
+
+  describe('calculateAverage', () => {
+    it('handles empty queues', () => {
+      assert.strictEqual(calculateAverage([]), 0);
+    });
+    it('computes the arithmetic mean', () => {
+      assert.strictEqual(calculateAverage([10, 20, 30]), 20);
+    });
+  });
+
+  describe('meetsEuCo2Limit', () => {
+    it('accepts values at or below 120 g/km', () => {
+      assert.ok(meetsEuCo2Limit(120));
+      assert.ok(meetsEuCo2Limit(95));
+    });
+    it('rejects values above the limit', () => {
+      assert.ok(!meetsEuCo2Limit(130));
     });
   });
 
@@ -358,6 +384,73 @@ describe('app.js utility functions', () => {
     });
     it('formats efficiency in km/kcal', () => {
       assert.strictEqual(formatEfficiency(56.789, 'food', 2), '56.79 km/kcal');
+    });
+  });
+
+  describe('CO2 helpers', () => {
+    it('computes g/km from consumption and fuel type', () => {
+      assert.strictEqual(calculateCO2gPerKm(5, 'Gasoline'), 5 / 100 * 2392);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Air'), 0);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Ethanol'), 5 / 100 * 1510);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethane'), 5 / 100 * 820);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethan'), 5 / 100 * 820);
+      assert.ok(Math.abs(calculateCO2gPerKm(5, 'Food') - 5 / 100 * 0.001) < 1e-9);
+    });
+    it('formats CO2 emissions', () => {
+      const val = calculateCO2gPerKm(5, 'Gasoline');
+      assert.strictEqual(
+        formatCO2(val, 1, 'metric'),
+        (5 / 100 * 2392).toFixed(1) + ' g/km'
+      );
+      assert.strictEqual(
+        formatCO2(val, 1, 'imperial'),
+        ((5 / 100 * 2392) * KM_PER_MILE).toFixed(1) + ' g/mi'
+      );
+    });
+    it('classifies emission levels', () => {
+      assert.strictEqual(classifyCO2(119), 'A');
+      assert.strictEqual(classifyCO2(130), 'B');
+      assert.strictEqual(classifyCO2(160), 'D');
+    });
+  });
+
+  describe('Canadian 5-cycle fuel economy scenario', () => {
+    it('derives city and highway ratings with CO2 grades', () => {
+      const cycles = [
+        // fuel used in L, distance in m for each of the five tests
+        { fuel: 1.3175, dist: 17566.7 }, // city
+        { fuel: 0.845, dist: 16900 }, // highway
+        { fuel: 1.581, dist: 17566.7 }, // cold city
+        { fuel: 0.4666, dist: 5833.3 }, // air conditioning
+        { fuel: 0.78, dist: 13000 } // high speed
+      ];
+      const l100 = cycles.map(c => calculateAverageConsumption(c.fuel, c.dist));
+      const cityAvg = (l100[0] + l100[2] + l100[3] + l100[4]) / 4;
+      const hwyAvg = (l100[1] + l100[3] + l100[4]) / 3;
+      const cityCO2 = calculateCO2gPerKm(cityAvg, 'Gasoline');
+      const hwyCO2 = calculateCO2gPerKm(hwyAvg, 'Gasoline');
+      assert.ok(Math.abs(cityAvg - 7.625) < 1e-3);
+      assert.ok(Math.abs(hwyAvg - 6.333333) < 1e-3);
+      assert.strictEqual(classifyCO2(cityCO2), 'E');
+      assert.strictEqual(classifyCO2(hwyCO2), 'C');
+    });
+  });
+
+  describe('EU urban and extra-urban fuel economy scenario', () => {
+    it('derives cycle ratings and combined compliance', () => {
+      const urbanFuel = 0.16;
+      const extraFuel = 0.2;
+      const urbanDist = 4052; // m
+      const extraDist = 6955.6; // m
+      const urbanAvg = calculateAverageConsumption(urbanFuel, urbanDist);
+      const extraAvg = calculateAverageConsumption(extraFuel, extraDist);
+      const combinedAvg = (urbanAvg + extraAvg) / 2;
+      const urbanCO2 = calculateCO2gPerKm(urbanAvg, 'Gasoline');
+      const extraCO2 = calculateCO2gPerKm(extraAvg, 'Gasoline');
+      const combinedCO2 = calculateCO2gPerKm(combinedAvg, 'Gasoline');
+      assert.strictEqual(classifyCO2(urbanCO2), 'A');
+      assert.strictEqual(classifyCO2(extraCO2), 'A');
+      assert.ok(meetsEuCo2Limit(combinedCO2));
     });
   });
 });

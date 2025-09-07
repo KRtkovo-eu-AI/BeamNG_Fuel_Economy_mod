@@ -10,6 +10,19 @@ var FOOD_REST_KCAL_PER_H = 80;
 var FOOD_WALK_KCAL_PER_H = 300;
 var FOOD_RUN_KCAL_PER_H = 600;
 var foodBaseRate;
+var EU_SPEED_WINDOW_MS = 60000; // retain EU speed samples for 60 s
+
+var CO2_FACTORS_G_PER_L = {
+  Gasoline: 2392,
+  Diesel: 2640,
+  'LPG/CNG': 1660,
+  Electricity: 0,
+  Air: 0,
+  Ethanol: 1510,
+  Nitromethane: 820,
+  Nitromethan: 820,
+  Food: 0.001 // approx. CO2 from human flatulence per kcal
+};
 
 function resetFoodSimulation() {
   foodBaseRate = undefined;
@@ -103,6 +116,15 @@ function calculateMedian(queue) {
   var mid = Math.floor(deduped.length / 2);
   if (deduped.length % 2) return deduped[mid];
   return (deduped[mid - 1] + deduped[mid]) / 2;
+}
+
+function calculateAverage(queue) {
+  if (!Array.isArray(queue) || queue.length === 0) return 0;
+  var sum = 0;
+  for (var i = 0; i < queue.length; i++) {
+    sum += queue[i];
+  }
+  return sum / queue.length;
 }
 
 function calculateAverageConsumption(fuelUsed_l, distance_m) {
@@ -376,6 +398,40 @@ function convertVolumePerDistance(lPerKm, mode) {
     : lPerKm;
 }
 
+function calculateCO2gPerKm(lPer100km, fuelType) {
+  var factor = CO2_FACTORS_G_PER_L[fuelType] != null
+    ? CO2_FACTORS_G_PER_L[fuelType]
+    : CO2_FACTORS_G_PER_L.Gasoline;
+  if (!Number.isFinite(lPer100km)) return Infinity;
+  return (lPer100km / 100) * factor;
+}
+
+function formatCO2(gPerKm, decimals, mode) {
+  if (!Number.isFinite(gPerKm)) return 'Infinity';
+  var unit = 'g/km';
+  var value = gPerKm;
+  if (mode === 'imperial') {
+    unit = 'g/mi';
+    value = gPerKm * KM_PER_MILE;
+  }
+  return value.toFixed(decimals) + ' ' + unit;
+}
+
+function classifyCO2(gPerKm) {
+  if (!Number.isFinite(gPerKm)) return 'G';
+  if (gPerKm <= 120) return 'A';
+  if (gPerKm <= 140) return 'B';
+  if (gPerKm <= 155) return 'C';
+  if (gPerKm <= 170) return 'D';
+  if (gPerKm <= 190) return 'E';
+  if (gPerKm <= 225) return 'F';
+  return 'G';
+}
+
+function meetsEuCo2Limit(gPerKm) {
+  return Number.isFinite(gPerKm) && gPerKm <= 120;
+}
+
 function formatFuelTypeLabel(fuelType) {
   if (typeof fuelType === 'string') {
     var lower = fuelType.toLowerCase();
@@ -426,6 +482,7 @@ if (typeof module !== 'undefined') {
     smoothFuelFlow,
     trimQueue,
     calculateMedian,
+    calculateAverage,
     calculateAverageConsumption,
     calculateRange,
     resolveAverageConsumption,
@@ -441,6 +498,10 @@ if (typeof module !== 'undefined') {
     convertVolumeToUnit,
     convertDistanceToUnit,
     convertVolumePerDistance,
+    calculateCO2gPerKm,
+    formatCO2,
+    classifyCO2,
+    meetsEuCo2Limit,
     resolveUnitModeForFuelType,
     resolveFuelType,
     formatFuelTypeLabel,
@@ -822,11 +883,13 @@ angular.module('beamng.apps')
         fuelType: true,
         avgL100km: true,
         avgKmL: true,
+        avgCO2: true,
         avgGraph: true,
         avgKmLGraph: true,
         instantLph: true,
         instantL100km: true,
         instantKmL: true,
+        instantCO2: true,
         instantGraph: true,
         instantKmLGraph: true,
         range: true,
@@ -1069,16 +1132,18 @@ angular.module('beamng.apps')
         }
 
       // --------- Average history persistence (NEW) ----------
-      var AVG_KEY = 'okFuelEconomyAvgHistory';
-      var AVG_MAX_ENTRIES = 1000;
+  var AVG_KEY = 'okFuelEconomyAvgHistory';
+  var AVG_MAX_ENTRIES = 1000;
 
-      var avgHistory = { queue: [] };
-      try {
-          var savedAvg = JSON.parse(localStorage.getItem(AVG_KEY));
-          if (savedAvg && Array.isArray(savedAvg.queue)) {
-              avgHistory = savedAvg;
-          }
-      } catch (e) { /* ignore */ }
+  var avgHistory = { queue: [] };
+  try {
+      var savedAvg = JSON.parse(localStorage.getItem(AVG_KEY));
+      if (savedAvg && Array.isArray(savedAvg.queue)) {
+          avgHistory = savedAvg;
+      }
+  } catch (e) { /* ignore */ }
+
+  var speedAvg = { queue: [], time: 0 };
 
       function saveAvgHistory() {
           try { localStorage.setItem(AVG_KEY, JSON.stringify(avgHistory)); } catch (e) { /* ignore */ }
@@ -1127,6 +1192,7 @@ angular.module('beamng.apps')
           saveAvgHistory();
           $scope.avgHistory = '';
           $scope.avgKmLHistory = '';
+          speedAvg = { queue: [], time: 0 };
       }
 
       function hardReset(preserveTripFuel) {
@@ -1157,6 +1223,7 @@ angular.module('beamng.apps')
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
         engineWasRunning = false;
+        speedAvg = { queue: [], time: 0 };
         resetInstantHistory();
         resetAvgHistory();
       }
@@ -1174,10 +1241,15 @@ angular.module('beamng.apps')
         $scope.fuelCap = formatVolume(0, mode, 1);
         $scope.avgL100km = formatConsumptionRate(0, mode, 1);
         $scope.avgKmL = formatEfficiency(0, mode, 2);
+        $scope.avgCO2 = formatCO2(0, 0, mode);
+        $scope.avgCo2Class = classifyCO2(0);
+        $scope.avgCo2Compliant = false;
         $scope.data4 = formatDistance(0, mode, 0);
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
         $scope.instantKmL = formatEfficiency(0, mode, 2);
+        $scope.instantCO2 = formatCO2(0, 0, mode);
+        $scope.co2Class = classifyCO2(0);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
@@ -1191,10 +1263,15 @@ angular.module('beamng.apps')
         $scope.fuelCap = formatVolume(0, mode, 1);
         $scope.avgL100km = formatConsumptionRate(0, mode, 1);
         $scope.avgKmL = formatEfficiency(0, mode, 2);
+        $scope.avgCO2 = formatCO2(0, 0, mode);
+        $scope.avgCo2Class = classifyCO2(0);
+        $scope.avgCo2Compliant = false;
         $scope.data4 = formatDistance(0, mode, 0);
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
         $scope.instantKmL = formatEfficiency(0, mode, 2);
+        $scope.instantCO2 = formatCO2(0, 0, mode);
+        $scope.co2Class = classifyCO2(0);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
@@ -1259,6 +1336,17 @@ angular.module('beamng.apps')
             );
             var deltaDistance = speed_mps * dt;
             distance_m += deltaDistance;
+            if (speed_mps > EPS_SPEED || distance_m > 0) {
+              speedAvg.time += dt;
+            }
+            // Record resolved speed with timestamp for EU compliance window.
+            speedAvg.queue.push({ speed: Math.abs(speed_mps), time: now_ms });
+            while (
+              speedAvg.queue.length > 0 &&
+              now_ms - speedAvg.queue[0].time > EU_SPEED_WINDOW_MS
+            ) {
+              speedAvg.queue.shift();
+            }
             var res = simulateFood(speed_mps, dt, foodFuel_kcal, now_ms / 1000);
             foodFuel_kcal = res.remaining;
             var mode = 'food';
@@ -1276,6 +1364,25 @@ angular.module('beamng.apps')
             $scope.instantKmL = formatEfficiency(res.efficiency, mode, 2);
             $scope.avgL100km = formatConsumptionRate(res.instPer100km, mode, 1);
             $scope.avgKmL = formatEfficiency(res.efficiency, mode, 2);
+            $scope.avgCO2 = formatCO2(0, 0, mode);
+            $scope.avgCo2Class = classifyCO2(0);
+            var avgSpeed_kph =
+              speedAvg.time > 0 ? (distance_m / speedAvg.time) * 3.6 : 0;
+            var topSpeed_kph =
+              (speedAvg.queue.length > 0
+                ? Math.max.apply(
+                    null,
+                    speedAvg.queue.map(function (s) {
+                      return s.speed;
+                    })
+                  )
+                : 0) * 3.6;
+            var topSpeedValid = topSpeed_kph <= 120;
+            $scope.avgCo2Compliant =
+              distance_m > 0 &&
+              avgSpeed_kph >= 18 &&
+              avgSpeed_kph <= 65 &&
+              topSpeedValid;
             $scope.data4 = formatDistance(Infinity, mode, 0);
             $scope.totalCost = (used_kcal * price).toFixed(2) + ' ' + $scope.currency;
             $scope.avgCost =
@@ -1284,6 +1391,8 @@ angular.module('beamng.apps')
               $scope.currency +
               '/' +
               labels.distance;
+            $scope.instantCO2 = formatCO2(0, 0, mode);
+            $scope.co2Class = classifyCO2(0);
             updateFoodHistories(
               $scope,
               res,
@@ -1314,12 +1423,23 @@ angular.module('beamng.apps')
             EPS_SPEED
           );
           var deltaDistance = speed_mps * dt;
+          // Track speeds over a time window for EU compliance.
+          speedAvg.queue.push({ speed: Math.abs(speed_mps), time: now_ms });
+          while (
+            speedAvg.queue.length > 0 &&
+            now_ms - speedAvg.queue[0].time > EU_SPEED_WINDOW_MS
+          ) {
+            speedAvg.queue.shift();
+          }
           var trip_m = streams.electrics.trip || 0;
 
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
           var throttle = streams.electrics.throttle_input || 0;
           var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
+          if (engineRunning || distance_m > 0) {
+            speedAvg.time += dt;
+          }
           if (!engineRunning && engineWasRunning) {
             resetInstantHistory();
           }
@@ -1392,9 +1512,7 @@ angular.module('beamng.apps')
             resetAvgHistory();
           }
 
-          if (engineRunning) {
-            distance_m += deltaDistance;
-          }
+          distance_m += deltaDistance;
 
           if (throttle <= 0.05 && lastThrottle > 0.05) {
             previousFuel_l = currentFuel_l;
@@ -1447,6 +1565,9 @@ angular.module('beamng.apps')
               $scope.instantL100km = 'Infinity';
             }
             $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
+            var co2_val = calculateCO2gPerKm(inst_l_per_100km, $scope.fuelType);
+            $scope.instantCO2 = formatCO2(co2_val, 0, $scope.unitMode);
+            $scope.co2Class = classifyCO2(co2_val);
             lastInstantUpdate_ms = now_ms;
           }
 
@@ -1541,6 +1662,8 @@ angular.module('beamng.apps')
               saveAvgHistory();
               avgHistory.lastSaveTime = now_ms;
             }
+            // Record the resolved speed (airspeed or wheelspeed) for EU compliance checks.
+            // (handled globally above)
           }
 
           var mode = getActiveUnitMode();
@@ -1605,6 +1728,26 @@ angular.module('beamng.apps')
             mode,
             2
           );
+          var avgCo2Val = calculateCO2gPerKm(avg_l_per_100km_ok, $scope.fuelType);
+          $scope.avgCO2 = formatCO2(avgCo2Val, 0, mode);
+          $scope.avgCo2Class = classifyCO2(avgCo2Val);
+          var avgSpeed_kph =
+            speedAvg.time > 0 ? (distance_m / speedAvg.time) * 3.6 : 0;
+          var topSpeed_kph =
+            (speedAvg.queue.length > 0
+              ? Math.max.apply(
+                  null,
+                  speedAvg.queue.map(function (s) {
+                    return s.speed;
+                  })
+                )
+              : 0) * 3.6;
+          var topSpeedValid = topSpeed_kph <= 120;
+          $scope.avgCo2Compliant =
+            distance_m > 0 &&
+            avgSpeed_kph >= 18 &&
+            avgSpeed_kph <= 65 &&
+            topSpeedValid;
           $scope.data4 = rangeStr;
           $scope.data6 = formatDistance(trip_m, mode, 1);
           $scope.tripAvgL100km = formatConsumptionRate(overall_median, mode, 1);

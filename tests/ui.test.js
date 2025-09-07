@@ -168,6 +168,35 @@ describe('UI template styling', () => {
     ]);
   });
 
+  it('shows CO2 in g/mi when imperial units selected', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Gasoline' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let t = 0;
+    global.performance = { now: () => { t += 1000; return t; } };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (name, fn) => { handlers[name] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 50));
+
+    $scope.setUnit('imperial');
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0 } };
+    handlers['streamsUpdate'](null, streams);
+    await new Promise(r => setTimeout(r, 0));
+    assert.strictEqual($scope.instantCO2, '0 g/mi');
+    assert.strictEqual($scope.avgCO2, '0 g/mi');
+  });
+
   it('persists style preference to localStorage', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
@@ -519,7 +548,8 @@ describe('UI template styling', () => {
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
-    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    const handlers = {};
+    const $scope = { $on: (name, cb) => { handlers[name] = cb; }, $evalAsync: fn => setImmediate(fn) };
     controllerFn({ debug: () => {} }, $scope);
     await new Promise(r => setTimeout(r, 80));
 
@@ -529,6 +559,14 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.instantLph, '0.0 kcal/h');
     assert.strictEqual($scope.instantL100km, '0.0 kcal/100km');
     assert.strictEqual($scope.instantKmL, '0.00 km/kcal');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
+    assert.strictEqual($scope.avgCO2, '0 g/km');
+    assert.strictEqual($scope.avgCo2Class, 'A');
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    handlers['streamsUpdate'](null, { electrics: { wheelspeed: 0, airspeed: 0, trip: 0 }, engineInfo: Array(15).fill(0) });
+    assert.strictEqual($scope.avgCo2Compliant, false);
   });
 
   it('computes traveled distance when on foot', async () => {
@@ -593,6 +631,10 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.instantLph, '0.0 kcal/h');
     assert.strictEqual($scope.instantL100km, '0.0 kcal/100km');
     assert.strictEqual($scope.instantKmL, '0.00 km/kcal');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
+    assert.strictEqual($scope.avgCO2, '0 g/km');
+    assert.strictEqual($scope.avgCo2Class, 'A');
 
     // simulate entering a vehicle where fuel type is not yet known
     handlers['VehicleFocusChanged']();
@@ -607,11 +649,17 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.instantLph, '0.0 L/h');
     assert.strictEqual($scope.instantL100km, '0.0 L/100km');
     assert.strictEqual($scope.instantKmL, '0.00 km/L');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
+    assert.strictEqual($scope.avgCO2, '0 g/km');
+    assert.strictEqual($scope.avgCo2Class, 'A');
     assert.strictEqual($scope.fuelUsed, '0.00 L');
     assert.strictEqual($scope.fuelLeft, '0.00 L');
     assert.strictEqual($scope.fuelCap, '0.0 L');
     assert.strictEqual($scope.avgL100km, '0.0 L/100km');
     assert.strictEqual($scope.avgKmL, '0.00 km/L');
+    assert.strictEqual($scope.avgCO2, '0 g/km');
+    assert.strictEqual($scope.avgCo2Class, 'A');
   });
 
   it('preserves trip values when switching to Food fuel type', async () => {
@@ -797,7 +845,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric'];
     placeholders.forEach(p => {
       if (p === 'instantHistory') {
         assert.ok(html.includes('instantHistory'), 'missing instantHistory');
@@ -817,20 +865,28 @@ describe('UI template styling', () => {
     assert.ok(html.includes('settings'));
     assert.ok(html.includes('<span class="material-icons"')); 
     assert.ok(html.includes('save</span>'));
+
+    assert.ok(html.includes('ng-if="avgCo2Compliant && avgCo2Class"'));
+    assert.ok(html.includes('{{ avgCO2 }}<span ng-if="avgCo2Compliant && avgCo2Class"> | <svg class="euStarIcon"'));
+    assert.ok(html.includes('{{ instantCO2 }}'));
+    assert.ok(!html.includes('{{ co2Class }}'));
+    assert.ok(html.includes('fill:currentColor'));
   });
 
   it('allows toggling visibility of heading and subfields', () => {
     assert.ok(html.includes('ng-if="visible.distanceMeasured || visible.distanceEcu"'));
     assert.ok(html.includes('ng-if="visible.fuelUsed || visible.fuelLeft || visible.fuelCap"'));
     assert.ok(html.includes('ng-if="visible.avgL100km || visible.avgKmL"'));
+    assert.ok(html.includes('ng-if="visible.avgCO2"'));
     assert.ok(html.includes('ng-if="visible.instantLph || visible.instantL100km || visible.instantKmL"'));
+    assert.ok(html.includes('ng-if="visible.instantCO2"'));
     assert.ok(html.includes('ng-if="visible.tripAvgL100km || visible.tripAvgKmL"'));
     assert.ok(html.includes('ng-if="visible.instantGraph"'));
     assert.ok(html.includes('ng-if="visible.avgCost"'));
     assert.ok(html.includes('ng-if="visible.tripFuelUsed"'));
     assert.ok(html.includes('ng-if="visible.tripAvgCost"'));
     assert.ok(html.includes('ng-if="visible.tripTotalCost"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripFuelUsed','visible.tripAvgCost','visible.tripTotalCost'];
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgCO2','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantCO2','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripFuelUsed','visible.tripAvgCost','visible.tripTotalCost'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -1373,6 +1429,8 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.instantLph, '0.0 L/h');
     assert.strictEqual($scope.instantL100km, '0.0 L/100km');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
   });
   it('populates data fields from stream updates', () => {
     let directiveDef;
@@ -1403,7 +1461,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 49.9;
     $scope.on_streamsUpdate(null, streams);
 
-    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','data8','data9'];
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','co2Class','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','data8','data9'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
@@ -1531,14 +1589,17 @@ describe('controller integration', () => {
     now = 0;
     $scope.on_streamsUpdate(null, streams);
     const first = $scope.instantLph;
+    const firstCO2 = $scope.instantCO2;
 
     now = 100;
     $scope.on_streamsUpdate(null, streams);
     assert.equal($scope.instantLph, first);
+    assert.equal($scope.instantCO2, firstCO2);
 
     now = 300;
     $scope.on_streamsUpdate(null, streams);
     assert.notStrictEqual($scope.instantLph, first);
+    assert.notStrictEqual($scope.instantCO2, firstCO2);
   });
 
   it('resets instant consumption when engine stops', () => {
@@ -1569,6 +1630,8 @@ describe('controller integration', () => {
     assert.notStrictEqual($scope.instantLph, '0.0 L/h');
     assert.notStrictEqual($scope.instantHistory, '');
     assert.notStrictEqual($scope.instantKmLHistory, '');
+    assert.notStrictEqual($scope.instantCO2, '0 g/km');
+    assert.notStrictEqual($scope.co2Class, '');
 
     streams.electrics.rpmTacho = 0;
     streams.electrics.throttle_input = 0;
@@ -1582,6 +1645,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.instantKmL, '100.00 km/L');
     assert.strictEqual($scope.instantHistory, '');
     assert.strictEqual($scope.instantKmLHistory, '');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
   });
 
   it('caps instant efficiency when coasting', () => {
@@ -1620,6 +1685,7 @@ describe('controller integration', () => {
     assert.notStrictEqual($scope.instantKmLHistory, '');
     assert.ok(val <= 100, `instantKmL not capped: ${$scope.instantKmL}`);
   });
+
 
   it('maxes efficiency when idling at a standstill', () => {
     let directiveDef;
@@ -1993,7 +2059,315 @@ describe('controller integration', () => {
     assert.ok(avg.queue[0] < 1000);
   });
 
+  it('requires EU speed window for CO2 compliance', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, engineRunning: false, trip: 0 }
+    };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    $scope.reset();
+
+    now = 10000;
+    $scope.on_streamsUpdate(null, streams); // engine off, time passes
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    now = 11000;
+    streams.electrics.engineRunning = true;
+    streams.electrics.wheelspeed = 10;
+    streams.electrics.airspeed = 10;
+    $scope.on_streamsUpdate(null, streams); // within speed window
+    assert.strictEqual($scope.avgCo2Compliant, true);
+
+    now = 11001;
+    streams.electrics.wheelspeed = 40;
+    streams.electrics.airspeed = 40;
+    $scope.on_streamsUpdate(null, streams); // exceeds EU top speed
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    // return to compliant speeds and flush the overspeed sample
+    streams.electrics.wheelspeed = 10;
+    streams.electrics.airspeed = 10;
+    for (let i = 0; i < 61; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, true);
+
+    // overspeed again and ensure compliance can return once more
+    now += 1000;
+    streams.electrics.wheelspeed = 40;
+    streams.electrics.airspeed = 40;
+    $scope.on_streamsUpdate(null, streams);
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    streams.electrics.wheelspeed = 10;
+    streams.electrics.airspeed = 10;
+    for (let i = 0; i < 61; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, true);
   });
+
+  it('drops EU compliance after an extended stop lowers average speed below 18 km/h', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, engineRunning: true, trip: 0 }
+    };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    $scope.reset();
+
+    // drive at compliant speed for 5 s
+    streams.electrics.wheelspeed = 11.11;
+    streams.electrics.airspeed = 11.11;
+    for (let i = 0; i < 5; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, true);
+
+    // stop and let average speed decay below threshold
+    streams.electrics.engineRunning = true;
+    streams.electrics.wheelspeed = 0;
+    streams.electrics.airspeed = 0;
+    for (let i = 0; i < 10; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, false);
+  });
+
+  it('recovers EU compliance after a brief overspeed followed by extended cruising', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, engineRunning: true, trip: 0 }
+    };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    $scope.reset();
+
+    for (let i = 0; i < 60; i++) {
+      now += 1000;
+      streams.electrics.wheelspeed = 10;
+      streams.electrics.airspeed = 10;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, true);
+
+    now += 1000;
+    streams.electrics.wheelspeed = 40;
+    streams.electrics.airspeed = 40;
+    $scope.on_streamsUpdate(null, streams);
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    streams.electrics.wheelspeed = 19.44;
+    streams.electrics.airspeed = 19.44;
+    for (let i = 0; i < 180; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, true);
+  });
+
+  it('uses wheelspeed when airspeed is missing to determine EU compliance', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: { wheelspeed: 0, throttle_input: 0, engineRunning: false, trip: 0 }
+    };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    $scope.reset();
+
+    now = 10000;
+    $scope.on_streamsUpdate(null, streams); // initialize timers
+
+    now = 11000;
+    streams.electrics.engineRunning = true;
+    streams.electrics.wheelspeed = 10;
+    delete streams.electrics.airspeed; // absent airspeed sensor
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.strictEqual($scope.avgCo2Compliant, true);
+  });
+
+  it('marks EU compliant even when CO2 exceeds 120 g/km if speeds are valid', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, engineRunning: false, trip: 0 }
+    };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    $scope.reset();
+
+    // seed starting fuel with engine off
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+
+    // drive at 10 m/s consuming 0.05 L over 10 m -> high but finite CO2
+    now = 1000;
+    streams.electrics.engineRunning = true;
+    streams.electrics.wheelspeed = 10;
+    streams.electrics.airspeed = 10;
+    streams.engineInfo[11] = 49.95;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.ok(parseFloat($scope.avgCO2) > 120);
+    assert.strictEqual($scope.avgCo2Compliant, true);
+  });
+
+  it('restores EU compliance after flushing idle samples', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, engineRunning: true, trip: 0 }
+    };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    $scope.reset();
+
+    for (let i = 0; i < 100; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams); // idle with zero speed
+    }
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    streams.electrics.wheelspeed = 11.11;
+    streams.electrics.airspeed = 11.11;
+    for (let i = 0; i < 5; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams); // not enough samples yet
+    }
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    for (let i = 0; i < 95; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams); // accumulate compliant speeds
+    }
+    assert.strictEqual($scope.avgCo2Compliant, true);
+  });
+
+});
 
   it('binds average and instant histories to correct graphs', () => {
     let directiveDef;
@@ -2043,12 +2417,16 @@ describe('controller integration', () => {
     $scope.visible.fuelLeft = false;
     $scope.visible.instantLph = false;
     $scope.visible.instantGraph = false;
+    $scope.visible.instantCO2 = false;
+    $scope.visible.avgCO2 = false;
     $scope.saveSettings();
 
     assert.ok(store.okFuelEconomyVisible.includes('"heading":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"fuelLeft":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"instantLph":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"instantGraph":false'));
+    assert.ok(store.okFuelEconomyVisible.includes('"instantCO2":false'));
+    assert.ok(store.okFuelEconomyVisible.includes('"avgCO2":false'));
 
     const $scope2 = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope2);
@@ -2056,6 +2434,8 @@ describe('controller integration', () => {
     assert.equal($scope2.visible.fuelLeft, false);
     assert.equal($scope2.visible.instantLph, false);
     assert.equal($scope2.visible.instantGraph, false);
+    assert.equal($scope2.visible.instantCO2, false);
+    assert.equal($scope2.visible.avgCO2, false);
     assert.equal($scope2.visible.fuelUsed, true);
   });
 });
