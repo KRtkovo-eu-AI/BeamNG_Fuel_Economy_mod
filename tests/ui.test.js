@@ -855,8 +855,6 @@ describe('UI template styling', () => {
         assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
       }
     });
-    assert.ok(html.includes('ng-if="avgCo2Compliant"'));
-    assert.ok(html.includes('ng-if="!avgCo2Compliant"'));
     assert.ok(html.includes('{{ vehicleNameStr }}'));
     assert.ok(html.includes('strong ng-if="visible.heading"'));
     assert.ok(html.includes('ng-click="reset($event)"'));
@@ -868,7 +866,8 @@ describe('UI template styling', () => {
     assert.ok(html.includes('<span class="material-icons"')); 
     assert.ok(html.includes('save</span>'));
 
-    assert.ok(html.includes('{{ avgCO2 }}<span ng-if="avgCo2Class"> | <span ng-if="avgCo2Compliant"><svg class="euStarIcon"'));
+    assert.ok(html.includes('ng-if="avgCo2Compliant && avgCo2Class"'));
+    assert.ok(html.includes('{{ avgCO2 }}<span ng-if="avgCo2Compliant && avgCo2Class"> | <svg class="euStarIcon"'));
     assert.ok(html.includes('{{ instantCO2 }}'));
     assert.ok(!html.includes('{{ co2Class }}'));
     assert.ok(html.includes('fill:currentColor'));
