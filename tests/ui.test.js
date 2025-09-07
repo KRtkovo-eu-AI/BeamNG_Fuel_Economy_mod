@@ -799,7 +799,13 @@ describe('UI template styling', () => {
   it('provides all data placeholders and icons', () => {
     const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric'];
     placeholders.forEach(p => {
-      assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
+      if (p === 'instantHistory') {
+        assert.ok(html.includes('instantHistory'), 'missing instantHistory');
+      } else if (p === 'avgHistory') {
+        assert.ok(html.includes('avgHistory'), 'missing avgHistory');
+      } else {
+        assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
+      }
     });
     assert.ok(html.includes('{{ vehicleNameStr }}'));
     assert.ok(html.includes('strong ng-if="visible.heading"'));
@@ -2002,8 +2008,16 @@ describe('controller integration', () => {
     const fs = require('node:fs');
     const path = require('node:path');
     const tpl = fs.readFileSync(path.join(__dirname, '..', 'okFuelEconomy', directiveDef.templateUrl), 'utf8');
-    assert.ok(/Average history:[\s\S]*\{\{\s*instantHistory\s*\}\}/.test(tpl));
-    assert.ok(/Instant \{\{ unitFlowUnit \}\} history:[\s\S]*\{\{\s*avgHistory\s*\}\}/.test(tpl));
+    assert.ok(
+      /Average history:[\s\S]*\{\{\s*fuelType === 'Food' \? instantHistory : avgHistory\s*\}\}/.test(
+        tpl
+      )
+    );
+    assert.ok(
+      /Instant \{\{ unitFlowUnit \}\} history:[\s\S]*\{\{\s*fuelType === 'Food' \? avgHistory : instantHistory\s*\}\}/.test(
+        tpl
+      )
+    );
   });
 
   describe('visibility settings persistence', () => {
