@@ -77,7 +77,25 @@ describe('UI template styling', () => {
   it('includes a unit selector in settings', () => {
     assert.ok(html.includes('Units:'));
     assert.ok(html.includes('{{ unitModeLabels[unitMode] }}'));
-    assert.ok(html.includes('ng-repeat="(value,label) in unitModeLabels"'));
+    assert.ok(html.includes('ng-repeat="(value,label) in unitModeOptions"'));
+  });
+
+  it('hides food unit mode from selection options', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.window = {};
+    global.bngApi = { engineLua: () => {} };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+    assert.ok($scope.unitModeLabels.food);
+    assert.ok(!$scope.unitModeOptions.food);
   });
 
   it('loads fuel price editor via controller function', async () => {

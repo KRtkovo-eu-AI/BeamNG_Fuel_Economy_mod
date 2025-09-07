@@ -278,7 +278,7 @@
       </label>
       <ul ng-if="unitMenuOpen"
           ng-attr-style="{{ 'list-style:none; margin:2px 0 0; padding:0; position:absolute; right:0; background:rgba(0,0,0,0.9); border:1px solid;' + (useCustomStyles ? ' border-color:#5fdcff; color:#aeeaff;' : ' border-color:#ccc; color:#fff;') }}">
-        <li ng-repeat="(value,label) in unitModeLabels"
+        <li ng-repeat="(value,label) in unitModeOptions"
             ng-click="setUnit(value)"
             ng-attr-style="{{ 'padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' background:rgba(0,200,255,0.15);' : '') }}">{{ label }}</li>
       </ul>

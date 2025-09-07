@@ -542,6 +542,11 @@ angular.module('beamng.apps')
         electric: 'Electric (kWh, km)',
         food: 'Food (kcal, km)'
       };
+      $scope.unitModeOptions = {
+        metric: $scope.unitModeLabels.metric,
+        imperial: $scope.unitModeLabels.imperial,
+        electric: $scope.unitModeLabels.electric
+      };
         $scope.unitMenuOpen = false;
         $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
         var preferredLiquidUnit =
