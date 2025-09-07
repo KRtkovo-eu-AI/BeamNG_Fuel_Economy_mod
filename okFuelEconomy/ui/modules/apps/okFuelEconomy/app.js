@@ -10,7 +10,7 @@ var FOOD_REST_KCAL_PER_H = 80;
 var FOOD_WALK_KCAL_PER_H = 300;
 var FOOD_RUN_KCAL_PER_H = 600;
 var foodBaseRate;
-var EU_SPEED_WINDOW_MS = 60000; // retain EU speed samples for 60 s
+var EU_SPEED_WINDOW_MS = 10000; // retain EU speed samples for 10 s
 
 var CO2_FACTORS_G_PER_L = {
   Gasoline: 2392,
@@ -1130,7 +1130,7 @@ angular.module('beamng.apps')
 
       // --------- Average history persistence (NEW) ----------
   var AVG_KEY = 'okFuelEconomyAvgHistory';
-  var AVG_MAX_ENTRIES = 1000;
+  var AVG_MAX_ENTRIES = 100;
 
   var avgHistory = { queue: [] };
   try {
@@ -1140,7 +1140,7 @@ angular.module('beamng.apps')
       }
   } catch (e) { /* ignore */ }
 
-  var speedAvg = { queue: [], time: 0 };
+  var speedAvg = { queue: [] };
   var avgRecent = { queue: [] };
 
       function saveAvgHistory() {
@@ -1190,7 +1190,7 @@ angular.module('beamng.apps')
           saveAvgHistory();
           $scope.avgHistory = '';
           $scope.avgKmLHistory = '';
-          speedAvg = { queue: [], time: 0 };
+          speedAvg = { queue: [] };
           avgRecent = { queue: [] };
       }
 
@@ -1222,7 +1222,7 @@ angular.module('beamng.apps')
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
         engineWasRunning = false;
-        speedAvg = { queue: [], time: 0 };
+        speedAvg = { queue: [] };
         resetInstantHistory();
         resetAvgHistory();
       }
@@ -1335,9 +1335,6 @@ angular.module('beamng.apps')
             );
             var deltaDistance = speed_mps * dt;
             distance_m += deltaDistance;
-            if (speed_mps > EPS_SPEED || distance_m > 0) {
-              speedAvg.time += dt;
-            }
             // Record resolved speed with timestamp for EU compliance window.
             speedAvg.queue.push({ speed: Math.abs(speed_mps), time: now_ms });
             while (
@@ -1366,7 +1363,13 @@ angular.module('beamng.apps')
             $scope.avgCO2 = formatCO2(0, 0, mode);
             $scope.avgCo2Class = classifyCO2(0);
             var avgSpeed_kph =
-              speedAvg.time > 0 ? (distance_m / speedAvg.time) * 3.6 : 0;
+              speedAvg.queue.length > 0
+                ? calculateAverage(
+                    speedAvg.queue.map(function (s) {
+                      return s.speed;
+                    })
+                  ) * 3.6
+                : 0;
             var topSpeed_kph =
               (speedAvg.queue.length > 0
                 ? Math.max.apply(
@@ -1436,9 +1439,6 @@ angular.module('beamng.apps')
           var capacity_l = streams.engineInfo[12];
           var throttle = streams.electrics.throttle_input || 0;
           var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
-          if (engineRunning || distance_m > 0) {
-            speedAvg.time += dt;
-          }
           if (!engineRunning && engineWasRunning) {
             resetInstantHistory();
           }
@@ -1571,7 +1571,13 @@ angular.module('beamng.apps')
           }
 
           var avgSpeed_kph =
-            speedAvg.time > 0 ? (distance_m / speedAvg.time) * 3.6 : 0;
+            speedAvg.queue.length > 0
+              ? calculateAverage(
+                  speedAvg.queue.map(function (s) {
+                    return s.speed;
+                  })
+                ) * 3.6
+              : 0;
           var topSpeed_kph =
             (speedAvg.queue.length > 0
               ? Math.max.apply(
