@@ -10,6 +10,7 @@ const {
   smoothFuelFlow,
   trimQueue,
   calculateMedian,
+  calculateAverage,
   calculateAverageConsumption,
   calculateRange,
   buildQueueGraphPoints,
@@ -103,6 +104,15 @@ describe('app.js utility functions', () => {
       const idle = 0.25;
       const queue = Array(1000).fill(idle).concat([20, 30, 40, 50]);
       assert.strictEqual(calculateMedian(queue), 30);
+    });
+  });
+
+  describe('calculateAverage', () => {
+    it('handles empty queues', () => {
+      assert.strictEqual(calculateAverage([]), 0);
+    });
+    it('computes the arithmetic mean', () => {
+      assert.strictEqual(calculateAverage([10, 20, 30]), 20);
     });
   });
 
