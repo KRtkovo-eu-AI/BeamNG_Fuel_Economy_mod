@@ -2002,8 +2002,8 @@ describe('controller integration', () => {
     const fs = require('node:fs');
     const path = require('node:path');
     const tpl = fs.readFileSync(path.join(__dirname, '..', 'okFuelEconomy', directiveDef.templateUrl), 'utf8');
-    assert.ok(/Average history:[\s\S]*\{\{\s*avgHistory\s*\}\}/.test(tpl));
-    assert.ok(/Instant \{\{ unitFlowUnit \}\} history:[\s\S]*\{\{\s*instantHistory\s*\}\}/.test(tpl));
+    assert.ok(/Average history:[\s\S]*\{\{\s*instantHistory\s*\}\}/.test(tpl));
+    assert.ok(/Instant \{\{ unitFlowUnit \}\} history:[\s\S]*\{\{\s*avgHistory\s*\}\}/.test(tpl));
   });
 
   describe('visibility settings persistence', () => {
