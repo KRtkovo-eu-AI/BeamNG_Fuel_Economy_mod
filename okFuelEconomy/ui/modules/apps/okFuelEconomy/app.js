@@ -1076,7 +1076,7 @@ angular.module('beamng.apps')
         $scope.$evalAsync(function () {
           if (!streams.engineInfo || !streams.electrics) return;
 
-          if (!lastFuelType) fetchFuelType();
+          if (!lastFuelType || lastFuelType === 'Food') fetchFuelType();
 
           var now_ms = performance.now();
           var dt = Math.max(0, (now_ms - lastTime_ms) / 1000);

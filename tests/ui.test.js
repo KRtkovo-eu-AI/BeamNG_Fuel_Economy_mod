@@ -478,6 +478,49 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.unitFlowUnit, 'kcal/h');
   });
 
+  it('restores vehicle units when re-entering a car before engine start', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    let call = 0;
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => {
+        call++;
+        if (call === 1 || call === 2) cb(JSON.stringify({ t: 'Food' }));
+        else cb(JSON.stringify({ t: 'Gasoline' }));
+      }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = {
+      $on: (name, fn) => { handlers[name] = fn; },
+      $evalAsync: fn => setImmediate(fn)
+    };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 50));
+
+    // initial on-foot state
+    assert.strictEqual($scope.unitFlowUnit, 'kcal/h');
+
+    // simulate entering a vehicle where fuel type is not yet known
+    handlers['VehicleFocusChanged']();
+    await new Promise(r => setTimeout(r, 50));
+    assert.strictEqual($scope.unitFlowUnit, 'kcal/h');
+
+    // streams update should trigger another fetch that resolves to Gasoline
+    handlers['streamsUpdate'](null, { engineInfo: {}, electrics: {} });
+    await new Promise(r => setTimeout(r, 50));
+    assert.strictEqual($scope.fuelType, 'Gasoline');
+    assert.strictEqual($scope.unitFlowUnit, 'L/h');
+  });
+
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
