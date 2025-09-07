@@ -872,6 +872,7 @@ describe('UI template styling', () => {
     ['A','B','C','D','E','F','G'].forEach(cls => {
       assert.ok(html.includes(`<svg ng-if="avgCo2Class === '${cls}'`), `missing svg ${cls}`);
     });
+    assert.ok(html.includes('class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle;'));
     assert.ok(!html.includes('<use'));
     assert.ok(html.includes('{{ instantCO2 }}'));
     assert.ok(!html.includes('modules/apps/okFuelEconomy/eu_co2_classes/'));
