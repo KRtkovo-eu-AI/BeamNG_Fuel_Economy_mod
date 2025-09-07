@@ -526,6 +526,59 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.avgKmL, '0.00 km/L');
   });
 
+  it('preserves trip values when switching to Food fuel type', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    let call = 0;
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => {
+        call++;
+        if (call === 1) cb(JSON.stringify({ t: 'Gasoline' }));
+        else cb(JSON.stringify({ t: 'Food' }));
+      }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (name, fn) => { handlers[name] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 50));
+
+    // configure prices and simulate driving to accumulate trip values
+    $scope.liquidFuelPriceValue = 1.5;
+    $scope.currency = 'USD';
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+    now = 0; handlers['streamsUpdate'](null, streams);
+    await new Promise(r => setTimeout(r, 0));
+    streams.engineInfo[11] = 58; now = 100000; handlers['streamsUpdate'](null, streams);
+    await new Promise(r => setTimeout(r, 0));
+    const tripCostBefore = $scope.tripTotalCostLiquid;
+    const tripFuelBefore = $scope.tripFuelUsedLiquid;
+
+    // leaving the vehicle triggers a fuel type fetch that returns Food
+    handlers['VehicleFocusChanged']();
+    await new Promise(r => setTimeout(r, 50));
+
+    assert.strictEqual($scope.tripTotalCostLiquid, tripCostBefore);
+    assert.strictEqual($scope.tripFuelUsedLiquid, tripFuelBefore);
+
+    // subsequent stream updates while on foot must not alter trip values
+    const streamsFoot = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, trip: 0, throttle_input: 0, rpmTacho: 0 } };
+    handlers['streamsUpdate'](null, streamsFoot);
+    await new Promise(r => setTimeout(r, 0));
+    assert.strictEqual($scope.tripTotalCostLiquid, tripCostBefore);
+    assert.strictEqual($scope.tripFuelUsedLiquid, tripFuelBefore);
+  });
+
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

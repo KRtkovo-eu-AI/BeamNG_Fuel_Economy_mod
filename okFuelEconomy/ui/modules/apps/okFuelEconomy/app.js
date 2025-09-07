@@ -1028,12 +1028,6 @@ angular.module('beamng.apps')
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
-        $scope.tripAvgCostLiquid = '';
-        $scope.tripAvgCostElectric = '';
-        $scope.tripTotalCostLiquid = '';
-        $scope.tripTotalCostElectric = '';
-        $scope.tripFuelUsedLiquid = '';
-        $scope.tripFuelUsedElectric = '';
       }
 
       function resetVehicleOutputs(mode) {
@@ -1098,7 +1092,12 @@ angular.module('beamng.apps')
         $scope.$evalAsync(function () {
           if (!streams.engineInfo || !streams.electrics) return;
 
-          if (!lastFuelType || lastFuelType === 'Food') fetchFuelType();
+          if ($scope.fuelType === 'Food') {
+            fetchFuelType();
+            lastTime_ms = performance.now();
+            return;
+          }
+          if (!lastFuelType) fetchFuelType();
 
           var now_ms = performance.now();
           var dt = Math.max(0, (now_ms - lastTime_ms) / 1000);
