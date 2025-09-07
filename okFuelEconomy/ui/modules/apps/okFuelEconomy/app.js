@@ -204,6 +204,57 @@ function buildQueueGraphPoints(queue, width, height) {
     .join(' ');
 }
 
+function updateFoodHistories(
+  $scope,
+  res,
+  now_ms,
+  instantHistory,
+  instantEffHistory,
+  avgHistory,
+  saveInstantHistory,
+  saveInstantEffHistory,
+  saveAvgHistory,
+  INSTANT_MAX_ENTRIES,
+  AVG_MAX_ENTRIES,
+  MAX_EFFICIENCY
+) {
+  instantHistory.queue.push(res.rate);
+  trimQueue(instantHistory.queue, INSTANT_MAX_ENTRIES);
+  $scope.instantHistory = buildQueueGraphPoints(instantHistory.queue, 100, 40);
+  instantEffHistory.queue.push(
+    Number.isFinite(res.efficiency) ? Math.min(res.efficiency, MAX_EFFICIENCY) : MAX_EFFICIENCY
+  );
+  trimQueue(instantEffHistory.queue, INSTANT_MAX_ENTRIES);
+  $scope.instantKmLHistory = buildQueueGraphPoints(instantEffHistory.queue, 100, 40);
+  if (!instantHistory.lastSaveTime) instantHistory.lastSaveTime = 0;
+  if (now_ms - instantHistory.lastSaveTime >= 100) {
+    saveInstantHistory();
+    instantHistory.lastSaveTime = now_ms;
+  }
+  if (!instantEffHistory.lastSaveTime) instantEffHistory.lastSaveTime = 0;
+  if (now_ms - instantEffHistory.lastSaveTime >= 100) {
+    saveInstantEffHistory();
+    instantEffHistory.lastSaveTime = now_ms;
+  }
+
+  avgHistory.queue.push(res.instPer100km);
+  trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
+  $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
+  $scope.avgKmLHistory = buildQueueGraphPoints(
+    avgHistory.queue.map(function (v) {
+      return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
+    }),
+    100,
+    40
+  );
+  if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
+  if (now_ms - avgHistory.lastSaveTime >= 100) {
+    saveAvgHistory();
+    avgHistory.lastSaveTime = now_ms;
+  }
+}
+
+
 const KM_PER_MILE = 1.60934;
 const LITERS_PER_GALLON = 3.78541;
 
@@ -368,7 +419,8 @@ if (typeof module !== 'undefined') {
     formatFuelTypeLabel,
     simulateFood,
     FOOD_CAPACITY_KCAL,
-    shouldResetOnFoot
+    shouldResetOnFoot,
+    updateFoodHistories
   };
 }
 
@@ -1185,6 +1237,20 @@ angular.module('beamng.apps')
               $scope.currency +
               '/' +
               labels.distance;
+            updateFoodHistories(
+              $scope,
+              res,
+              now_ms,
+              instantHistory,
+              instantEffHistory,
+              avgHistory,
+              saveInstantHistory,
+              saveInstantEffHistory,
+              saveAvgHistory,
+              INSTANT_MAX_ENTRIES,
+              AVG_MAX_ENTRIES,
+              MAX_EFFICIENCY
+            );
             return;
           }
           if (!streams.engineInfo || !streams.electrics) return;

@@ -9,7 +9,8 @@ const {
   FOOD_CAPACITY_KCAL,
   MIN_VALID_SPEED_MPS,
   shouldResetOnFoot,
-  resolveFuelType
+  resolveFuelType,
+  updateFoodHistories
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('Food mode simulation', () => {
@@ -72,5 +73,48 @@ describe('Food mode simulation', () => {
   it('ignores empty fuel-type readings', () => {
     assert.strictEqual(resolveFuelType('Food', ''), 'Food');
     assert.strictEqual(resolveFuelType('Gasoline', undefined), 'Gasoline');
+  });
+
+  it('records instant and average histories', () => {
+    const $scope = {};
+    let remaining = FOOD_CAPACITY_KCAL;
+    const instantHistory = { queue: [] };
+    const instantEffHistory = { queue: [] };
+    const avgHistory = { queue: [] };
+    const res1 = simulateFood(0, 1, remaining, 0); // standing
+    remaining = res1.remaining;
+    const res2 = simulateFood(1, 1, remaining, 1); // walking
+    updateFoodHistories(
+      $scope,
+      res1,
+      0,
+      instantHistory,
+      instantEffHistory,
+      avgHistory,
+      () => {},
+      () => {},
+      () => {},
+      1000,
+      1000,
+      100
+    );
+    updateFoodHistories(
+      $scope,
+      res2,
+      1,
+      instantHistory,
+      instantEffHistory,
+      avgHistory,
+      () => {},
+      () => {},
+      () => {},
+      1000,
+      1000,
+      100
+    );
+    assert.strictEqual(instantHistory.queue.length, 2);
+    assert.strictEqual(avgHistory.queue.length, 2);
+    assert.ok($scope.instantHistory.length > 0);
+    assert.ok($scope.avgHistory.length > 0);
   });
 });
