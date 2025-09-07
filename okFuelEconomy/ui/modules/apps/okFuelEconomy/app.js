@@ -5,6 +5,10 @@
 var EPS_SPEED = 0.005; // [m/s]
 var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
 var MIN_RPM_RUNNING = 100; // below this rpm the engine is considered off
+var FOOD_CAPACITY_KCAL = 2000;
+var FOOD_REST_KCAL_PER_H = 80;
+var FOOD_WALK_KCAL_PER_H = 300;
+var FOOD_RUN_KCAL_PER_H = 600;
 
 function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
   if (dtSeconds <= 0 || previousFuel === null) return 0;
@@ -156,6 +160,32 @@ function isEngineRunning(electrics, engineInfo) {
   }
   var rpm = (electrics && electrics.rpmTacho) || 0;
   return rpm >= MIN_RPM_RUNNING;
+}
+
+function simulateFood(speed_mps, dtSeconds, energy_kcal, timeSeconds) {
+  var state = 'rest';
+  if (speed_mps >= 2.5) state = 'run';
+  else if (speed_mps >= 0.5) state = 'walk';
+  var base =
+    state === 'run'
+      ? FOOD_RUN_KCAL_PER_H
+      : state === 'walk'
+      ? FOOD_WALK_KCAL_PER_H
+      : FOOD_REST_KCAL_PER_H;
+  var osc = 1 + 0.1 * Math.sin(timeSeconds || 0);
+  var rate = base * osc; // kcal/h
+  var used = (rate / 3600) * dtSeconds;
+  var remaining = Math.max(0, energy_kcal - used);
+  var speed = Math.abs(speed_mps);
+  var instPer100km;
+  if (speed <= MIN_VALID_SPEED_MPS) {
+    instPer100km = rate / 4;
+  } else {
+    var speed_kmph = speed * 3.6;
+    instPer100km = (rate / speed_kmph) * 10;
+  }
+  var efficiency = speed * 3.6 / rate; // km per kcal
+  return { remaining: remaining, rate: rate, instPer100km: instPer100km, efficiency: efficiency };
 }
 
 function buildQueueGraphPoints(queue, width, height) {
@@ -320,7 +350,9 @@ if (typeof module !== 'undefined') {
     convertDistanceToUnit,
     convertVolumePerDistance,
     resolveUnitModeForFuelType,
-    formatFuelTypeLabel
+    formatFuelTypeLabel,
+    simulateFood,
+    FOOD_CAPACITY_KCAL
   };
 }
 
@@ -787,6 +819,7 @@ angular.module('beamng.apps')
       var tripDistanceElectric_m = 0;
       var lastFuelFlow_lps = 0; // last smoothed value
       var idleFuelFlow_lps = 0;
+      var foodFuel_kcal = FOOD_CAPACITY_KCAL;
         var lastThrottle = 0;
         var engineWasRunning = false;
         var initialized = false;
@@ -1017,6 +1050,7 @@ angular.module('beamng.apps')
 
       function resetOnFootOutputs() {
         hardReset(true);
+        foodFuel_kcal = FOOD_CAPACITY_KCAL;
         var mode = 'food';
         var labels = getUnitLabels(mode);
         $scope.fuelUsed = formatVolume(0, mode, 2);
@@ -1096,13 +1130,38 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
-          if (!streams.engineInfo || !streams.electrics) return;
-
           if ($scope.fuelType === 'Food') {
             fetchFuelType();
-            lastTime_ms = performance.now();
+            if (!streams.electrics) return;
+            var now_ms = performance.now();
+            var dt = Math.max(0, (now_ms - lastTime_ms) / 1000);
+            lastTime_ms = now_ms;
+            var speed_mps = resolveSpeed(
+              streams.electrics.wheelspeed,
+              streams.electrics.airspeed,
+              EPS_SPEED
+            );
+            var res = simulateFood(speed_mps, dt, foodFuel_kcal, now_ms / 1000);
+            foodFuel_kcal = res.remaining;
+            var mode = 'food';
+            var labels = getUnitLabels(mode);
+            updateCostPrice(labels, 0);
+            $scope.fuelUsed = formatVolume(
+              FOOD_CAPACITY_KCAL - foodFuel_kcal,
+              mode,
+              2
+            );
+            $scope.fuelLeft = formatVolume(foodFuel_kcal, mode, 2);
+            $scope.fuelCap = formatVolume(FOOD_CAPACITY_KCAL, mode, 1);
+            $scope.instantLph = formatFlow(res.rate, mode, 1);
+            $scope.instantL100km = formatConsumptionRate(res.instPer100km, mode, 1);
+            $scope.instantKmL = formatEfficiency(res.efficiency, mode, 2);
+            $scope.avgL100km = formatConsumptionRate(res.instPer100km, mode, 1);
+            $scope.avgKmL = formatEfficiency(res.efficiency, mode, 2);
+            $scope.data4 = formatDistance(Infinity, mode, 0);
             return;
           }
+          if (!streams.engineInfo || !streams.electrics) return;
           if (!lastFuelType) fetchFuelType();
 
           var now_ms = performance.now();
