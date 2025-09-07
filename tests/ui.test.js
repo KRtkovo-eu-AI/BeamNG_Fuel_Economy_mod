@@ -2099,6 +2099,15 @@ describe('controller integration', () => {
     streams.electrics.airspeed = 40;
     $scope.on_streamsUpdate(null, streams); // exceeds EU top speed
     assert.strictEqual($scope.avgCo2Compliant, false);
+
+    // return to compliant speeds and flush the overspeed sample
+    streams.electrics.wheelspeed = 10;
+    streams.electrics.airspeed = 10;
+    for (let i = 0; i < 1001; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, true);
   });
 
   it('uses wheelspeed when airspeed is missing to determine EU compliance', () => {
