@@ -172,7 +172,10 @@ function simulateFood(speed_mps, dtSeconds, energy_kcal, timeSeconds) {
       : state === 'walk'
       ? FOOD_WALK_KCAL_PER_H
       : FOOD_REST_KCAL_PER_H;
-  var osc = 1 + 0.1 * Math.sin(timeSeconds || 0);
+  var t = timeSeconds || 0;
+  var noise = Math.sin(t * 12.9898) * 43758.5453;
+  noise = noise - Math.floor(noise);
+  var osc = 1 + 0.05 * Math.sin(t) + (noise - 0.5) * 0.1;
   var rate = base * osc; // kcal/h
   var used = (rate / 3600) * dtSeconds;
   var remaining = Math.max(0, energy_kcal - used);
@@ -1154,12 +1157,10 @@ angular.module('beamng.apps')
             foodFuel_kcal = res.remaining;
             var mode = 'food';
             var labels = getUnitLabels(mode);
-            updateCostPrice(labels, 0);
-            $scope.fuelUsed = formatVolume(
-              FOOD_CAPACITY_KCAL - foodFuel_kcal,
-              mode,
-              2
-            );
+            var price = $scope.liquidFuelPriceValue || 0;
+            updateCostPrice(labels, price);
+            var used_kcal = FOOD_CAPACITY_KCAL - foodFuel_kcal;
+            $scope.fuelUsed = formatVolume(used_kcal, mode, 2);
             $scope.fuelLeft = formatVolume(foodFuel_kcal, mode, 2);
             $scope.fuelCap = formatVolume(FOOD_CAPACITY_KCAL, mode, 1);
             $scope.instantLph = formatFlow(res.rate, mode, 1);
@@ -1168,6 +1169,13 @@ angular.module('beamng.apps')
             $scope.avgL100km = formatConsumptionRate(res.instPer100km, mode, 1);
             $scope.avgKmL = formatEfficiency(res.efficiency, mode, 2);
             $scope.data4 = formatDistance(Infinity, mode, 0);
+            $scope.totalCost = (used_kcal * price).toFixed(2) + ' ' + $scope.currency;
+            $scope.avgCost =
+              ((res.instPer100km / 100) * price).toFixed(2) +
+              ' ' +
+              $scope.currency +
+              '/' +
+              labels.distance;
             return;
           }
           if (!streams.engineInfo || !streams.electrics) return;
