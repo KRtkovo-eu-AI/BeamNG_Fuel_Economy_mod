@@ -328,6 +328,11 @@ function resolveUnitModeForFuelType(fuelType, liquidMode) {
   return liquidMode;
 }
 
+function resolveFuelType(prevType, rawType) {
+  if (!rawType) return prevType || '';
+  return rawType;
+}
+
 function shouldResetOnFoot(prevType, currentType) {
   if (!currentType) return false;
   var lower = currentType.toLowerCase();
@@ -359,6 +364,7 @@ if (typeof module !== 'undefined') {
     convertDistanceToUnit,
     convertVolumePerDistance,
     resolveUnitModeForFuelType,
+    resolveFuelType,
     formatFuelTypeLabel,
     simulateFood,
     FOOD_CAPACITY_KCAL,
@@ -673,7 +679,7 @@ angular.module('beamng.apps')
             try { parsed = JSON.parse(res); } catch (e) {}
             $scope.$evalAsync(function () {
               var prevType = lastFuelType;
-              lastFuelType = parsed.t || '';
+              lastFuelType = resolveFuelType(lastFuelType, parsed.t);
               $scope.fuelType = formatFuelTypeLabel(lastFuelType);
               if ($scope.fuelType !== 'None' && $scope.fuelPrices[$scope.fuelType] == null) {
                 $scope.fuelPrices[$scope.fuelType] = 0;

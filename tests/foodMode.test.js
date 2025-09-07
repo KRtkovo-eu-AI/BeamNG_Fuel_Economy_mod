@@ -8,7 +8,8 @@ const {
   simulateFood,
   FOOD_CAPACITY_KCAL,
   MIN_VALID_SPEED_MPS,
-  shouldResetOnFoot
+  shouldResetOnFoot,
+  resolveFuelType
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('Food mode simulation', () => {
@@ -66,5 +67,10 @@ describe('Food mode simulation', () => {
     assert.strictEqual(shouldResetOnFoot('Gasoline', 'Food'), true);
     assert.strictEqual(shouldResetOnFoot('Food', 'Food'), false);
     assert.strictEqual(shouldResetOnFoot('Food', 'Gasoline'), false);
+  });
+
+  it('ignores empty fuel-type readings', () => {
+    assert.strictEqual(resolveFuelType('Food', ''), 'Food');
+    assert.strictEqual(resolveFuelType('Gasoline', undefined), 'Gasoline');
   });
 });
