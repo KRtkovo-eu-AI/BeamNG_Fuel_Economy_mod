@@ -210,48 +210,27 @@ describe('app.js utility functions', () => {
   });
 
   describe('resolveAverageConsumption', () => {
-    it('uses previous averages when engine is off', () => {
-      const avg = resolveAverageConsumption(false, 0, 0, 0, 0, 5, 7);
+    it('uses previous average when engine is off', () => {
+      const recent = { queue: [5] };
+      const avg = resolveAverageConsumption(false, 0, recent, 3);
       assert.strictEqual(avg, 5);
+      assert.deepStrictEqual(recent.queue, [5]);
     });
-    it('computes average when running and moving', () => {
-      const avg = resolveAverageConsumption(
-        true,
-        MIN_VALID_SPEED_MPS + 1,
-        1,
-        1000,
-        0,
-        0,
-        0
-      );
-      assert.strictEqual(avg, calculateAverageConsumption(1, 1000));
+    it('averages samples while running', () => {
+      const recent = { queue: [10] };
+      const avg = resolveAverageConsumption(true, 20, recent, 5);
+      assert.strictEqual(avg, 15);
+      assert.deepStrictEqual(recent.queue, [10, 20]);
     });
-    it('eases toward instant rate at low speed when previous average exists', () => {
-      const inst = 8;
-      const prev = 5;
-      const avg = resolveAverageConsumption(
-        true,
-        MIN_VALID_SPEED_MPS / 2,
-        0,
-        0,
-        inst,
-        prev,
-        7
-      );
-      assert.ok(Math.abs(avg - (prev + (inst - prev) * 0.1)) < 1e-9);
+    it('trims old samples beyond max entries', () => {
+      const recent = { queue: [1, 2, 3] };
+      resolveAverageConsumption(true, 4, recent, 3);
+      assert.deepStrictEqual(recent.queue, [2, 3, 4]);
     });
-    it('falls back to instant rate when no previous average exists', () => {
-      const inst = 8;
-      const avg = resolveAverageConsumption(
-        true,
-        MIN_VALID_SPEED_MPS / 2,
-        0,
-        0,
-        inst,
-        0,
-        0
-      );
-      assert.strictEqual(avg, inst);
+    it('does not snap to idle after one low sample', () => {
+      const recent = { queue: [20, 20, 20, 20, 20] };
+      const avg = resolveAverageConsumption(true, 5, recent, 5);
+      assert.ok(avg > 5 && avg < 20);
     });
   });
 
