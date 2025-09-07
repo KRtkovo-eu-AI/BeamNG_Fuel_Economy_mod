@@ -2116,7 +2116,7 @@ describe('controller integration', () => {
     // return to compliant speeds and flush the overspeed sample
     streams.electrics.wheelspeed = 10;
     streams.electrics.airspeed = 10;
-    for (let i = 0; i < 61; i++) {
+    for (let i = 0; i < 11; i++) {
       now += 1000;
       $scope.on_streamsUpdate(null, streams);
     }
@@ -2131,7 +2131,7 @@ describe('controller integration', () => {
 
     streams.electrics.wheelspeed = 10;
     streams.electrics.airspeed = 10;
-    for (let i = 0; i < 61; i++) {
+    for (let i = 0; i < 11; i++) {
       now += 1000;
       $scope.on_streamsUpdate(null, streams);
     }
@@ -2265,7 +2265,7 @@ describe('controller integration', () => {
 
     $scope.reset();
 
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 10; i++) {
       now += 1000;
       streams.electrics.wheelspeed = 10;
       streams.electrics.airspeed = 10;
@@ -2279,9 +2279,9 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.avgCo2Compliant, false);
 
-    streams.electrics.wheelspeed = 19.44;
-    streams.electrics.airspeed = 19.44;
-    for (let i = 0; i < 180; i++) {
+    streams.electrics.wheelspeed = 15;
+    streams.electrics.airspeed = 15;
+    for (let i = 0; i < 20; i++) {
       now += 1000;
       $scope.on_streamsUpdate(null, streams);
     }
@@ -2411,13 +2411,13 @@ describe('controller integration', () => {
 
     streams.electrics.wheelspeed = 11.11;
     streams.electrics.airspeed = 11.11;
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 4; i++) {
       now += 1000;
       $scope.on_streamsUpdate(null, streams); // not enough samples yet
     }
     assert.strictEqual($scope.avgCo2Compliant, false);
 
-    for (let i = 0; i < 95; i++) {
+    for (let i = 0; i < 6; i++) {
       now += 1000;
       $scope.on_streamsUpdate(null, streams); // accumulate compliant speeds
     }
