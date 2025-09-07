@@ -414,6 +414,14 @@ function formatCO2(gPerKm, decimals, mode) {
   return value.toFixed(decimals) + ' ' + unit;
 }
 
+function formatCO2Mass(total_g) {
+  if (!Number.isFinite(total_g) || total_g <= 0) return '';
+  if (total_g >= 1000) {
+    return (total_g / 1000).toFixed(2) + ' kg';
+  }
+  return total_g.toFixed(0) + ' g';
+}
+
 function classifyCO2(gPerKm) {
   if (!Number.isFinite(gPerKm)) return 'G';
   if (gPerKm <= 120) return 'A';
@@ -893,6 +901,7 @@ angular.module('beamng.apps')
         tripAvgL100km: true,
         tripAvgKmL: true,
         tripAvgCO2: true,
+        tripTotalCO2: false,
         tripGraph: true,
         tripKmLGraph: true,
         tripDistance: true,
@@ -977,6 +986,7 @@ angular.module('beamng.apps')
       $scope.tripTotalCostElectric = '';
       $scope.tripFuelUsedLiquid = '';
       $scope.tripFuelUsedElectric = '';
+      $scope.tripTotalCO2 = '';
 
       var distance_m = 0;
       var lastDistance_m = 0;
@@ -989,6 +999,7 @@ angular.module('beamng.apps')
       var tripCostElectric = 0;
       var tripDistanceLiquid_m = 0;
       var tripDistanceElectric_m = 0;
+      var tripCo2_g = 0;
       var lastFuelFlow_lps = 0; // last smoothed value
       var idleFuelFlow_lps = 0;
       var foodFuel_kcal = FOOD_CAPACITY_KCAL;
@@ -1017,7 +1028,8 @@ angular.module('beamng.apps')
           tripCostLiquid: 0,
           tripCostElectric: 0,
           tripDistanceLiquid: 0,
-          tripDistanceElectric: 0
+          tripDistanceElectric: 0,
+          tripCo2: 0
       }; // fronta posledních průměrů + celková ujetá vzdálenost a spotřebované palivo
       try {
           var saved = JSON.parse(localStorage.getItem(OVERALL_KEY));
@@ -1031,6 +1043,7 @@ angular.module('beamng.apps')
               if (!Number.isFinite(overall.tripCostElectric)) overall.tripCostElectric = 0;
               if (!Number.isFinite(overall.tripDistanceLiquid)) overall.tripDistanceLiquid = 0;
               if (!Number.isFinite(overall.tripDistanceElectric)) overall.tripDistanceElectric = 0;
+              if (!Number.isFinite(overall.tripCo2)) overall.tripCo2 = 0;
           }
       } catch (e) { /* ignore */ }
 
@@ -1039,7 +1052,8 @@ angular.module('beamng.apps')
           fuelUsedLiquid: overall.fuelUsedLiquid || 0,
           fuelUsedElectric: overall.fuelUsedElectric || 0,
           costLiquid: overall.tripCostLiquid || 0,
-          costElectric: overall.tripCostElectric || 0
+          costElectric: overall.tripCostElectric || 0,
+          co2: overall.tripCo2 || 0
       };
       try {
           var savedTrip = JSON.parse(localStorage.getItem(TRIP_KEY));
@@ -1048,6 +1062,7 @@ angular.module('beamng.apps')
               if (Number.isFinite(savedTrip.fuelUsedElectric)) tripTotals.fuelUsedElectric = savedTrip.fuelUsedElectric;
               if (Number.isFinite(savedTrip.costLiquid)) tripTotals.costLiquid = savedTrip.costLiquid;
               if (Number.isFinite(savedTrip.costElectric)) tripTotals.costElectric = savedTrip.costElectric;
+              if (Number.isFinite(savedTrip.co2)) tripTotals.co2 = savedTrip.co2;
           }
       } catch (e) { /* ignore */ }
 
@@ -1055,6 +1070,7 @@ angular.module('beamng.apps')
       tripFuelUsedElectric_l = tripTotals.fuelUsedElectric;
       tripCostLiquid = tripTotals.costLiquid;
       tripCostElectric = tripTotals.costElectric;
+      tripCo2_g = tripTotals.co2;
       tripDistanceLiquid_m = overall.tripDistanceLiquid || 0;
       tripDistanceElectric_m = overall.tripDistanceElectric || 0;
 
@@ -1062,6 +1078,7 @@ angular.module('beamng.apps')
       overall.fuelUsedElectric = tripFuelUsedElectric_l;
       overall.tripCostLiquid = tripCostLiquid;
       overall.tripCostElectric = tripCostElectric;
+      overall.tripCo2 = tripCo2_g;
 
       // initialise scope with persisted trip values so they survive game restarts
       var initLiquidUnitMode = $scope.unitMode === 'imperial' ? 'imperial' : 'metric';
@@ -1077,12 +1094,14 @@ angular.module('beamng.apps')
       $scope.tripTotalCostElectric = tripCostElectric > 0
         ? tripCostElectric.toFixed(2) + ' ' + $scope.currency
         : '';
+      $scope.tripTotalCO2 = tripCo2_g > 0 ? formatCO2Mass(tripCo2_g) : '';
 
       function saveTripTotals() {
           tripTotals.fuelUsedLiquid = tripFuelUsedLiquid_l;
           tripTotals.fuelUsedElectric = tripFuelUsedElectric_l;
           tripTotals.costLiquid = tripCostLiquid;
           tripTotals.costElectric = tripCostElectric;
+          tripTotals.co2 = tripCo2_g;
           try { localStorage.setItem(TRIP_KEY, JSON.stringify(tripTotals)); } catch (e) { /* ignore */ }
       }
 
@@ -1252,10 +1271,6 @@ angular.module('beamng.apps')
         $scope.instantKmL = formatEfficiency(0, mode, 2);
         $scope.instantCO2 = formatCO2(0, 0, mode);
         $scope.co2Class = classifyCO2(0);
-        $scope.tripAvgCO2 = formatCO2(0, 0, mode);
-        $scope.tripCo2Class = classifyCO2(0);
-        $scope.tripAvgCO2 = formatCO2(0, 0, mode);
-        $scope.tripCo2Class = classifyCO2(0);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
@@ -1291,10 +1306,8 @@ angular.module('beamng.apps')
       // reset overall včetně vzdálenosti
       $scope.resetOverall = function () {
           $log.debug('<ok-fuel-economy> manual reset overall');
-          overall = { queue: [], distance: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0, tripCostLiquid: 0, tripCostElectric: 0, tripDistanceLiquid: 0, tripDistanceElectric: 0 };
-          saveOverall();
+          overall = { queue: [], distance: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0, tripCostLiquid: 0, tripCostElectric: 0, tripDistanceLiquid: 0, tripDistanceElectric: 0, tripCo2: 0 };
           avgHistory = { queue: [] };
-          saveAvgHistory();
           resetInstantHistory();
           tripFuelUsedLiquid_l = 0;
           tripFuelUsedElectric_l = 0;
@@ -1302,11 +1315,14 @@ angular.module('beamng.apps')
           tripCostElectric = 0;
           tripDistanceLiquid_m = 0;
           tripDistanceElectric_m = 0;
+          tripCo2_g = 0;
+          tripTotals.co2 = 0;
           var resetMode = getActiveUnitMode();
           $scope.tripAvgL100km = formatConsumptionRate(0, resetMode, 1);
           $scope.tripAvgKmL = formatEfficiency(Infinity, resetMode, 2);
           $scope.tripAvgCO2 = formatCO2(0, 0, resetMode);
           $scope.tripCo2Class = classifyCO2(0);
+          $scope.tripTotalCO2 = '';
           $scope.tripAvgCostLiquid = '';
           $scope.tripAvgCostElectric = '';
           $scope.tripTotalCostLiquid = '';
@@ -1318,6 +1334,8 @@ angular.module('beamng.apps')
           $scope.tripAvgKmLHistory = '';
           $scope.avgHistory = '';
           $scope.avgKmLHistory = '';
+          saveAvgHistory();
+          saveOverall();
       };
 
       $scope.$on('VehicleFocusChanged', function () {
@@ -1493,11 +1511,15 @@ angular.module('beamng.apps')
                 tripFuelUsedElectric_l += deltaTripFuel;
                 overall.fuelUsedElectric = tripFuelUsedElectric_l;
                 tripCostElectric += deltaFuelUnit * $scope.electricityPriceValue;
+                tripCo2_g += Math.max(0, deltaTripFuel) * CO2_FACTORS_G_PER_L.Electricity;
               } else if (deltaTripFuel > 0) {
                 tripFuelUsedLiquid_l += deltaTripFuel;
                 overall.fuelUsedLiquid = tripFuelUsedLiquid_l;
                 tripCostLiquid += deltaFuelUnit * $scope.liquidFuelPriceValue;
+                var factor = CO2_FACTORS_G_PER_L[$scope.fuelType] != null ? CO2_FACTORS_G_PER_L[$scope.fuelType] : CO2_FACTORS_G_PER_L.Gasoline;
+                tripCo2_g += deltaTripFuel * factor;
               }
+              overall.tripCo2 = tripCo2_g;
             }
             if (speed_mps > EPS_SPEED) {
               if ($scope.unitMode === 'electric') {
@@ -1768,9 +1790,10 @@ angular.module('beamng.apps')
             mode,
             2
           );
-          var tripAvgCo2Val = calculateCO2gPerKm(overall_median, $scope.fuelType);
+          var tripAvgCo2Val = overall.distance > 0 ? tripCo2_g / (overall.distance / 1000) : 0;
           $scope.tripAvgCO2 = formatCO2(tripAvgCo2Val, 0, mode);
           $scope.tripCo2Class = classifyCO2(tripAvgCo2Val);
+          $scope.tripTotalCO2 = tripCo2_g > 0 ? formatCO2Mass(tripCo2_g) : '';
           $scope.data8 = formatDistance(overall.distance, mode, 1);
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
