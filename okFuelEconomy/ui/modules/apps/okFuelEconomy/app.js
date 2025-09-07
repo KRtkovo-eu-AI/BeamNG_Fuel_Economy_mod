@@ -192,6 +192,14 @@ function getUnitLabels(mode) {
         efficiency: 'km/kWh',
         flow: 'kW'
       };
+    case 'food':
+      return {
+        distance: 'km',
+        volume: 'kcal',
+        consumption: 'kcal/100km',
+        efficiency: 'km/kcal',
+        flow: 'kcal/h'
+      };
     default:
       return {
         distance: 'km',
@@ -275,11 +283,14 @@ function formatFuelTypeLabel(fuelType) {
 }
 
 function resolveUnitModeForFuelType(fuelType, liquidMode) {
-  if (
-    typeof fuelType === 'string' &&
-    fuelType.toLowerCase().indexOf('electric') !== -1
-  ) {
-    return 'electric';
+  if (typeof fuelType === 'string') {
+    var lower = fuelType.toLowerCase();
+    if (lower.indexOf('electric') !== -1) {
+      return 'electric';
+    }
+    if (lower === 'food') {
+      return 'food';
+    }
   }
   return liquidMode;
 }
@@ -573,10 +584,19 @@ angular.module('beamng.apps')
             '(function()',
             'local stor=energyStorage.getStorages and energyStorage.getStorages()',
             'local t=""',
+            'local hasEnergy=false',
             'if stor then',
-            '  for _,s in pairs(stor) do if s.energyType and s.energyType:lower()~="air" then t=s.energyType break end end',
+            '  for _,s in pairs(stor) do',
+            '    hasEnergy=true',
+            '    if s.energyType and s.energyType:lower()~="air" then t=s.energyType break end',
+            '  end',
             '  if t=="" then for _,s in pairs(stor) do if s.energyType then t=s.energyType break end end end',
             'end',
+            'local hasTire=false',
+            'if wheels and wheels.wheels then',
+            '  for _,w in pairs(wheels.wheels) do if w.hasTire then hasTire=true break end end',
+            'end',
+            'if not hasEnergy and not hasTire then t="Food" end',
             'return jsonEncode({t=t})',
             'end)()'
           ].join('\n');

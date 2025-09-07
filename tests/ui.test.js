@@ -430,6 +430,30 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_FUEL_POLL_MS;
   });
 
+  it('detects player on foot and switches to Food fuel type and kcal units', async () => {
+    let directiveDef, luaCode;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => { luaCode = code; cb(JSON.stringify({ t: 'Food' })); }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 80));
+
+    assert.ok(luaCode.includes('hasTire'));
+    assert.strictEqual($scope.fuelType, 'Food');
+    assert.strictEqual($scope.unitFlowUnit, 'kcal/h');
+  });
+
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
