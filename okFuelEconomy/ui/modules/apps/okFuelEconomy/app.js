@@ -45,10 +45,11 @@ function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
 
 // Resolve the fuel flow when sensor readings are static.
 // - While accelerating (throttle > 0) keep the last measured flow.
-// - While coasting with zero throttle and no fuel use, report zero to
-//   immediately reflect engine-off or fuel-cut states.
-// - Otherwise ease the previous reading toward the stored idle flow so the
-//   value keeps updating instead of freezing at the last accelerating reading.
+// - While coasting or idling with zero throttle and no fresh reading,
+//   gradually approach the stored idle flow so the value continues
+//   updating instead of snapping to zero.
+// - Still allow true zero flow for engine-off or fuel-cut situations
+//   when the idle flow is unknown.
 function smoothFuelFlow(
   fuelFlow_lps,
   speed_mps,
@@ -66,27 +67,27 @@ function smoothFuelFlow(
     // Negative flow means energy is being returned (regen) – use directly.
     return fuelFlow_lps;
   }
-  if (fuelFlow_lps > 0 && throttle > 0.05) {
-    // A fresh reading while throttle is applied – use it directly.
+  if (fuelFlow_lps > 0) {
+    // Always use fresh positive readings, even with zero throttle.
     return fuelFlow_lps;
   }
-  if (fuelFlow_lps <= 0 && throttle <= 0.05) {
-    // Engine off or fuel cut: no consumption.
+  const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
+
+  if (throttle <= 0.05) {
+    // Coasting or idling with a stale sensor reading.
+    if (target > 0) {
+      return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
+    }
+    // Unknown idle flow – treat as engine off/fuel cut.
     return 0;
   }
 
-  const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
-
   if (speed_mps > EPS_SPEED) {
-    if (throttle <= 0.05) {
-      // Coasting with zero throttle – blend previous value toward idle.
-      return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
-    }
     // Throttle applied but sensor static – keep the last flow.
     return lastFuelFlow_lps;
   }
 
-  // Vehicle stopped: smoothly approach idle flow.
+  // Vehicle stopped with throttle: smoothly approach idle flow.
   return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
 }
 
@@ -141,19 +142,15 @@ function calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED)
 
 function resolveAverageConsumption(
   engineRunning,
-  speed_mps,
-  fuel_used_l,
-  distance_m,
   inst_l_per_100km,
-  previousAvgTrip,
-  previousAvg
+  avgRecent,
+  maxEntries
 ) {
   if (engineRunning) {
-    return speed_mps > MIN_VALID_SPEED_MPS
-      ? calculateAverageConsumption(fuel_used_l, distance_m)
-      : inst_l_per_100km;
+    avgRecent.queue.push(inst_l_per_100km);
+    trimQueue(avgRecent.queue, maxEntries);
   }
-  return previousAvgTrip || previousAvg || 0;
+  return calculateAverage(avgRecent.queue);
 }
 
 // Decide which speed value should be used for distance accumulation.
@@ -1144,6 +1141,7 @@ angular.module('beamng.apps')
   } catch (e) { /* ignore */ }
 
   var speedAvg = { queue: [], time: 0 };
+  var avgRecent = { queue: [] };
 
       function saveAvgHistory() {
           try { localStorage.setItem(AVG_KEY, JSON.stringify(avgHistory)); } catch (e) { /* ignore */ }
@@ -1193,6 +1191,7 @@ angular.module('beamng.apps')
           $scope.avgHistory = '';
           $scope.avgKmLHistory = '';
           speedAvg = { queue: [], time: 0 };
+          avgRecent = { queue: [] };
       }
 
       function hardReset(preserveTripFuel) {
@@ -1571,6 +1570,24 @@ angular.module('beamng.apps')
             lastInstantUpdate_ms = now_ms;
           }
 
+          var avgSpeed_kph =
+            speedAvg.time > 0 ? (distance_m / speedAvg.time) * 3.6 : 0;
+          var topSpeed_kph =
+            (speedAvg.queue.length > 0
+              ? Math.max.apply(
+                  null,
+                  speedAvg.queue.map(function (s) {
+                    return s.speed;
+                  })
+                )
+              : 0) * 3.6;
+          var topSpeedValid = topSpeed_kph <= 120;
+          $scope.avgCo2Compliant =
+            distance_m > 0 &&
+            avgSpeed_kph >= 18 &&
+            avgSpeed_kph <= 65 &&
+            topSpeedValid;
+
           if (!engineRunning && initialized) {
             previousFuel_l = currentFuel_l;
             lastThrottle = throttle;
@@ -1598,12 +1615,9 @@ angular.module('beamng.apps')
 
           var avg_l_per_100km_ok = resolveAverageConsumption(
             engineRunning,
-            speed_mps,
-            fuel_used_l,
-            distance_m,
             inst_l_per_100km,
-            overall.previousAvgTrip,
-            overall.previousAvg
+            avgRecent,
+            AVG_MAX_ENTRIES
           );
           if (
             !Number.isFinite(avg_l_per_100km_ok) ||
@@ -1731,23 +1745,6 @@ angular.module('beamng.apps')
           var avgCo2Val = calculateCO2gPerKm(avg_l_per_100km_ok, $scope.fuelType);
           $scope.avgCO2 = formatCO2(avgCo2Val, 0, mode);
           $scope.avgCo2Class = classifyCO2(avgCo2Val);
-          var avgSpeed_kph =
-            speedAvg.time > 0 ? (distance_m / speedAvg.time) * 3.6 : 0;
-          var topSpeed_kph =
-            (speedAvg.queue.length > 0
-              ? Math.max.apply(
-                  null,
-                  speedAvg.queue.map(function (s) {
-                    return s.speed;
-                  })
-                )
-              : 0) * 3.6;
-          var topSpeedValid = topSpeed_kph <= 120;
-          $scope.avgCo2Compliant =
-            distance_m > 0 &&
-            avgSpeed_kph >= 18 &&
-            avgSpeed_kph <= 65 &&
-            topSpeedValid;
           $scope.data4 = rangeStr;
           $scope.data6 = formatDistance(trip_m, mode, 1);
           $scope.tripAvgL100km = formatConsumptionRate(overall_median, mode, 1);

@@ -146,27 +146,32 @@ describe('app.js utility functions', () => {
       const res = smoothFuelFlow(0, 5, 0.6, last, 0.002, EPS_SPEED);
       assert.strictEqual(res, last);
     });
-    it('returns zero when coasting without fuel', () => {
+    it('eases toward idle when coasting without sensor flow', () => {
       const last = 0.03;
       const idle = 0.005;
       const res = smoothFuelFlow(0, 5, 0, last, idle, EPS_SPEED);
-      assert.strictEqual(res, 0);
+      assert.ok(Math.abs(res - (last + (idle - last) * 0.1)) < 1e-9);
     });
     it('updates to new positive flow', () => {
       const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, EPS_SPEED);
       assert.strictEqual(res, 0.02);
     });
-    it('returns zero when stopped without fuel', () => {
-      const res = smoothFuelFlow(0, 0, 0, 0.01, 0.005, EPS_SPEED);
-      assert.strictEqual(res, 0);
+    it('uses new positive flow even with zero throttle', () => {
+      const res = smoothFuelFlow(0.015, 20, 0, 0.01, 0.005, EPS_SPEED);
+      assert.strictEqual(res, 0.015);
     });
-    it('drops to zero during prolonged coasting', () => {
+    it('eases toward idle when stopped without sensor flow', () => {
+      const last = 0.01;
       const idle = 0.005;
-      let last = 0.02;
-      const flow1 = smoothFuelFlow(0, 20, 0, last, idle, EPS_SPEED);
-      const flow2 = smoothFuelFlow(0, 20, 0, flow1, idle, EPS_SPEED);
-      assert.strictEqual(flow1, 0);
-      assert.strictEqual(flow2, 0);
+      const res = smoothFuelFlow(0, 0, 0, last, idle, EPS_SPEED);
+      assert.ok(Math.abs(res - (last + (idle - last) * 0.1)) < 1e-9);
+    });
+    it('approaches idle during prolonged coasting', () => {
+      const idle = 0.005;
+      let flow = 0.02;
+      flow = smoothFuelFlow(0, 20, 0, flow, idle, EPS_SPEED);
+      flow = smoothFuelFlow(0, 20, 0, flow, idle, EPS_SPEED);
+      assert.ok(flow > idle && flow < 0.02);
     });
     it('resets immediately when idle is unknown', () => {
       let last = 0.03;
@@ -205,34 +210,27 @@ describe('app.js utility functions', () => {
   });
 
   describe('resolveAverageConsumption', () => {
-    it('uses previous averages when engine is off', () => {
-      const avg = resolveAverageConsumption(false, 0, 0, 0, 0, 5, 7);
+    it('uses previous average when engine is off', () => {
+      const recent = { queue: [5] };
+      const avg = resolveAverageConsumption(false, 0, recent, 3);
       assert.strictEqual(avg, 5);
+      assert.deepStrictEqual(recent.queue, [5]);
     });
-    it('computes average when running and moving', () => {
-      const avg = resolveAverageConsumption(
-        true,
-        MIN_VALID_SPEED_MPS + 1,
-        1,
-        1000,
-        0,
-        0,
-        0
-      );
-      assert.strictEqual(avg, calculateAverageConsumption(1, 1000));
+    it('averages samples while running', () => {
+      const recent = { queue: [10] };
+      const avg = resolveAverageConsumption(true, 20, recent, 5);
+      assert.strictEqual(avg, 15);
+      assert.deepStrictEqual(recent.queue, [10, 20]);
     });
-    it('falls back to instant rate at low speed', () => {
-      const inst = 8;
-      const avg = resolveAverageConsumption(
-        true,
-        MIN_VALID_SPEED_MPS / 2,
-        0,
-        0,
-        inst,
-        0,
-        0
-      );
-      assert.strictEqual(avg, inst);
+    it('trims old samples beyond max entries', () => {
+      const recent = { queue: [1, 2, 3] };
+      resolveAverageConsumption(true, 4, recent, 3);
+      assert.deepStrictEqual(recent.queue, [2, 3, 4]);
+    });
+    it('does not snap to idle after one low sample', () => {
+      const recent = { queue: [20, 20, 20, 20, 20] };
+      const avg = resolveAverageConsumption(true, 5, recent, 5);
+      assert.ok(avg > 5 && avg < 20);
     });
   });
 
