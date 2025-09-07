@@ -1989,6 +1989,23 @@ describe('controller integration', () => {
 
   });
 
+  it('binds average and instant histories to correct graphs', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const tpl = fs.readFileSync(path.join(__dirname, '..', 'okFuelEconomy', directiveDef.templateUrl), 'utf8');
+    assert.ok(/Average history:[\s\S]*\{\{\s*avgHistory\s*\}\}/.test(tpl));
+    assert.ok(/Instant \{\{ unitFlowUnit \}\} history:[\s\S]*\{\{\s*instantHistory\s*\}\}/.test(tpl));
+  });
+
   describe('visibility settings persistence', () => {
   it('saves and restores user choices', () => {
     let directiveDef;

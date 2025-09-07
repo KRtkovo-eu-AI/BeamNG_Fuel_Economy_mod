@@ -130,6 +130,10 @@ describe('Food mode simulation', () => {
     assert.strictEqual(avgHistory.queue.length, 2);
     assert.ok($scope.instantHistory.length > 0);
     assert.ok($scope.avgHistory.length > 0);
+    assert.strictEqual(instantHistory.queue[0], res1.rate);
+    assert.strictEqual(instantHistory.queue[1], res2.rate);
+    assert.strictEqual(avgHistory.queue[0], res1.instPer100km);
+    assert.strictEqual(avgHistory.queue[1], res2.instPer100km);
   });
 
   it('plots higher efficiency lower on the instant graph', () => {
