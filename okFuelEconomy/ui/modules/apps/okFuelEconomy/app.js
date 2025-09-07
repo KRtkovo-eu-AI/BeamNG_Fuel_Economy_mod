@@ -1337,7 +1337,8 @@ angular.module('beamng.apps')
             var deltaDistance = speed_mps * dt;
             distance_m += deltaDistance;
             if (speed_mps > topSpeed_mps) topSpeed_mps = speed_mps;
-            speedAvg.queue.push(Math.abs(streams.electrics.airspeed || 0));
+            // Record resolved speed so EU averages work even when airspeed is unavailable.
+            speedAvg.queue.push(Math.abs(speed_mps));
             trimQueue(speedAvg.queue, AVG_MAX_ENTRIES);
             var res = simulateFood(speed_mps, dt, foodFuel_kcal, now_ms / 1000);
             foodFuel_kcal = res.remaining;
@@ -1637,7 +1638,8 @@ angular.module('beamng.apps')
               saveAvgHistory();
               avgHistory.lastSaveTime = now_ms;
             }
-            speedAvg.queue.push(Math.abs(streams.electrics.airspeed || 0));
+            // Record the resolved speed (airspeed or wheelspeed) for EU compliance checks.
+            speedAvg.queue.push(Math.abs(speed_mps));
             trimQueue(speedAvg.queue, AVG_MAX_ENTRIES);
           }
 
