@@ -1130,7 +1130,7 @@ angular.module('beamng.apps')
 
       // --------- Average history persistence (NEW) ----------
   var AVG_KEY = 'okFuelEconomyAvgHistory';
-  var AVG_MAX_ENTRIES = 100;
+  var AVG_MAX_ENTRIES = 1000;
 
   var avgHistory = { queue: [] };
   try {
