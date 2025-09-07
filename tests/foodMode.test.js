@@ -118,4 +118,47 @@ describe('Food mode simulation', () => {
     assert.ok($scope.instantHistory.length > 0);
     assert.ok($scope.avgHistory.length > 0);
   });
+
+  it('plots higher efficiency lower on the instant graph', () => {
+    const $scope = {};
+    let remaining = FOOD_CAPACITY_KCAL;
+    const instantHistory = { queue: [] };
+    const instantEffHistory = { queue: [] };
+    const avgHistory = { queue: [] };
+    const res1 = simulateFood(0, 1, remaining, 0); // standing
+    remaining = res1.remaining;
+    const res2 = simulateFood(1.5, 1, remaining, 1); // walking
+    updateFoodHistories(
+      $scope,
+      res1,
+      0,
+      instantHistory,
+      instantEffHistory,
+      avgHistory,
+      () => {},
+      () => {},
+      () => {},
+      1000,
+      1000,
+      100
+    );
+    updateFoodHistories(
+      $scope,
+      res2,
+      1,
+      instantHistory,
+      instantEffHistory,
+      avgHistory,
+      () => {},
+      () => {},
+      () => {},
+      1000,
+      1000,
+      100
+    );
+    const ys = $scope.instantKmLHistory
+      .split(' ')
+      .map((p) => parseFloat(p.split(',')[1]));
+    assert.ok(ys[1] > ys[0]);
+  });
 });

@@ -231,7 +231,14 @@ function updateFoodHistories(
     Number.isFinite(res.efficiency) ? Math.min(res.efficiency, MAX_EFFICIENCY) : MAX_EFFICIENCY
   );
   trimQueue(instantEffHistory.queue, INSTANT_MAX_ENTRIES);
-  $scope.instantKmLHistory = buildQueueGraphPoints(instantEffHistory.queue, 100, 40);
+  var effMax = Math.max.apply(null, instantEffHistory.queue);
+  $scope.instantKmLHistory = buildQueueGraphPoints(
+    instantEffHistory.queue.map(function (v) {
+      return effMax - v;
+    }),
+    100,
+    40
+  );
   if (!instantHistory.lastSaveTime) instantHistory.lastSaveTime = 0;
   if (now_ms - instantHistory.lastSaveTime >= 100) {
     saveInstantHistory();
