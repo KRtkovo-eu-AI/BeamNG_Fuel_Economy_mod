@@ -866,6 +866,10 @@ describe('UI template styling', () => {
     assert.ok(html.includes('settings'));
     assert.ok(html.includes('<span class="material-icons"')); 
     assert.ok(html.includes('save</span>'));
+
+    assert.ok(html.includes('{{ avgCO2 }}<span ng-if="avgCo2Class"> | <svg class="euStarIcon"'));
+    assert.ok(html.includes('{{ instantCO2 }}<span ng-if="co2Class"> | <svg class="euStarIcon"'));
+    assert.ok(html.includes('fill:currentColor'));
   });
 
   it('allows toggling visibility of heading and subfields', () => {
