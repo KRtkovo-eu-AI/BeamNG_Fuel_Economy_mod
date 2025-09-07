@@ -663,7 +663,11 @@ angular.module('beamng.apps')
       $scope.settingsOpen = false;
       $scope.openFuelPriceEditor = function ($event) {
         $event.preventDefault();
-        bngApi.engineLua('extensions.load("fuelPriceEditor")');
+        var liquid = preferredLiquidUnit === 'imperial' ? 'gal' : 'L';
+        fuelPriceEditorLoaded = true;
+        bngApi.engineLua(
+          'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("' + liquid + '")'
+        );
       };
       $scope.unitModeLabels = {
         metric: 'Metric (L, km)',
@@ -681,6 +685,7 @@ angular.module('beamng.apps')
         var preferredLiquidUnit =
           localStorage.getItem(PREFERRED_UNIT_KEY) ||
           ($scope.unitMode === 'imperial' ? 'imperial' : 'metric');
+        var fuelPriceEditorLoaded = false;
         var manualUnit = false;
         var lastFuelType = '';
 
@@ -692,6 +697,12 @@ angular.module('beamng.apps')
           if (mode !== 'electric') {
             preferredLiquidUnit = mode;
             try { localStorage.setItem(PREFERRED_UNIT_KEY, preferredLiquidUnit); } catch (e) {}
+            if (fuelPriceEditorLoaded) {
+              var liquid = preferredLiquidUnit === 'imperial' ? 'gal' : 'L';
+              bngApi.engineLua(
+                'extensions.fuelPriceEditor.setLiquidUnit("' + liquid + '")'
+              );
+            }
           }
           manualUnit = true;
           updateUnitLabels();
