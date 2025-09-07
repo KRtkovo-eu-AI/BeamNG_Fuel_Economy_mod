@@ -168,6 +168,34 @@ describe('UI template styling', () => {
     ]);
   });
 
+  it('shows CO2 in g/mi when imperial units selected', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Gasoline' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let t = 0;
+    global.performance = { now: () => { t += 1000; return t; } };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (name, fn) => { handlers[name] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 50));
+
+    $scope.setUnit('imperial');
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0 } };
+    handlers['streamsUpdate'](null, streams);
+    await new Promise(r => setTimeout(r, 0));
+    assert.strictEqual($scope.instantCO2, '0 g/mi');
+  });
+
   it('persists style preference to localStorage', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

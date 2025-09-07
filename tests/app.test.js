@@ -30,6 +30,8 @@ const {
   getUnitLabels
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
+const KM_PER_MILE = 1.60934;
+
 describe('app.js utility functions', () => {
   describe('calculateFuelFlow', () => {
     it('handles missing previous fuel', () => {
@@ -367,10 +369,22 @@ describe('app.js utility functions', () => {
   describe('CO2 helpers', () => {
     it('computes g/km from consumption and fuel type', () => {
       assert.strictEqual(calculateCO2gPerKm(5, 'Gasoline'), 5 / 100 * 2392);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Air'), 0);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Ethanol'), 5 / 100 * 1510);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethane'), 5 / 100 * 820);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethan'), 5 / 100 * 820);
+      assert.ok(Math.abs(calculateCO2gPerKm(5, 'Food') - 5 / 100 * 0.001) < 1e-9);
     });
     it('formats CO2 emissions', () => {
       const val = calculateCO2gPerKm(5, 'Gasoline');
-      assert.strictEqual(formatCO2(val, 1), (5 / 100 * 2392).toFixed(1) + ' g/km');
+      assert.strictEqual(
+        formatCO2(val, 1, 'metric'),
+        (5 / 100 * 2392).toFixed(1) + ' g/km'
+      );
+      assert.strictEqual(
+        formatCO2(val, 1, 'imperial'),
+        ((5 / 100 * 2392) * KM_PER_MILE).toFixed(1) + ' g/mi'
+      );
     });
     it('classifies emission levels', () => {
       assert.strictEqual(classifyCO2(119), 'A');

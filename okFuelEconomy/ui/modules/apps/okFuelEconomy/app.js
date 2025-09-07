@@ -16,7 +16,11 @@ var CO2_FACTORS_G_PER_L = {
   Diesel: 2640,
   'LPG/CNG': 1660,
   Electricity: 0,
-  Food: 0
+  Air: 0,
+  Ethanol: 1510,
+  Nitromethane: 820,
+  Nitromethan: 820,
+  Food: 0.001 // approx. CO2 from human flatulence per kcal
 };
 
 function resetFoodSimulation() {
@@ -392,9 +396,15 @@ function calculateCO2gPerKm(lPer100km, fuelType) {
   return (lPer100km / 100) * factor;
 }
 
-function formatCO2(gPerKm, decimals) {
+function formatCO2(gPerKm, decimals, mode) {
   if (!Number.isFinite(gPerKm)) return 'Infinity';
-  return gPerKm.toFixed(decimals) + ' g/km';
+  var unit = 'g/km';
+  var value = gPerKm;
+  if (mode === 'imperial') {
+    unit = 'g/mi';
+    value = gPerKm * KM_PER_MILE;
+  }
+  return value.toFixed(decimals) + ' ' + unit;
 }
 
 function classifyCO2(gPerKm) {
@@ -1214,7 +1224,7 @@ angular.module('beamng.apps')
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
         $scope.instantKmL = formatEfficiency(0, mode, 2);
-        $scope.instantCO2 = formatCO2(0, 0);
+        $scope.instantCO2 = formatCO2(0, 0, mode);
         $scope.co2Class = classifyCO2(0);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
@@ -1233,7 +1243,7 @@ angular.module('beamng.apps')
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
         $scope.instantKmL = formatEfficiency(0, mode, 2);
-        $scope.instantCO2 = formatCO2(0, 0);
+        $scope.instantCO2 = formatCO2(0, 0, mode);
         $scope.co2Class = classifyCO2(0);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
@@ -1324,7 +1334,7 @@ angular.module('beamng.apps')
               $scope.currency +
               '/' +
               labels.distance;
-            $scope.instantCO2 = formatCO2(0, 0);
+            $scope.instantCO2 = formatCO2(0, 0, mode);
             $scope.co2Class = classifyCO2(0);
             updateFoodHistories(
               $scope,
@@ -1490,7 +1500,7 @@ angular.module('beamng.apps')
             }
             $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
             var co2_val = calculateCO2gPerKm(inst_l_per_100km, $scope.fuelType);
-            $scope.instantCO2 = formatCO2(co2_val, 0);
+            $scope.instantCO2 = formatCO2(co2_val, 0, $scope.unitMode);
             $scope.co2Class = classifyCO2(co2_val);
             lastInstantUpdate_ms = now_ms;
           }
