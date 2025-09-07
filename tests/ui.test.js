@@ -845,7 +845,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','co2Class','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric'];
     placeholders.forEach(p => {
       if (p === 'instantHistory') {
         assert.ok(html.includes('instantHistory'), 'missing instantHistory');
@@ -855,7 +855,8 @@ describe('UI template styling', () => {
         assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
       }
     });
-    assert.ok(html.includes('avgCo2Compliant ?'));
+    assert.ok(html.includes('ng-if="avgCo2Compliant"'));
+    assert.ok(html.includes('ng-if="!avgCo2Compliant"'));
     assert.ok(html.includes('{{ vehicleNameStr }}'));
     assert.ok(html.includes('strong ng-if="visible.heading"'));
     assert.ok(html.includes('ng-click="reset($event)"'));
@@ -867,8 +868,9 @@ describe('UI template styling', () => {
     assert.ok(html.includes('<span class="material-icons"')); 
     assert.ok(html.includes('save</span>'));
 
-    assert.ok(html.includes('{{ avgCO2 }}<span ng-if="avgCo2Class"> | <svg class="euStarIcon"'));
-    assert.ok(html.includes('{{ instantCO2 }}<span ng-if="co2Class"> | <svg class="euStarIcon"'));
+    assert.ok(html.includes('{{ avgCO2 }}<span ng-if="avgCo2Class"> | <span ng-if="avgCo2Compliant"><svg class="euStarIcon"'));
+    assert.ok(html.includes('{{ instantCO2 }}'));
+    assert.ok(!html.includes('{{ co2Class }}'));
     assert.ok(html.includes('fill:currentColor'));
   });
 
