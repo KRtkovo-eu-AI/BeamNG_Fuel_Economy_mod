@@ -44,6 +44,19 @@ describe('Food mode simulation', () => {
     assert.ok(avgCost > 0);
   });
 
+  it('accumulates total cost across updates', () => {
+    const price = 0.02;
+    let remaining = FOOD_CAPACITY_KCAL;
+    let prev = 0;
+    for (let t = 0; t < 5; t++) {
+      const step = simulateFood(1, 60, remaining, t);
+      remaining = step.remaining;
+      const cost = (FOOD_CAPACITY_KCAL - remaining) * price;
+      assert.ok(cost > prev);
+      prev = cost;
+    }
+  });
+
   it('uses hourly rate when nearly stationary', () => {
     const res = simulateFood(MIN_VALID_SPEED_MPS / 2, 1, FOOD_CAPACITY_KCAL, 0);
     assert.strictEqual(res.instPer100km, res.rate / 4);

@@ -700,7 +700,6 @@ angular.module('beamng.apps')
               applyAutoUnitMode(lastFuelType);
               if (lastFuelType && lastFuelType.toLowerCase() === 'food') {
                 updateCostPrice();
-                refreshCostOutputs();
                 if (shouldResetOnFoot(prevType, lastFuelType)) {
                   resetOnFootOutputs();
                 }
