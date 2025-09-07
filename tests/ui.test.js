@@ -529,6 +529,8 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.instantLph, '0.0 kcal/h');
     assert.strictEqual($scope.instantL100km, '0.0 kcal/100km');
     assert.strictEqual($scope.instantKmL, '0.00 km/kcal');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
   });
 
   it('computes traveled distance when on foot', async () => {
@@ -593,6 +595,8 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.instantLph, '0.0 kcal/h');
     assert.strictEqual($scope.instantL100km, '0.0 kcal/100km');
     assert.strictEqual($scope.instantKmL, '0.00 km/kcal');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
 
     // simulate entering a vehicle where fuel type is not yet known
     handlers['VehicleFocusChanged']();
@@ -607,6 +611,8 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.instantLph, '0.0 L/h');
     assert.strictEqual($scope.instantL100km, '0.0 L/100km');
     assert.strictEqual($scope.instantKmL, '0.00 km/L');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
     assert.strictEqual($scope.fuelUsed, '0.00 L');
     assert.strictEqual($scope.fuelLeft, '0.00 L');
     assert.strictEqual($scope.fuelCap, '0.0 L');
@@ -797,7 +803,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantCO2','co2Class','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric'];
     placeholders.forEach(p => {
       if (p === 'instantHistory') {
         assert.ok(html.includes('instantHistory'), 'missing instantHistory');
@@ -824,13 +830,14 @@ describe('UI template styling', () => {
     assert.ok(html.includes('ng-if="visible.fuelUsed || visible.fuelLeft || visible.fuelCap"'));
     assert.ok(html.includes('ng-if="visible.avgL100km || visible.avgKmL"'));
     assert.ok(html.includes('ng-if="visible.instantLph || visible.instantL100km || visible.instantKmL"'));
+    assert.ok(html.includes('ng-if="visible.instantCO2"'));
     assert.ok(html.includes('ng-if="visible.tripAvgL100km || visible.tripAvgKmL"'));
     assert.ok(html.includes('ng-if="visible.instantGraph"'));
     assert.ok(html.includes('ng-if="visible.avgCost"'));
     assert.ok(html.includes('ng-if="visible.tripFuelUsed"'));
     assert.ok(html.includes('ng-if="visible.tripAvgCost"'));
     assert.ok(html.includes('ng-if="visible.tripTotalCost"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripFuelUsed','visible.tripAvgCost','visible.tripTotalCost'];
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantCO2','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripFuelUsed','visible.tripAvgCost','visible.tripTotalCost'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -1373,6 +1380,8 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.instantLph, '0.0 L/h');
     assert.strictEqual($scope.instantL100km, '0.0 L/100km');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
   });
   it('populates data fields from stream updates', () => {
     let directiveDef;
@@ -1403,7 +1412,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 49.9;
     $scope.on_streamsUpdate(null, streams);
 
-    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','data8','data9'];
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','data4','instantLph','instantL100km','instantKmL','instantCO2','co2Class','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','data8','data9'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
@@ -1531,14 +1540,17 @@ describe('controller integration', () => {
     now = 0;
     $scope.on_streamsUpdate(null, streams);
     const first = $scope.instantLph;
+    const firstCO2 = $scope.instantCO2;
 
     now = 100;
     $scope.on_streamsUpdate(null, streams);
     assert.equal($scope.instantLph, first);
+    assert.equal($scope.instantCO2, firstCO2);
 
     now = 300;
     $scope.on_streamsUpdate(null, streams);
     assert.notStrictEqual($scope.instantLph, first);
+    assert.notStrictEqual($scope.instantCO2, firstCO2);
   });
 
   it('resets instant consumption when engine stops', () => {
@@ -1569,6 +1581,8 @@ describe('controller integration', () => {
     assert.notStrictEqual($scope.instantLph, '0.0 L/h');
     assert.notStrictEqual($scope.instantHistory, '');
     assert.notStrictEqual($scope.instantKmLHistory, '');
+    assert.notStrictEqual($scope.instantCO2, '0 g/km');
+    assert.notStrictEqual($scope.co2Class, '');
 
     streams.electrics.rpmTacho = 0;
     streams.electrics.throttle_input = 0;
@@ -1582,6 +1596,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.instantKmL, '100.00 km/L');
     assert.strictEqual($scope.instantHistory, '');
     assert.strictEqual($scope.instantKmLHistory, '');
+    assert.strictEqual($scope.instantCO2, '0 g/km');
+    assert.strictEqual($scope.co2Class, 'A');
   });
 
   it('caps instant efficiency when coasting', () => {
@@ -2043,12 +2059,14 @@ describe('controller integration', () => {
     $scope.visible.fuelLeft = false;
     $scope.visible.instantLph = false;
     $scope.visible.instantGraph = false;
+    $scope.visible.instantCO2 = false;
     $scope.saveSettings();
 
     assert.ok(store.okFuelEconomyVisible.includes('"heading":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"fuelLeft":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"instantLph":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"instantGraph":false'));
+    assert.ok(store.okFuelEconomyVisible.includes('"instantCO2":false'));
 
     const $scope2 = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope2);
@@ -2056,6 +2074,7 @@ describe('controller integration', () => {
     assert.equal($scope2.visible.fuelLeft, false);
     assert.equal($scope2.visible.instantLph, false);
     assert.equal($scope2.visible.instantGraph, false);
+    assert.equal($scope2.visible.instantCO2, false);
     assert.equal($scope2.visible.fuelUsed, true);
   });
 });

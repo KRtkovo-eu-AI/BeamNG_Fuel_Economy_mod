@@ -114,6 +114,15 @@
       </td>
     </tr>
 
+    <tr ng-if="visible.instantCO2">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Instant CO2 emissions:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        {{ instantCO2 }}<span ng-if="co2Class"> | {{ co2Class }}</span>
+      </td>
+    </tr>
+
     <tr ng-if="visible.instantGraph">
         <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
           Instant {{ unitFlowUnit }} history:
@@ -304,6 +313,7 @@
     <label><input type="checkbox" ng-model="visible.instantLph"> Instant {{ unitFlowUnit }}</label><br>
     <label><input type="checkbox" ng-model="visible.instantL100km"> Instant {{ unitConsumptionUnit }}</label><br>
     <label><input type="checkbox" ng-model="visible.instantKmL"> Instant {{ unitEfficiencyUnit }}</label><br>
+    <label><input type="checkbox" ng-model="visible.instantCO2"> Instant CO2 emissions</label><br>
     <label><input type="checkbox" ng-model="visible.instantGraph"> Instant history</label><br>
     <label><input type="checkbox" ng-model="visible.instantKmLGraph"> Instant {{ unitEfficiencyUnit }} history</label><br>
     <label><input type="checkbox" ng-model="visible.range"> Range</label><br>

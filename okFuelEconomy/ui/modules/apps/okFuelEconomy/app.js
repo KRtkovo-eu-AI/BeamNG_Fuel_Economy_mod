@@ -11,6 +11,14 @@ var FOOD_WALK_KCAL_PER_H = 300;
 var FOOD_RUN_KCAL_PER_H = 600;
 var foodBaseRate;
 
+var CO2_FACTORS_G_PER_L = {
+  Gasoline: 2392,
+  Diesel: 2640,
+  'LPG/CNG': 1660,
+  Electricity: 0,
+  Food: 0
+};
+
 function resetFoodSimulation() {
   foodBaseRate = undefined;
 }
@@ -376,6 +384,30 @@ function convertVolumePerDistance(lPerKm, mode) {
     : lPerKm;
 }
 
+function calculateCO2gPerKm(lPer100km, fuelType) {
+  var factor = CO2_FACTORS_G_PER_L[fuelType] != null
+    ? CO2_FACTORS_G_PER_L[fuelType]
+    : CO2_FACTORS_G_PER_L.Gasoline;
+  if (!Number.isFinite(lPer100km)) return Infinity;
+  return (lPer100km / 100) * factor;
+}
+
+function formatCO2(gPerKm, decimals) {
+  if (!Number.isFinite(gPerKm)) return 'Infinity';
+  return gPerKm.toFixed(decimals) + ' g/km';
+}
+
+function classifyCO2(gPerKm) {
+  if (!Number.isFinite(gPerKm)) return 'G';
+  if (gPerKm <= 120) return 'A';
+  if (gPerKm <= 140) return 'B';
+  if (gPerKm <= 155) return 'C';
+  if (gPerKm <= 170) return 'D';
+  if (gPerKm <= 190) return 'E';
+  if (gPerKm <= 225) return 'F';
+  return 'G';
+}
+
 function formatFuelTypeLabel(fuelType) {
   if (typeof fuelType === 'string') {
     var lower = fuelType.toLowerCase();
@@ -441,6 +473,9 @@ if (typeof module !== 'undefined') {
     convertVolumeToUnit,
     convertDistanceToUnit,
     convertVolumePerDistance,
+    calculateCO2gPerKm,
+    formatCO2,
+    classifyCO2,
     resolveUnitModeForFuelType,
     resolveFuelType,
     formatFuelTypeLabel,
@@ -827,6 +862,7 @@ angular.module('beamng.apps')
         instantLph: true,
         instantL100km: true,
         instantKmL: true,
+        instantCO2: true,
         instantGraph: true,
         instantKmLGraph: true,
         range: true,
@@ -1178,6 +1214,8 @@ angular.module('beamng.apps')
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
         $scope.instantKmL = formatEfficiency(0, mode, 2);
+        $scope.instantCO2 = formatCO2(0, 0);
+        $scope.co2Class = classifyCO2(0);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
@@ -1195,6 +1233,8 @@ angular.module('beamng.apps')
         $scope.instantLph = formatFlow(0, mode, 1);
         $scope.instantL100km = formatConsumptionRate(0, mode, 1);
         $scope.instantKmL = formatEfficiency(0, mode, 2);
+        $scope.instantCO2 = formatCO2(0, 0);
+        $scope.co2Class = classifyCO2(0);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
@@ -1284,6 +1324,8 @@ angular.module('beamng.apps')
               $scope.currency +
               '/' +
               labels.distance;
+            $scope.instantCO2 = formatCO2(0, 0);
+            $scope.co2Class = classifyCO2(0);
             updateFoodHistories(
               $scope,
               res,
@@ -1447,6 +1489,9 @@ angular.module('beamng.apps')
               $scope.instantL100km = 'Infinity';
             }
             $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
+            var co2_val = calculateCO2gPerKm(inst_l_per_100km, $scope.fuelType);
+            $scope.instantCO2 = formatCO2(co2_val, 0);
+            $scope.co2Class = classifyCO2(co2_val);
             lastInstantUpdate_ms = now_ms;
           }
 

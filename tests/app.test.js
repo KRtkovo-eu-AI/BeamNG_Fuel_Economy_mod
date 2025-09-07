@@ -21,6 +21,9 @@ const {
   formatConsumptionRate,
   formatEfficiency,
   formatFlow,
+  calculateCO2gPerKm,
+  formatCO2,
+  classifyCO2,
   MIN_VALID_SPEED_MPS,
   resolveUnitModeForFuelType,
   formatFuelTypeLabel,
@@ -358,6 +361,43 @@ describe('app.js utility functions', () => {
     });
     it('formats efficiency in km/kcal', () => {
       assert.strictEqual(formatEfficiency(56.789, 'food', 2), '56.79 km/kcal');
+    });
+  });
+
+  describe('CO2 helpers', () => {
+    it('computes g/km from consumption and fuel type', () => {
+      assert.strictEqual(calculateCO2gPerKm(5, 'Gasoline'), 5 / 100 * 2392);
+    });
+    it('formats CO2 emissions', () => {
+      const val = calculateCO2gPerKm(5, 'Gasoline');
+      assert.strictEqual(formatCO2(val, 1), (5 / 100 * 2392).toFixed(1) + ' g/km');
+    });
+    it('classifies emission levels', () => {
+      assert.strictEqual(classifyCO2(119), 'A');
+      assert.strictEqual(classifyCO2(130), 'B');
+      assert.strictEqual(classifyCO2(160), 'D');
+    });
+  });
+
+  describe('Canadian 5-cycle fuel economy scenario', () => {
+    it('derives city and highway ratings with CO2 grades', () => {
+      const cycles = [
+        // fuel used in L, distance in m for each of the five tests
+        { fuel: 1.3175, dist: 17566.7 }, // city
+        { fuel: 0.845, dist: 16900 }, // highway
+        { fuel: 1.581, dist: 17566.7 }, // cold city
+        { fuel: 0.4666, dist: 5833.3 }, // air conditioning
+        { fuel: 0.78, dist: 13000 } // high speed
+      ];
+      const l100 = cycles.map(c => calculateAverageConsumption(c.fuel, c.dist));
+      const cityAvg = (l100[0] + l100[2] + l100[3] + l100[4]) / 4;
+      const hwyAvg = (l100[1] + l100[3] + l100[4]) / 3;
+      const cityCO2 = calculateCO2gPerKm(cityAvg, 'Gasoline');
+      const hwyCO2 = calculateCO2gPerKm(hwyAvg, 'Gasoline');
+      assert.ok(Math.abs(cityAvg - 7.625) < 1e-3);
+      assert.ok(Math.abs(hwyAvg - 6.333333) < 1e-3);
+      assert.strictEqual(classifyCO2(cityCO2), 'E');
+      assert.strictEqual(classifyCO2(hwyCO2), 'C');
     });
   });
 });
