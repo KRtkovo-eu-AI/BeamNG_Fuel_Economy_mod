@@ -845,7 +845,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgCO2','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric','tripCo2Class'];
     placeholders.forEach(p => {
       if (p === 'instantHistory') {
         assert.ok(html.includes('instantHistory'), 'missing instantHistory');
@@ -853,6 +853,8 @@ describe('UI template styling', () => {
         assert.ok(html.includes('avgHistory'), 'missing avgHistory');
       } else if (p === 'avgCo2Class') {
         assert.ok(html.includes('avgCo2Class'), 'missing avgCo2Class');
+      } else if (p === 'tripCo2Class') {
+        assert.ok(html.includes('tripCo2Class'), 'missing tripCo2Class');
       } else {
         assert.ok(html.includes(`{{ ${p} }}`), `missing ${p}`);
       }
@@ -869,11 +871,12 @@ describe('UI template styling', () => {
     assert.ok(html.includes('save</span>'));
 
     assert.ok(html.includes('ng-if="avgCo2Compliant && avgCo2Class"'));
+    const icons = fs.readFileSync('okFuelEconomy/ui/modules/apps/okFuelEconomy/eu_co2_icons.html','utf8');
     ['A','B','C','D','E','F','G'].forEach(cls => {
-      assert.ok(html.includes(`<svg ng-if="avgCo2Class === '${cls}'`), `missing svg ${cls}`);
+      assert.ok(icons.includes(`<svg ng-if="co2Class === '${cls}'"`), `missing svg ${cls}`);
     });
-    assert.ok(html.includes('class="euCo2ClassIcon" style="display:inline-block; height:14px; width:auto; vertical-align:middle;'));
-    assert.ok(!html.includes('<use'));
+    assert.ok(html.includes('eu_co2_icons.html'));
+    assert.ok(!icons.includes('<use'));
     assert.ok(html.includes('{{ instantCO2 }}'));
     assert.ok(!html.includes('modules/apps/okFuelEconomy/eu_co2_classes/'));
     assert.ok(!html.includes('{{ co2Class }}'));
@@ -887,12 +890,13 @@ describe('UI template styling', () => {
     assert.ok(html.includes('ng-if="visible.instantLph || visible.instantL100km || visible.instantKmL"'));
     assert.ok(html.includes('ng-if="visible.instantCO2"'));
     assert.ok(html.includes('ng-if="visible.tripAvgL100km || visible.tripAvgKmL"'));
+    assert.ok(html.includes('ng-if="visible.tripAvgCO2"'));
     assert.ok(html.includes('ng-if="visible.instantGraph"'));
     assert.ok(html.includes('ng-if="visible.avgCost"'));
     assert.ok(html.includes('ng-if="visible.tripFuelUsed"'));
     assert.ok(html.includes('ng-if="visible.tripAvgCost"'));
     assert.ok(html.includes('ng-if="visible.tripTotalCost"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgCO2','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantCO2','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripFuelUsed','visible.tripAvgCost','visible.tripTotalCost'];
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgCO2','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantCO2','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripAvgCO2','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripFuelUsed','visible.tripAvgCost','visible.tripTotalCost'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -1469,7 +1473,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 49.9;
     $scope.on_streamsUpdate(null, streams);
 
-    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','co2Class','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','data8','data9'];
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','co2Class','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgCO2','tripCo2Class','data8','data9'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
@@ -1500,6 +1504,8 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
 
     assert.strictEqual($scope.tripAvgL100km, '600.0 L/100km');
+    assert.strictEqual($scope.tripAvgCO2, '14352 g/km');
+    assert.strictEqual($scope.tripCo2Class, 'G');
     assert.notStrictEqual($scope.tripAvgHistory, '');
     assert.notStrictEqual($scope.tripAvgKmLHistory, '');
     assert.notStrictEqual($scope.tripAvgL100km, $scope.avgL100km);
@@ -2476,6 +2482,7 @@ describe('controller integration', () => {
     $scope.visible.instantGraph = false;
     $scope.visible.instantCO2 = false;
     $scope.visible.avgCO2 = false;
+    $scope.visible.tripAvgCO2 = false;
     $scope.saveSettings();
 
     assert.ok(store.okFuelEconomyVisible.includes('"heading":false'));
@@ -2484,6 +2491,7 @@ describe('controller integration', () => {
     assert.ok(store.okFuelEconomyVisible.includes('"instantGraph":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"instantCO2":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"avgCO2":false'));
+    assert.ok(store.okFuelEconomyVisible.includes('"tripAvgCO2":false'));
 
     const $scope2 = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope2);
@@ -2493,6 +2501,7 @@ describe('controller integration', () => {
     assert.equal($scope2.visible.instantGraph, false);
     assert.equal($scope2.visible.instantCO2, false);
     assert.equal($scope2.visible.avgCO2, false);
+    assert.equal($scope2.visible.tripAvgCO2, false);
     assert.equal($scope2.visible.fuelUsed, true);
   });
 });

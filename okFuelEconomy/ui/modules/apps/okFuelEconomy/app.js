@@ -892,6 +892,7 @@ angular.module('beamng.apps')
         range: true,
         tripAvgL100km: true,
         tripAvgKmL: true,
+        tripAvgCO2: true,
         tripGraph: true,
         tripKmLGraph: true,
         tripDistance: true,
@@ -959,6 +960,8 @@ angular.module('beamng.apps')
       $scope.instantKmL = '';
       $scope.tripAvgL100km = ''; // overall average L/100km
       $scope.tripAvgKmL = ''; // overall average km/L
+      $scope.tripAvgCO2 = '';
+      $scope.tripCo2Class = '';
       $scope.tripAvgHistory = '';
       $scope.tripAvgKmLHistory = '';
       $scope.avgHistory = '';
@@ -1249,6 +1252,10 @@ angular.module('beamng.apps')
         $scope.instantKmL = formatEfficiency(0, mode, 2);
         $scope.instantCO2 = formatCO2(0, 0, mode);
         $scope.co2Class = classifyCO2(0);
+        $scope.tripAvgCO2 = formatCO2(0, 0, mode);
+        $scope.tripCo2Class = classifyCO2(0);
+        $scope.tripAvgCO2 = formatCO2(0, 0, mode);
+        $scope.tripCo2Class = classifyCO2(0);
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
@@ -1298,6 +1305,8 @@ angular.module('beamng.apps')
           var resetMode = getActiveUnitMode();
           $scope.tripAvgL100km = formatConsumptionRate(0, resetMode, 1);
           $scope.tripAvgKmL = formatEfficiency(Infinity, resetMode, 2);
+          $scope.tripAvgCO2 = formatCO2(0, 0, resetMode);
+          $scope.tripCo2Class = classifyCO2(0);
           $scope.tripAvgCostLiquid = '';
           $scope.tripAvgCostElectric = '';
           $scope.tripTotalCostLiquid = '';
@@ -1759,6 +1768,9 @@ angular.module('beamng.apps')
             mode,
             2
           );
+          var tripAvgCo2Val = calculateCO2gPerKm(overall_median, $scope.fuelType);
+          $scope.tripAvgCO2 = formatCO2(tripAvgCo2Val, 0, mode);
+          $scope.tripCo2Class = classifyCO2(tripAvgCo2Val);
           $scope.data8 = formatDistance(overall.distance, mode, 1);
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
