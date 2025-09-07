@@ -1167,6 +1167,8 @@ angular.module('beamng.apps')
         foodFuel_kcal = FOOD_CAPACITY_KCAL;
         var mode = 'food';
         var labels = getUnitLabels(mode);
+        $scope.data1 = formatDistance(0, mode, 1);
+        $scope.data6 = formatDistance(0, mode, 1);
         $scope.fuelUsed = formatVolume(0, mode, 2);
         $scope.fuelLeft = formatVolume(0, mode, 2);
         $scope.fuelCap = formatVolume(0, mode, 1);
@@ -1255,6 +1257,8 @@ angular.module('beamng.apps')
               streams.electrics.airspeed,
               EPS_SPEED
             );
+            var deltaDistance = speed_mps * dt;
+            distance_m += deltaDistance;
             var res = simulateFood(speed_mps, dt, foodFuel_kcal, now_ms / 1000);
             foodFuel_kcal = res.remaining;
             var mode = 'food';
@@ -1262,6 +1266,8 @@ angular.module('beamng.apps')
             var price = $scope.liquidFuelPriceValue || 0;
             updateCostPrice(labels, price);
             var used_kcal = FOOD_CAPACITY_KCAL - foodFuel_kcal;
+            $scope.data1 = formatDistance(distance_m, mode, 1);
+            $scope.data6 = formatDistance(streams.electrics.trip || 0, mode, 1);
             $scope.fuelUsed = formatVolume(used_kcal, mode, 2);
             $scope.fuelLeft = formatVolume(foodFuel_kcal, mode, 2);
             $scope.fuelCap = formatVolume(FOOD_CAPACITY_KCAL, mode, 1);
@@ -1292,6 +1298,7 @@ angular.module('beamng.apps')
               AVG_MAX_ENTRIES,
               MAX_EFFICIENCY
             );
+            lastDistance_m = distance_m;
             return;
           }
           if (!streams.engineInfo || !streams.electrics) return;

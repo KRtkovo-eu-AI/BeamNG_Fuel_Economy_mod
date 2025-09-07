@@ -531,6 +531,35 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.instantKmL, '0.00 km/kcal');
   });
 
+  it('computes traveled distance when on foot', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Food' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let t = 0;
+    global.performance = { now: () => { t += 1000; return t; } };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (name, fn) => { handlers[name] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 50));
+    const streams = { electrics: { wheelspeed: 1000 } };
+    handlers['streamsUpdate'](null, streams);
+    await new Promise(r => setTimeout(r, 0));
+    handlers['streamsUpdate'](null, streams);
+    await new Promise(r => setTimeout(r, 0));
+    assert.strictEqual($scope.data6, '0.0 km');
+    assert.strictEqual($scope.data1, '2.0 km');
+  });
+
   it('restores vehicle units when re-entering a car before engine start', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
