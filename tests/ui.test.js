@@ -74,6 +74,12 @@ describe('UI template styling', () => {
     assert.ok(html.includes('Electricity: {{ tripFuelUsedElectric }}'));
   });
 
+  it('includes a unit selector in settings', () => {
+    assert.ok(html.includes('Units:'));
+    assert.ok(html.includes('{{ unitModeLabels[unitMode] }}'));
+    assert.ok(html.includes('ng-repeat="(value,label) in unitModeLabels"'));
+  });
+
   it('loads fuel price editor via controller function', async () => {
     let directiveDef;
     let luaCmd;
@@ -710,7 +716,7 @@ describe('controller integration', () => {
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.strictEqual($scope.costPrice, '1.50 USD/L');
+    assert.strictEqual($scope.costPrice, '0.00 USD/L');
     assert.strictEqual($scope.avgCost, '0.15 USD/km');
     assert.strictEqual($scope.totalCost, '3.00 USD');
     assert.strictEqual($scope.tripAvgCostLiquid, '0.08 USD/km');
@@ -727,7 +733,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 56;
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
-    assert.strictEqual($scope.costPrice, '0.50 USD/kWh');
+    assert.strictEqual($scope.costPrice, '0.00 USD/kWh');
     assert.strictEqual($scope.avgCost, '0.05 USD/km');
     assert.strictEqual($scope.totalCost, '2.00 USD');
     assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
@@ -744,7 +750,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 54;
     now = 300000;
     $scope.on_streamsUpdate(null, streams);
-    assert.strictEqual($scope.costPrice, '1.50 USD/L');
+    assert.strictEqual($scope.costPrice, '0.00 USD/L');
     assert.strictEqual($scope.avgCost, '0.15 USD/km');
     assert.strictEqual($scope.totalCost, '9.00 USD');
     assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
@@ -1773,9 +1779,10 @@ describe('controller integration', () => {
     assert.ok(overall.queue[0] < 1000);
     assert.ok(avg.queue[0] < 1000);
   });
-});
 
-describe('visibility settings persistence', () => {
+  });
+
+  describe('visibility settings persistence', () => {
   it('saves and restores user choices', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

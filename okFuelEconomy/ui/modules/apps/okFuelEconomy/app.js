@@ -452,7 +452,9 @@ angular.module('beamng.apps')
           if (!unitLabels) {
             unitLabels = getUnitLabels(mode);
           }
-          if (typeof priceForMode !== 'number') {
+          if (!$scope.fuelType || $scope.fuelType === 'None') {
+            priceForMode = 0;
+          } else if (typeof priceForMode !== 'number') {
             priceForMode =
               mode === 'electric'
                 ? $scope.electricityPriceValue
@@ -493,12 +495,17 @@ angular.module('beamng.apps')
             ) {
               var apply = function () {
                 $scope.fuelPrices = cfg.prices || {};
-                var ftPrice = $scope.fuelPrices[$scope.fuelType];
-                $scope.liquidFuelPriceValue =
-                  typeof ftPrice === 'number'
-                    ? ftPrice
-                    : $scope.fuelPrices.Gasoline || 0;
-                $scope.electricityPriceValue = $scope.fuelPrices.Electricity || 0;
+                if ($scope.fuelType === 'None') {
+                  $scope.liquidFuelPriceValue = 0;
+                  $scope.electricityPriceValue = 0;
+                } else {
+                  var ftPrice = $scope.fuelPrices[$scope.fuelType];
+                  $scope.liquidFuelPriceValue =
+                    typeof ftPrice === 'number'
+                      ? ftPrice
+                      : $scope.fuelPrices.Gasoline || 0;
+                  $scope.electricityPriceValue = $scope.fuelPrices.Electricity || 0;
+                }
                 $scope.currency = cfg.currency;
                 updateCostPrice();
                 refreshCostOutputs();
@@ -532,7 +539,8 @@ angular.module('beamng.apps')
       $scope.unitModeLabels = {
         metric: 'Metric (L, km)',
         imperial: 'Imperial (gal, mi)',
-        electric: 'Electric (kWh, km)'
+        electric: 'Electric (kWh, km)',
+        food: 'Food (kcal, km)'
       };
         $scope.unitMenuOpen = false;
         $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
@@ -621,8 +629,13 @@ angular.module('beamng.apps')
                   });
                 }
               }
-              $scope.liquidFuelPriceValue =
-                $scope.fuelType !== 'None' ? $scope.fuelPrices[$scope.fuelType] || 0 : 0;
+              if ($scope.fuelType !== 'None') {
+                $scope.liquidFuelPriceValue = $scope.fuelPrices[$scope.fuelType] || 0;
+                $scope.electricityPriceValue = $scope.fuelPrices.Electricity || 0;
+              } else {
+                $scope.liquidFuelPriceValue = 0;
+                $scope.electricityPriceValue = 0;
+              }
               applyAutoUnitMode(lastFuelType);
               updateCostPrice();
               refreshCostOutputs();
@@ -723,7 +736,6 @@ angular.module('beamng.apps')
       $scope.instantHistory = '';
       $scope.instantKmLHistory = '';
       $scope.costPrice = '';
-      $scope.fuelType = 'None';
       $scope.avgCost = '';
       $scope.totalCost = '';
       $scope.tripAvgCostLiquid = '';
