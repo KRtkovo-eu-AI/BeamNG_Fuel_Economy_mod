@@ -10,6 +10,7 @@ var FOOD_REST_KCAL_PER_H = 80;
 var FOOD_WALK_KCAL_PER_H = 300;
 var FOOD_RUN_KCAL_PER_H = 600;
 var foodBaseRate;
+var EU_SPEED_WINDOW_MS = 60000; // retain EU speed samples for 60 s
 
 var CO2_FACTORS_G_PER_L = {
   Gasoline: 2392,
@@ -1334,9 +1335,14 @@ angular.module('beamng.apps')
             );
             var deltaDistance = speed_mps * dt;
             distance_m += deltaDistance;
-            // Record resolved speed so EU averages work even when airspeed is unavailable.
-            speedAvg.queue.push(Math.abs(speed_mps));
-            trimQueue(speedAvg.queue, AVG_MAX_ENTRIES);
+            // Record resolved speed with timestamp for EU compliance window.
+            speedAvg.queue.push({ speed: Math.abs(speed_mps), time: now_ms });
+            while (
+              speedAvg.queue.length > 0 &&
+              now_ms - speedAvg.queue[0].time > EU_SPEED_WINDOW_MS
+            ) {
+              speedAvg.queue.shift();
+            }
             var res = simulateFood(speed_mps, dt, foodFuel_kcal, now_ms / 1000);
             foodFuel_kcal = res.remaining;
             var mode = 'food';
@@ -1356,10 +1362,20 @@ angular.module('beamng.apps')
             $scope.avgKmL = formatEfficiency(res.efficiency, mode, 2);
             $scope.avgCO2 = formatCO2(0, 0, mode);
             $scope.avgCo2Class = classifyCO2(0);
-            var avgSpeed_kph = calculateAverage(speedAvg.queue) * 3.6;
+            var avgSpeed_kph =
+              calculateAverage(
+                speedAvg.queue.map(function (s) {
+                  return s.speed;
+                })
+              ) * 3.6;
             var topSpeed_kph =
               (speedAvg.queue.length > 0
-                ? Math.max.apply(null, speedAvg.queue)
+                ? Math.max.apply(
+                    null,
+                    speedAvg.queue.map(function (s) {
+                      return s.speed;
+                    })
+                  )
                 : 0) * 3.6;
             var topSpeedValid = topSpeed_kph <= 120;
             $scope.avgCo2Compliant =
@@ -1407,6 +1423,14 @@ angular.module('beamng.apps')
             EPS_SPEED
           );
           var deltaDistance = speed_mps * dt;
+          // Track speeds over a time window for EU compliance.
+          speedAvg.queue.push({ speed: Math.abs(speed_mps), time: now_ms });
+          while (
+            speedAvg.queue.length > 0 &&
+            now_ms - speedAvg.queue[0].time > EU_SPEED_WINDOW_MS
+          ) {
+            speedAvg.queue.shift();
+          }
           var trip_m = streams.electrics.trip || 0;
 
           var currentFuel_l = streams.engineInfo[11];
@@ -1485,9 +1509,7 @@ angular.module('beamng.apps')
             resetAvgHistory();
           }
 
-          if (engineRunning) {
-            distance_m += deltaDistance;
-          }
+          distance_m += deltaDistance;
 
           if (throttle <= 0.05 && lastThrottle > 0.05) {
             previousFuel_l = currentFuel_l;
@@ -1638,8 +1660,7 @@ angular.module('beamng.apps')
               avgHistory.lastSaveTime = now_ms;
             }
             // Record the resolved speed (airspeed or wheelspeed) for EU compliance checks.
-            speedAvg.queue.push(Math.abs(speed_mps));
-            trimQueue(speedAvg.queue, AVG_MAX_ENTRIES);
+            // (handled globally above)
           }
 
           var mode = getActiveUnitMode();
@@ -1707,10 +1728,20 @@ angular.module('beamng.apps')
           var avgCo2Val = calculateCO2gPerKm(avg_l_per_100km_ok, $scope.fuelType);
           $scope.avgCO2 = formatCO2(avgCo2Val, 0, mode);
           $scope.avgCo2Class = classifyCO2(avgCo2Val);
-          var avgSpeed_kph = calculateAverage(speedAvg.queue) * 3.6;
+          var avgSpeed_kph =
+            calculateAverage(
+              speedAvg.queue.map(function (s) {
+                return s.speed;
+              })
+            ) * 3.6;
           var topSpeed_kph =
             (speedAvg.queue.length > 0
-              ? Math.max.apply(null, speedAvg.queue)
+              ? Math.max.apply(
+                  null,
+                  speedAvg.queue.map(function (s) {
+                    return s.speed;
+                  })
+                )
               : 0) * 3.6;
           var topSpeedValid = topSpeed_kph <= 120;
           $scope.avgCo2Compliant =

@@ -2103,7 +2103,22 @@ describe('controller integration', () => {
     // return to compliant speeds and flush the overspeed sample
     streams.electrics.wheelspeed = 10;
     streams.electrics.airspeed = 10;
-    for (let i = 0; i < 1001; i++) {
+    for (let i = 0; i < 61; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+    assert.strictEqual($scope.avgCo2Compliant, true);
+
+    // overspeed again and ensure compliance can return once more
+    now += 1000;
+    streams.electrics.wheelspeed = 40;
+    streams.electrics.airspeed = 40;
+    $scope.on_streamsUpdate(null, streams);
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    streams.electrics.wheelspeed = 10;
+    streams.electrics.airspeed = 10;
+    for (let i = 0; i < 61; i++) {
       now += 1000;
       $scope.on_streamsUpdate(null, streams);
     }
