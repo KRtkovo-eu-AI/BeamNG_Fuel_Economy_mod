@@ -548,7 +548,8 @@ describe('UI template styling', () => {
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
-    const $scope = { $on: () => {}, $evalAsync: fn => setImmediate(fn) };
+    const handlers = {};
+    const $scope = { $on: (name, cb) => { handlers[name] = cb; }, $evalAsync: fn => setImmediate(fn) };
     controllerFn({ debug: () => {} }, $scope);
     await new Promise(r => setTimeout(r, 80));
 
@@ -562,6 +563,9 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.co2Class, 'A');
     assert.strictEqual($scope.avgCO2, '0 g/km');
     assert.strictEqual($scope.avgCo2Class, 'A');
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    handlers['streamsUpdate'](null, { electrics: { wheelspeed: 0, airspeed: 0, trip: 0 }, engineInfo: Array(15).fill(0) });
     assert.strictEqual($scope.avgCo2Compliant, true);
   });
 
@@ -2048,6 +2052,44 @@ describe('controller integration', () => {
     assert.equal(avg.queue.length, 2);
     assert.ok(overall.queue[0] < 1000);
     assert.ok(avg.queue[0] < 1000);
+  });
+
+  it('only marks EU CO2 compliance after driving', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 800, trip: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    $scope.reset();
+
+    now = 1000;
+    $scope.on_streamsUpdate(null, streams); // idle, no distance
+    assert.strictEqual($scope.avgCo2Compliant, false);
+
+    now = 2000;
+    streams.electrics.wheelspeed = 10;
+    streams.electrics.airspeed = 10;
+    streams.engineInfo[11] = 49.9995;
+    $scope.on_streamsUpdate(null, streams); // moving with low consumption
+    assert.strictEqual($scope.avgCo2Compliant, true);
   });
 
   });
