@@ -181,14 +181,20 @@ function simulateFood(speed_mps, dtSeconds, energy_kcal, timeSeconds) {
   var remaining = Math.max(0, energy_kcal - used);
   var speed = Math.abs(speed_mps);
   var instPer100km;
+  var efficiency = 0;
   if (speed <= MIN_VALID_SPEED_MPS) {
     instPer100km = rate / 4;
   } else {
     var speed_kmph = speed * 3.6;
     instPer100km = (rate / speed_kmph) * 10;
+    efficiency = instPer100km > 0 ? 100 / instPer100km : 0; // km per kcal
   }
-  var efficiency = speed * 3.6 / rate; // km per kcal
-  return { remaining: remaining, rate: rate, instPer100km: instPer100km, efficiency: efficiency };
+  return {
+    remaining: remaining,
+    rate: rate,
+    instPer100km: instPer100km,
+    efficiency: efficiency
+  };
 }
 
 function buildQueueGraphPoints(queue, width, height) {

@@ -26,6 +26,7 @@ describe('Food mode simulation', () => {
     assert.ok(run.rate > walk.rate);
     assert.ok(walk.instPer100km < 1000);
     assert.ok(run.instPer100km < 1000);
+    assert.ok(walk.efficiency > run.efficiency);
   });
 
   it('oscillates pseudo-randomly around baseline', () => {
