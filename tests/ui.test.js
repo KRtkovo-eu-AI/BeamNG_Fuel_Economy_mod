@@ -887,12 +887,12 @@ describe('UI template styling', () => {
     assert.ok(html.includes('save</span>'));
 
     assert.ok(html.includes('ng-if="avgCo2Compliant && avgCo2Class"'));
-    const icons = fs.readFileSync('okFuelEconomy/ui/modules/apps/okFuelEconomy/eu_co2_icons.html','utf8');
     ['A','B','C','D','E','F','G'].forEach(cls => {
-      assert.ok(icons.includes(`<svg ng-if="co2Class === '${cls}'"`), `missing svg ${cls}`);
+      assert.ok(html.includes(`<svg ng-if="co2Class === '${cls}'"`), `missing svg ${cls}`);
     });
-    assert.ok(html.includes('eu_co2_icons.html'));
-    assert.ok(!icons.includes('<use'));
+    assert.ok(!html.includes('<use'));
+    assert.ok(!html.includes('ng-if="tripCo2Class"'));
+    assert.ok(html.includes('{{ tripAvgCO2 }} |'));
     assert.ok(html.includes('{{ instantCO2 }}'));
     assert.ok(!html.includes('modules/apps/okFuelEconomy/eu_co2_classes/'));
     assert.ok(!html.includes('{{ co2Class }}'));
