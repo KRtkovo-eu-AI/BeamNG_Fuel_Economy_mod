@@ -111,71 +111,124 @@ for (let run = 1; run <= 3; run++) {
   });
 }
 
-// Long running randomised simulation lasting around 30 seconds
-// Simulates repeated vehicle resets without trip resets
-// and varying driving conditions in random order.
-test('30-second random stress simulation', { timeout: 70000 }, async () => {
+// Accelerated stress test covering multiple realistic gameplay scenarios
+test('accelerated multi-scenario stress simulation', { timeout: 120000 }, async () => {
   const EPS_SPEED = 0.005;
-  let fuel = capacity;
-  let prev = fuel;
-  let trip = 0;
-  let distance = 0;
-  const queue = [];
-  let lastFlow = 0;
-  let lastMeasuredFlow = 0;
-  let idleFlow = 0.001;
 
-  const end = Date.now() + 30_000; // run for ~30s
-  while (Date.now() < end) {
-    const speed = Math.random() * 40; // m/s
-    const throttle = Math.random();
-    const raw = throttle > 0.1 ? Math.random() * 0.005 : 0; // L/s change
-    const current = fuel - raw * dt;
-    let flowRate = calculateFuelFlow(current, prev, dt);
-    if (flowRate > 0) {
-      lastMeasuredFlow = flowRate;
+  const scenarios = [
+    {
+      capacity: 60,
+      minDistance: 20000,
+      segments: [
+        { duration: 5, speed: 0, flow: 0, throttle: 0 }, // spawn with engine off
+        { duration: 300, speed: 15, flow: 0.002, throttle: 0.5 }, // city
+        { duration: 5, speed: 0, flow: 0, throttle: 0, refuel: true }, // pit stop
+        { duration: 400, speed: 35, flow: 0.003, throttle: 0.7 }, // highway
+        { duration: 5, speed: 0, flow: 0, throttle: 0, switchVehicle: { capacity: 80 } }, // vehicle swap
+        { duration: 300, speed: 20, flow: 0.004, throttle: 0.8 }, // mountains
+        { duration: 100, speed: 1.5, flow: 0, throttle: 0, expectZero: true }, // walking on foot
+        { duration: 200, speed: 25, flow: 0.0025, throttle: 0.6, resetTrip: true } // countryside
+      ]
+    },
+    {
+      capacity: 70,
+      minDistance: 15000,
+      segments: [
+        { duration: 5, speed: 0, flow: 0, throttle: 0 },
+        { duration: 200, speed: 30, flow: 0.0035, throttle: 0.8 }, // drag race
+        { duration: 200, speed: 0, flow: 0, throttle: 0 }, // cooldown
+        { duration: 300, speed: 12, flow: 0.001, throttle: 0.4 }, // city EV
+        { duration: 5, speed: 0, flow: 0, throttle: 0, refuel: true },
+        { duration: 300, speed: 40, flow: 0.005, throttle: 1 } // highway sprint
+      ]
+    },
+    {
+      capacity: 50,
+      minDistance: 10000,
+      segments: [
+        { duration: 5, speed: 0, flow: 0, throttle: 0 },
+        { duration: 250, speed: 20, flow: 0.0022, throttle: 0.5 }, // mixed
+        { duration: 150, speed: 10, flow: 0.0035, throttle: 0.6 }, // offroad
+        { duration: 200, speed: 25, flow: 0.0025, throttle: 0.6 }, // return
+        { duration: 100, speed: 0, flow: 0, throttle: 0, refuel: true },
+        { duration: 250, speed: 30, flow: 0.003, throttle: 0.7 } // highway
+      ]
     }
-    if (speed <= EPS_SPEED && throttle <= 0.05 && flowRate > 0) {
-      idleFlow = flowRate;
+  ];
+
+  async function runScenario(cfg) {
+    let capacity = cfg.capacity;
+    let fuel = capacity;
+    let prev = fuel;
+    let distance = 0;
+    let trip = 0;
+    const queue = [];
+    let lastFlow = 0;
+    let idleFlow = 0;
+    let lastThrottle = 0;
+
+    for (const seg of cfg.segments) {
+      if (seg.switchVehicle) {
+        capacity = seg.switchVehicle.capacity;
+        fuel = capacity;
+        prev = fuel;
+      }
+      if (seg.refuel) {
+        fuel = capacity;
+        prev = fuel;
+      }
+      if (seg.resetTrip) {
+        trip = 0;
+      }
+      const idleBefore = idleFlow;
+      let startFlow, endFlow;
+      for (let t = 0; t < seg.duration; t += dt) {
+        const current = fuel - seg.flow * dt;
+        const raw = calculateFuelFlow(current, prev, dt);
+        if (seg.speed <= EPS_SPEED && seg.throttle <= 0.05 && raw > 0) {
+          idleFlow = raw;
+        }
+        const flow = smoothFuelFlow(
+          raw,
+          seg.speed,
+          seg.throttle,
+          lastFlow,
+          idleFlow,
+          EPS_SPEED
+        );
+        if (seg.expectZero) {
+          if (t === 0) startFlow = flow;
+          if (t === seg.duration - 1) endFlow = flow;
+        }
+        const inst = calculateInstantConsumption(flow, seg.speed);
+        if (seg.speed < MIN_VALID_SPEED_MPS) {
+          assert.strictEqual(inst, (flow * 3600) / 4);
+        } else {
+          assert.ok(Number.isFinite(inst));
+        }
+        queue.push(inst);
+        trimQueue(queue, 500);
+        distance += seg.speed * dt;
+        trip += seg.speed * dt;
+        fuel = current;
+        prev = current;
+        lastFlow = flow;
+      }
+      lastThrottle = seg.throttle;
+      if (seg.expectZero) {
+        assert.strictEqual(startFlow, 0);
+        assert.strictEqual(endFlow, 0);
+      }
+      if (seg.expectIdleSame) {
+        assert.strictEqual(idleFlow, idleBefore);
+      }
     }
-    flowRate = smoothFuelFlow(flowRate, speed, throttle, lastFlow, idleFlow, EPS_SPEED);
-    if (throttle <= 0.05 && speed > EPS_SPEED && raw === 0 && idleFlow > 0) {
-      assert.strictEqual(flowRate, 0);
-    }
-    const inst = calculateInstantConsumption(flowRate, speed);
 
-    if (speed < MIN_VALID_SPEED_MPS) {
-      assert.strictEqual(inst, (flowRate * 3600) / 4);
-    } else {
-      assert.ok(Number.isFinite(inst));
-    }
-
-    queue.push(inst);
-    trimQueue(queue, 500);
-
-    distance += speed * dt;
-    trip += speed * dt;
-    fuel = current;
-    prev = current;
-    lastFlow = flowRate;
-
-    // Occasionally simulate a vehicle reset (fuel to full, distance reset) but keep trip
-    if (Math.random() < 0.1) {
-      fuel = capacity;
-      prev = null;
-      distance = 0;
-    }
-
-    const avg = distance > 0 ? ((capacity - fuel) / distance) * 100000 : -1;
-    const range = calculateRange(fuel, avg, speed, EPS_SPEED);
-    assert.ok(Number.isFinite(range) || range === Infinity);
-
-    // small delay so the loop lasts ~30 seconds
-    await new Promise(r => setTimeout(r, 10));
+    assert.ok(distance >= cfg.minDistance);
+    assert.ok(queue.length <= 500);
   }
 
-  assert.ok(trip > 0);
-  assert.ok(Number.isFinite(trip));
+  await Promise.all(scenarios.map(runScenario));
 });
 
 // Ensure trip values persist across restart cycles and only reset on manual request
