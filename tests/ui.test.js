@@ -558,7 +558,10 @@ describe('UI template styling', () => {
 
     global.bngApi = {
       engineLua: (code, cb) => {
-        if (code.includes('be:getPlayerVehicle(0)')) { if (cb) cb('{"t":"gasoline"}'); return; }
+        if (!code.includes('core_paths.getUserPath')) {
+          if (cb) cb('{"t":"gasoline"}');
+          return;
+        }
         assert.ok(code.startsWith('(function()'), 'Lua chunk should be wrapped in a function');
         assert.ok(code.includes('core_paths.getUserPath'));
         try {

@@ -576,16 +576,15 @@ angular.module('beamng.apps')
           var seq = fetchSeq;
           if (
             typeof window === 'undefined' ||
-            typeof bngApi === 'undefined' ||
-            typeof bngApi.engineLua !== 'function'
+            typeof bngApi === 'undefined'
           )
             return;
 
           var lua = [
             '(function()',
-            'local veh=be:getPlayerVehicle(0)',
-            'if not veh then return jsonEncode({t="Food"}) end',
-            'local stor=energyStorage and energyStorage.getStorages and energyStorage.getStorages(veh)',
+            'local storFn=energyStorage and energyStorage.getStorages',
+            'if not storFn then return jsonEncode({t="Food"}) end',
+            'local stor=storFn()',
             'local t=""',
             'if stor then',
             '  for _,s in pairs(stor) do if s.energyType and s.energyType:lower()~="air" then t=s.energyType break end end',
@@ -595,7 +594,12 @@ angular.module('beamng.apps')
             'end)()'
           ].join('\n');
 
-          bngApi.engineLua(lua, function (res) {
+          var luaCaller =
+            bngApi.activeObjectLua ||
+            (typeof bngApi.engineLua === 'function' && bngApi.engineLua);
+          if (typeof luaCaller !== 'function') return;
+
+          luaCaller(lua, function (res) {
             if (seq !== fetchSeq) return;
             var parsed = {};
             try { parsed = JSON.parse(res); } catch (e) {}
