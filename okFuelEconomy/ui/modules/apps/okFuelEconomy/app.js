@@ -1143,7 +1143,7 @@ angular.module('beamng.apps')
       }
   } catch (e) { /* ignore */ }
 
-  var speedAvg = { queue: [] };
+  var speedAvg = { queue: [], time: 0 };
 
       function saveAvgHistory() {
           try { localStorage.setItem(AVG_KEY, JSON.stringify(avgHistory)); } catch (e) { /* ignore */ }
@@ -1192,7 +1192,7 @@ angular.module('beamng.apps')
           saveAvgHistory();
           $scope.avgHistory = '';
           $scope.avgKmLHistory = '';
-          speedAvg = { queue: [] };
+          speedAvg = { queue: [], time: 0 };
       }
 
       function hardReset(preserveTripFuel) {
@@ -1223,6 +1223,7 @@ angular.module('beamng.apps')
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
         engineWasRunning = false;
+        speedAvg = { queue: [], time: 0 };
         resetInstantHistory();
         resetAvgHistory();
       }
@@ -1335,6 +1336,7 @@ angular.module('beamng.apps')
             );
             var deltaDistance = speed_mps * dt;
             distance_m += deltaDistance;
+            speedAvg.time += dt;
             // Record resolved speed with timestamp for EU compliance window.
             speedAvg.queue.push({ speed: Math.abs(speed_mps), time: now_ms });
             while (
@@ -1363,11 +1365,7 @@ angular.module('beamng.apps')
             $scope.avgCO2 = formatCO2(0, 0, mode);
             $scope.avgCo2Class = classifyCO2(0);
             var avgSpeed_kph =
-              calculateAverage(
-                speedAvg.queue.map(function (s) {
-                  return s.speed;
-                })
-              ) * 3.6;
+              speedAvg.time > 0 ? (distance_m / speedAvg.time) * 3.6 : 0;
             var topSpeed_kph =
               (speedAvg.queue.length > 0
                 ? Math.max.apply(
@@ -1437,6 +1435,9 @@ angular.module('beamng.apps')
           var capacity_l = streams.engineInfo[12];
           var throttle = streams.electrics.throttle_input || 0;
           var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
+          if (engineRunning) {
+            speedAvg.time += dt;
+          }
           if (!engineRunning && engineWasRunning) {
             resetInstantHistory();
           }
@@ -1729,11 +1730,7 @@ angular.module('beamng.apps')
           $scope.avgCO2 = formatCO2(avgCo2Val, 0, mode);
           $scope.avgCo2Class = classifyCO2(avgCo2Val);
           var avgSpeed_kph =
-            calculateAverage(
-              speedAvg.queue.map(function (s) {
-                return s.speed;
-              })
-            ) * 3.6;
+            speedAvg.time > 0 ? (distance_m / speedAvg.time) * 3.6 : 0;
           var topSpeed_kph =
             (speedAvg.queue.length > 0
               ? Math.max.apply(
