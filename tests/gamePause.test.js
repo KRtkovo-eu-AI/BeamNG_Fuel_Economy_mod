@@ -11,12 +11,7 @@ it('halts updates when the game is paused', () => {
   };
   let paused = false;
   global.bngApi = {
-    engineLua: cmd => {
-      if (cmd === 'return getTimeScale()') {
-        return paused ? 0 : 1;
-      }
-      return '';
-    },
+    engineLua: () => (paused ? 0 : 1),
     activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Gasoline' }))
   };
   global.localStorage = { getItem: () => null, setItem: () => {} };

@@ -1452,7 +1452,9 @@ angular.module('beamng.apps')
           var paused = false;
           if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
             try {
-              var ts = bngApi.engineLua('return getTimeScale()');
+              var ts = bngApi.engineLua(
+                "local gts=rawget(_G,'getTimeScale') or (be and be.getTimeScale) or (extensions and extensions.core_time and extensions.core_time.getTimeScale); return gts and gts() or 1"
+              );
               paused = parseFloat(ts) === 0;
             } catch (e) {
               paused = false;
