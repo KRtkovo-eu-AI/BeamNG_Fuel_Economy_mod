@@ -3,7 +3,12 @@ local M = {}
 local lastPaused
 
 local function isPaused()
-  return be:getPlayState() ~= 1
+  -- be:getPlayState is not available in all environments, so guard against
+  -- calling a nil method which would raise a Lua error inside the game
+  if be and be.getPlayState then
+    return be:getPlayState() ~= 1
+  end
+  return false
 end
 
 local function logIfChanged(paused)
