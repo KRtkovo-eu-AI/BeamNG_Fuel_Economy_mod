@@ -839,17 +839,24 @@ angular.module('beamng.apps')
       var ENDPOINT_KEY = 'okFuelEconomyEndpoint';
 
       var endpointModule;
-      var nodeRequire = typeof require === 'function'
-        ? require
-        : (typeof window !== 'undefined' && typeof window.require === 'function'
-            ? window.require
-            : (typeof nw !== 'undefined' && typeof nw.require === 'function'
-                ? nw.require
-                : null));
+      var nodeRequire = null;
+      if (typeof window !== 'undefined') {
+        if (typeof window.requireNode === 'function') nodeRequire = window.requireNode;
+        else if (typeof window.nodeRequire === 'function') nodeRequire = window.nodeRequire;
+        else if (typeof window.require === 'function' && window.require.main) nodeRequire = window.require;
+      }
+      if (!nodeRequire && typeof nw !== 'undefined' && typeof nw.require === 'function') {
+        nodeRequire = nw.require;
+      }
+      if (!nodeRequire && typeof require === 'function' && require.main) {
+        nodeRequire = require;
+      }
       if (nodeRequire) {
         try { endpointModule = nodeRequire('./localEndpoint'); }
         catch (e) { console.error('[okFE] failed to load endpoint module', e); }
-      } else {
+      }
+      var endpointSupported = !!endpointModule;
+      if (!endpointSupported) {
         console.warn('[okFE] node require unavailable; endpoint disabled');
       }
 
@@ -866,20 +873,21 @@ angular.module('beamng.apps')
       }
 
       function startEndpoint() {
-        if (endpointModule) {
-          console.log('[okFE] enabling endpoint');
-          endpointModule.start(collectExportData);
+        if (!endpointSupported) {
+          console.warn('[okFE] endpoint unavailable; start aborted');
+          return;
         }
+        console.log('[okFE] enabling endpoint');
+        endpointModule.start(collectExportData);
       }
 
       function stopEndpoint() {
-        if (endpointModule) {
-          console.log('[okFE] disabling endpoint');
-          endpointModule.stop();
-        }
+        if (!endpointSupported) return;
+        console.log('[okFE] disabling endpoint');
+        endpointModule.stop();
       }
 
-      $scope.endpointEnabled = localStorage.getItem(ENDPOINT_KEY) === 'true';
+      $scope.endpointEnabled = endpointSupported && localStorage.getItem(ENDPOINT_KEY) === 'true';
       if ($scope.endpointEnabled) {
         console.log('[okFE] endpoint enabled on startup');
         startEndpoint();
@@ -887,6 +895,12 @@ angular.module('beamng.apps')
         console.log('[okFE] endpoint disabled on startup');
       }
       $scope.toggleEndpoint = function () {
+        if (!endpointSupported) {
+          console.warn('[okFE] endpoint not supported');
+          $scope.endpointEnabled = false;
+          try { localStorage.setItem(ENDPOINT_KEY, 'false'); } catch (e) {}
+          return;
+        }
         $scope.endpointEnabled = !$scope.endpointEnabled;
         console.log('[okFE] endpoint', $scope.endpointEnabled ? 'enabled' : 'disabled', 'via toggle');
         try {
