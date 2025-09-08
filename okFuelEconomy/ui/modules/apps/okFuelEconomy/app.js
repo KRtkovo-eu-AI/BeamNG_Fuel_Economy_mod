@@ -1075,6 +1075,7 @@ angular.module('beamng.apps')
       var lastDistance_m = 0;
       var lastTime_ms = performance.now();
       var gamePaused = false;
+      var gamePausedByEvent = false;
       var lastSimTime = null;
       var startFuel_l = null;
       var previousFuel_l = null;
@@ -1445,10 +1446,12 @@ angular.module('beamng.apps')
       };
 
       $scope.on_GamePaused = function () {
+        gamePausedByEvent = true;
         gamePaused = true;
       };
 
       $scope.on_GameResumed = function () {
+        gamePausedByEvent = false;
         gamePaused = false;
         lastTime_ms = performance.now();
         lastSimTime = null;
@@ -1474,22 +1477,22 @@ angular.module('beamng.apps')
             : typeof streams.time === 'number'
             ? streams.time
             : null;
-        var paused = gamePaused;
+        var pausedFromStreams = false;
         if (streams) {
-          if ('paused' in streams) paused = !!streams.paused;
-          if (streams.game && 'paused' in streams.game) paused = !!streams.game.paused;
+          if ('paused' in streams && streams.paused) pausedFromStreams = true;
+          if (streams.game && streams.game.paused) pausedFromStreams = true;
           if (streams.gameState) {
-            if ('paused' in streams.gameState) paused = !!streams.gameState.paused;
+            if (streams.gameState.paused) pausedFromStreams = true;
             if (
               typeof streams.gameState.state === 'string' &&
               streams.gameState.state.toLowerCase().indexOf('pause') !== -1
             ) {
-              paused = true;
+              pausedFromStreams = true;
             }
           }
         }
-        gamePaused = paused;
-        if (paused || simDt === 0) {
+        gamePaused = gamePausedByEvent || pausedFromStreams;
+        if (gamePaused || simDt === 0) {
           lastTime_ms = performance.now();
           return;
         }

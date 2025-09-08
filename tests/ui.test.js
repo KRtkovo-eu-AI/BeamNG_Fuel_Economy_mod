@@ -1986,7 +1986,8 @@ describe('controller integration', () => {
     const streams = {
       engineInfo: Array(15).fill(0),
       electrics: { wheelspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 },
-      dt: 1
+      dt: 1,
+      gameState: { paused: false }
     };
     streams.engineInfo[11] = 60;
     streams.engineInfo[12] = 80;
@@ -2154,7 +2155,8 @@ describe('controller integration', () => {
     const streams = {
       engineInfo: Array(15).fill(0),
       electrics: { wheelspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 },
-      dt: 1
+      dt: 1,
+      gameState: { paused: false }
     };
     streams.engineInfo[11] = 60;
     streams.engineInfo[12] = 80;
