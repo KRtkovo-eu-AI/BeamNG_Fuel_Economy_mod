@@ -26,7 +26,7 @@ local function checkPaused()
   logIfChanged(isPaused())
 end
 
-M.onInit = function()
+M.onExtensionLoaded = function()
   if streams and streams.registerStream then
     streams.registerStream('okGameState', getState)
   end
