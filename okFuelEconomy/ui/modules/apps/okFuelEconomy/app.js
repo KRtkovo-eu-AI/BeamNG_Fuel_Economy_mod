@@ -1205,6 +1205,7 @@ angular.module('beamng.apps')
         }
 
         function refreshCostOutputs() {
+          if (gamePaused) return;
           var mode = getActiveUnitMode();
           var unitLabels = getUnitLabels(mode);
           var priceForMode =
@@ -1458,11 +1459,11 @@ angular.module('beamng.apps')
       });
 
       $scope.$on('streamsUpdate', function (event, streams) {
+        if (gamePaused) {
+          lastTime_ms = performance.now();
+          return;
+        }
         $scope.$evalAsync(function () {
-          if (gamePaused) {
-            lastTime_ms = performance.now();
-            return;
-          }
           if ($scope.fuelType === 'Food') {
             fetchFuelType();
             if (!streams.electrics) return;

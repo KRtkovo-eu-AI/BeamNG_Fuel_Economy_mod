@@ -2135,8 +2135,15 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
+    const instantBefore = $scope.instantHistory;
+    const instantKmLBefore = $scope.instantKmLHistory;
+    const avgConsBefore = $scope.avgL100km;
     const avgBefore = $scope.avgHistory;
+    const avgKmLBefore = $scope.avgKmLHistory;
+    const avgCo2Before = $scope.avgCO2;
+    const rangeBefore = $scope.data4;
     const tripBefore = $scope.tripAvgHistory;
+    const tripKmLBefore = $scope.tripAvgKmLHistory;
 
     $scope.on_GamePaused();
 
@@ -2146,8 +2153,15 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
+    assert.strictEqual($scope.instantHistory, instantBefore);
+    assert.strictEqual($scope.instantKmLHistory, instantKmLBefore);
+    assert.strictEqual($scope.avgL100km, avgConsBefore);
     assert.strictEqual($scope.avgHistory, avgBefore);
+    assert.strictEqual($scope.avgKmLHistory, avgKmLBefore);
+    assert.strictEqual($scope.avgCO2, avgCo2Before);
+    assert.strictEqual($scope.data4, rangeBefore);
     assert.strictEqual($scope.tripAvgHistory, tripBefore);
+    assert.strictEqual($scope.tripAvgKmLHistory, tripKmLBefore);
 
     $scope.on_GameResumed();
 
@@ -2155,7 +2169,8 @@ describe('controller integration', () => {
     streams.engineInfo[11] -= 0.1;
     $scope.on_streamsUpdate(null, streams);
 
-    assert.notStrictEqual($scope.avgHistory, avgBefore);
+    assert.notStrictEqual($scope.instantHistory, instantBefore);
+    assert.notStrictEqual($scope.tripAvgHistory, tripBefore);
   });
 
   it('ignores unrealistic consumption spikes while stationary', () => {
