@@ -30,7 +30,24 @@ var CO2_FACTORS_G_PER_L = {
   Hydrogen: 0,
   Nitromethane: 820,
   Nitromethan: 820,
-  Food: 0.001 // approx. CO2 from human flatulence per kcal
+  Food: 0.001, // approx. CO2 from human flatulence per kcal
+  Kerosene: 2500,
+  'Jet Fuel': 2500,
+  Methanol: 1100,
+  Biodiesel: 2500,
+  Synthetic: 2392,
+  'Coal Gas': 2000,
+  Steam: 0,
+  Ammonia: 0,
+  Hybrid: 2392,
+  'Plug-in Hybrid': 2392,
+  'Fuel Oil': 3100,
+  'Heavy Oil': 3100,
+  Hydrazine: 0,
+  Hypergolic: 0,
+  'Solid Rocket': 1900,
+  'Black Powder': 1900,
+  ACPC: 1900
 };
 
 var NOX_FACTORS_G_PER_L = {
@@ -43,7 +60,24 @@ var NOX_FACTORS_G_PER_L = {
   Hydrogen: 0,
   Nitromethane: 12,
   Nitromethan: 12,
-  Food: 0
+  Food: 0,
+  Kerosene: 15,
+  'Jet Fuel': 15,
+  Methanol: 4,
+  Biodiesel: 18,
+  Synthetic: 10,
+  'Coal Gas': 15,
+  Steam: 0,
+  Ammonia: 6,
+  Hybrid: 10,
+  'Plug-in Hybrid': 10,
+  'Fuel Oil': 25,
+  'Heavy Oil': 25,
+  Hydrazine: 30,
+  Hypergolic: 30,
+  'Solid Rocket': 20,
+  'Black Powder': 20,
+  ACPC: 20
 };
 
 function resetFoodSimulation() {

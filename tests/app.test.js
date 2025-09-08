@@ -409,6 +409,23 @@ describe('app.js utility functions', () => {
       assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethane'), 5 / 100 * 820);
       assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethan'), 5 / 100 * 820);
       assert.ok(Math.abs(calculateCO2gPerKm(5, 'Food') - 5 / 100 * 0.001) < 1e-9);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Kerosene'), 5 / 100 * 2500);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Jet Fuel'), 5 / 100 * 2500);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Methanol'), 5 / 100 * 1100);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Biodiesel'), 5 / 100 * 2500);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Synthetic'), 5 / 100 * 2392);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Coal Gas'), 5 / 100 * 2000);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Steam'), 0);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Ammonia'), 0);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Hybrid'), 5 / 100 * 2392);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Plug-in Hybrid'), 5 / 100 * 2392);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Fuel Oil'), 5 / 100 * 3100);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Heavy Oil'), 5 / 100 * 3100);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Hydrazine'), 0);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Hypergolic'), 0);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Solid Rocket'), 5 / 100 * 1900);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Black Powder'), 5 / 100 * 1900);
+      assert.strictEqual(calculateCO2gPerKm(5, 'ACPC'), 5 / 100 * 1900);
     });
     it('caps extreme consumption when computing emissions', () => {
       const capped = calculateCO2gPerKm(10000, 'Gasoline');
@@ -460,6 +477,10 @@ describe('app.js utility functions', () => {
       const boosted = calculateNOxFactor('Gasoline', 90, true, false);
       assert.ok(hot > base);
       assert.ok(boosted > base);
+    });
+    it('uses base NOx factors for additional fuels', () => {
+      assert.strictEqual(calculateNOxFactor('Ammonia', 90, false, false), 6);
+      assert.strictEqual(calculateNOxFactor('Fuel Oil', 90, false, false), 25);
     });
     it('returns zero for electric hydrogen drivetrains', () => {
       assert.strictEqual(calculateNOxFactor('Hydrogen', 200, false, true), 0);
