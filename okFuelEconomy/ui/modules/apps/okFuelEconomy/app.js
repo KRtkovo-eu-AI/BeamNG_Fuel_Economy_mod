@@ -827,6 +827,7 @@ angular.module('beamng.apps')
       $scope.$on('$destroy', function () {
         StreamsManager.remove(streamsList);
         clearInterval(priceTimer);
+        stopEndpoint();
       });
 
       // Settings for visible fields
@@ -835,6 +836,45 @@ angular.module('beamng.apps')
       var STYLE_KEY = 'okFuelEconomyUseCustomStyles';
       var PREFERRED_UNIT_KEY = 'okFuelEconomyPreferredUnit';
       var ROW_ORDER_KEY = 'okFeRowOrder';
+      var ENDPOINT_KEY = 'okFuelEconomyEndpoint';
+
+      var endpointModule;
+      if (typeof require === 'function') {
+        try { endpointModule = require('./localEndpoint'); } catch (e) {}
+      }
+
+      function collectExportData() {
+        var data = {};
+        Object.keys($scope).forEach(function (k) {
+          if (k[0] === '$') return;
+          var v = $scope[k];
+          if (typeof v === 'function') return;
+          if (Array.isArray(v) && /history/i.test(k)) return;
+          data[k] = v;
+        });
+        return data;
+      }
+
+      function startEndpoint() {
+        if (endpointModule) endpointModule.start(collectExportData);
+      }
+
+      function stopEndpoint() {
+        if (endpointModule) endpointModule.stop();
+      }
+
+      $scope.endpointEnabled = localStorage.getItem(ENDPOINT_KEY) === 'true';
+      if ($scope.endpointEnabled) startEndpoint();
+      $scope.toggleEndpoint = function () {
+        $scope.endpointEnabled = !$scope.endpointEnabled;
+        try {
+          localStorage.setItem(
+            ENDPOINT_KEY,
+            $scope.endpointEnabled ? 'true' : 'false'
+          );
+        } catch (e) {}
+        if ($scope.endpointEnabled) startEndpoint(); else stopEndpoint();
+      };
       $scope.useCustomStyles = localStorage.getItem(STYLE_KEY) !== 'false';
       $scope.toggleCustomStyles = function () {
         $scope.useCustomStyles = !$scope.useCustomStyles;
