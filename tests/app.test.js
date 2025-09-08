@@ -22,7 +22,9 @@ const {
   formatConsumptionRate,
   formatEfficiency,
   formatFlow,
+  calculateCO2Factor,
   calculateCO2gPerKm,
+  calculateNOxFactor,
   formatCO2,
   classifyCO2,
   meetsEuCo2Limit,
@@ -403,6 +405,7 @@ describe('app.js utility functions', () => {
       assert.strictEqual(calculateCO2gPerKm(5, 'LPG/CNG'), 5 / 100 * 1660);
       assert.strictEqual(calculateCO2gPerKm(5, 'Air'), 0);
       assert.strictEqual(calculateCO2gPerKm(5, 'Ethanol'), 5 / 100 * 1510);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Hydrogen'), 0);
       assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethane'), 5 / 100 * 820);
       assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethan'), 5 / 100 * 820);
       assert.ok(Math.abs(calculateCO2gPerKm(5, 'Food') - 5 / 100 * 0.001) < 1e-9);
@@ -429,9 +432,50 @@ describe('app.js utility functions', () => {
     });
 
     it('estimates total emissions for a 1 km trip', () => {
-      const perKm = calculateCO2gPerKm(5, 'Gasoline');
+      const perKm = calculateCO2gPerKm(5, 'Gasoline', 90, false, false);
       const totalKg = perKm / 1000; // 1 km distance
       assert.ok(Math.abs(totalKg - 0.1196) < 1e-6);
+    });
+    it('increases with temperature and N2O for gasoline', () => {
+      const base = calculateCO2gPerKm(5, 'Gasoline', 90, false, false);
+      const hot = calculateCO2gPerKm(5, 'Gasoline', 140, false, false);
+      const boosted = calculateCO2gPerKm(5, 'Gasoline', 90, true, false);
+      assert.ok(hot > base);
+      assert.ok(boosted > base);
+    });
+  });
+
+  describe('emission factors', () => {
+    it('computes temperature-based NOx for hydrogen combustion', () => {
+      assert.strictEqual(calculateNOxFactor('Hydrogen', 100, false, false), 1);
+    });
+    it('increases NOx when N2O is active', () => {
+      const base = calculateNOxFactor('Hydrogen', 100, false, false);
+      const boosted = calculateNOxFactor('Hydrogen', 100, true, false);
+      assert.ok(boosted > base);
+    });
+    it('scales NOx for gasoline with temp and N2O', () => {
+      const base = calculateNOxFactor('Gasoline', 90, false, false);
+      const hot = calculateNOxFactor('Gasoline', 140, false, false);
+      const boosted = calculateNOxFactor('Gasoline', 90, true, false);
+      assert.ok(hot > base);
+      assert.ok(boosted > base);
+    });
+    it('returns zero for electric hydrogen drivetrains', () => {
+      assert.strictEqual(calculateNOxFactor('Hydrogen', 200, false, true), 0);
+    });
+    it('scales CO2 for gasoline with temp and N2O', () => {
+      const base = calculateCO2Factor('Gasoline', 90, false, false);
+      const hot = calculateCO2Factor('Gasoline', 140, false, false);
+      const boosted = calculateCO2Factor('Gasoline', 90, true, false);
+      assert.ok(hot > base);
+      assert.ok(boosted > base);
+    });
+    it('returns zero CO2 factor for electricity', () => {
+      assert.strictEqual(
+        calculateCO2Factor('Electricity', 200, true, true),
+        0
+      );
     });
   });
 
