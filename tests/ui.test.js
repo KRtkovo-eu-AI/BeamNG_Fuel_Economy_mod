@@ -307,6 +307,30 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
+  it('preserves trip averages on vehicle change', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    $scope.tripAvgHistory = 'persist';
+    $scope.tripAvgKmLHistory = 'persist';
+
+    $scope.on_VehicleFocusChanged();
+
+    assert.strictEqual($scope.tripAvgHistory, 'persist');
+    assert.strictEqual($scope.tripAvgKmLHistory, 'persist');
+  });
+
   it('migrates legacy fuelPrice.json via app.js', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
@@ -1888,9 +1912,8 @@ describe('controller integration', () => {
       assert.strictEqual($scope.avgKmLHistory, '');
       const avgAfter = JSON.parse(store.okFuelEconomyAvgHistory);
       const overallAfter = JSON.parse(store.okFuelEconomyOverall);
-      // Both recent and overall averages should start fresh after a reset.
       assert.equal(avgAfter.queue.length, 1);
-      assert.equal(overallAfter.queue.length, 1);
+      assert.equal(overallAfter.queue.length, overallBefore.queue.length + 1);
   });
 
   it('skips history updates when engine is off', () => {
@@ -1971,7 +1994,7 @@ describe('controller integration', () => {
     }
 
     assert.strictEqual($scope.avgHistory, '');
-    assert.strictEqual($scope.tripAvgHistory, '');
+    assert.strictEqual($scope.tripAvgHistory, tripHist);
     assert.strictEqual($scope.tripAvgCostLiquid, tripCost);
     assert.strictEqual($scope.instantHistory, '');
   });
@@ -2025,7 +2048,7 @@ describe('controller integration', () => {
     }
 
     assert.strictEqual($scope.avgHistory, '');
-    assert.strictEqual($scope.tripAvgHistory, '');
+    assert.strictEqual($scope.tripAvgHistory, tripHist);
     assert.strictEqual($scope.tripAvgCostLiquid, tripCost);
     assert.strictEqual($scope.instantHistory, '');
   });
@@ -2077,7 +2100,7 @@ describe('controller integration', () => {
     }
 
     assert.strictEqual($scope.avgHistory, '');
-    assert.strictEqual($scope.tripAvgHistory, '');
+    assert.strictEqual($scope.tripAvgHistory, tripHist);
     assert.strictEqual($scope.tripAvgCostLiquid, tripCost);
     assert.strictEqual($scope.instantHistory, '');
   });

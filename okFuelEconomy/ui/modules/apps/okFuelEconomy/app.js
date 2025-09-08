@@ -1224,13 +1224,6 @@ angular.module('beamng.apps')
           $scope.avgKmLHistory = '';
           speedAvg = { queue: [] };
           avgRecent = { queue: [] };
-          // Also clear accumulated overall averages so a new trip
-          // starts with a clean state after engine shutdowns or
-          // vehicle resets.
-          overall.queue = [];
-          overall.co2Queue = [];
-          $scope.tripAvgHistory = '';
-          $scope.tripAvgKmLHistory = '';
       }
 
       function hardReset(preserveTripFuel) {
