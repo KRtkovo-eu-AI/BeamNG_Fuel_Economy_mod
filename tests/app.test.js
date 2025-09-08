@@ -27,6 +27,7 @@ const {
   classifyCO2,
   meetsEuCo2Limit,
   MIN_VALID_SPEED_MPS,
+  MAX_CONSUMPTION,
   resolveUnitModeForFuelType,
   formatFuelTypeLabel,
   getUnitLabels
@@ -73,6 +74,12 @@ describe('app.js utility functions', () => {
       assert.strictEqual(
         calculateInstantConsumption(-0.001, 10),
         -0.001 / 10 * 100000
+      );
+    });
+    it('caps unrealistic values', () => {
+      assert.strictEqual(
+        calculateInstantConsumption(2, 0),
+        MAX_CONSUMPTION
       );
     });
   });
@@ -399,6 +406,10 @@ describe('app.js utility functions', () => {
       assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethane'), 5 / 100 * 820);
       assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethan'), 5 / 100 * 820);
       assert.ok(Math.abs(calculateCO2gPerKm(5, 'Food') - 5 / 100 * 0.001) < 1e-9);
+    });
+    it('caps extreme consumption when computing emissions', () => {
+      const capped = calculateCO2gPerKm(10000, 'Gasoline');
+      assert.strictEqual(capped, (MAX_CONSUMPTION / 100) * 2392);
     });
     it('formats CO2 emissions', () => {
       const val = calculateCO2gPerKm(5, 'Gasoline');

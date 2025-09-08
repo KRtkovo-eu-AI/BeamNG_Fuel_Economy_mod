@@ -7,6 +7,10 @@ var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
 var MIN_RPM_RUNNING = 100; // below this rpm the engine is considered off
 var DEFAULT_IDLE_FLOW_LPS = 0.0002; // ~0.72 L/h fallback when idle flow unknown
 var DEFAULT_IDLE_RPM = 800; // assume typical idle speed when unknown
+// Limit extreme instantaneous consumption figures to keep the display
+// within a realistic range even when flooring the throttle from a stop.
+var MAX_CONSUMPTION = 100; // [L/100km] ignore unrealistic spikes
+var MAX_EFFICIENCY = 100; // [km/L] cap unrealistic efficiency
 var RADPS_TO_RPM = 60 / (2 * Math.PI); // convert rad/s telemetry to rpm
 var FOOD_CAPACITY_KCAL = 2000;
 var FOOD_REST_KCAL_PER_H = 80;
@@ -44,12 +48,16 @@ function normalizeRpm(rpm, engineRunning) {
 
 function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
   var speed = Math.abs(speed_mps);
+  var l_per_100km;
   if (speed <= MIN_VALID_SPEED_MPS) {
     // For very low speeds use a quarter of the hourly fuel rate as a
     // per-distance estimate to avoid extreme L/100km values.
-    return (fuelFlow_lps * 3600) / 4;
+    l_per_100km = (fuelFlow_lps * 3600) / 4;
+  } else {
+    l_per_100km = (fuelFlow_lps / speed) * 100000;
   }
-  return (fuelFlow_lps / speed) * 100000;
+  if (l_per_100km > MAX_CONSUMPTION) l_per_100km = MAX_CONSUMPTION;
+  return l_per_100km;
 }
 
 // Resolve the fuel flow when sensor readings are static.
@@ -418,7 +426,8 @@ function calculateCO2gPerKm(lPer100km, fuelType) {
     ? CO2_FACTORS_G_PER_L[fuelType]
     : CO2_FACTORS_G_PER_L.Gasoline;
   if (!Number.isFinite(lPer100km)) return Infinity;
-  return (lPer100km / 100) * factor;
+  var capped = Math.min(lPer100km, MAX_CONSUMPTION);
+  return (capped / 100) * factor;
 }
 
 function formatCO2(gPerKm, decimals, mode) {
@@ -501,6 +510,8 @@ if (typeof module !== 'undefined') {
     EPS_SPEED,
     MIN_VALID_SPEED_MPS,
     MIN_RPM_RUNNING,
+    MAX_CONSUMPTION,
+    MAX_EFFICIENCY,
     calculateFuelFlow,
     calculateInstantConsumption,
     normalizeRpm,
@@ -1031,8 +1042,6 @@ angular.module('beamng.apps')
         var lastCapacity_l = null;
       var lastInstantUpdate_ms = 0;
       var INSTANT_UPDATE_INTERVAL = 250;
-      var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
-      var MAX_EFFICIENCY = 100; // [km/L] cap unrealistic efficiency
 
       $scope.vehicleNameStr = "";
 
