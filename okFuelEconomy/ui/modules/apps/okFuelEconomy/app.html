@@ -49,21 +49,56 @@
       </td>
     </tr>
 
-    <tr ng-if="visible.avgCost">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Average fuel cost:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span>{{ avgCost }}</span>
-      </td>
-    </tr>
-
     <tr ng-if="visible.totalCost">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Total fuel cost:
       </td>
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         <span>{{ totalCost }}</span>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.instantLph || visible.instantL100km || visible.instantKmL">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Instant consumption:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span ng-if="visible.instantLph">{{ instantLph }}</span>
+        <span ng-if="visible.instantLph && (visible.instantL100km || visible.instantKmL)"> | </span>
+        <span ng-if="visible.instantL100km">{{ instantL100km }}</span>
+        <span ng-if="visible.instantL100km && visible.instantKmL"> | </span>
+        <span ng-if="visible.instantKmL">{{ instantKmL }}</span>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.instantGraph">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Instant {{ unitFlowUnit }} history:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
+          <polyline ng-attr-points="{{ fuelType === 'Food' ? avgHistory : instantHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#5fdcff' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
+        </svg>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.instantKmLGraph">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Instant {{ unitEfficiencyUnit }} history:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
+          <polyline ng-attr-points="{{ instantKmLHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#5fdcff' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
+        </svg>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.instantCO2">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Instant CO₂ emissions:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        {{ instantCO2 }}
       </td>
     </tr>
 
@@ -97,6 +132,15 @@
         <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
           <polyline ng-attr-points="{{ avgKmLHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#5fdcff' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
         </svg>
+      </td>
+    </tr>
+
+    <tr ng-if="visible.avgCost">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Average fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>{{ avgCost }}</span>
       </td>
     </tr>
 
@@ -317,50 +361,6 @@
       </td>
     </tr>
 
-    <tr ng-if="visible.instantLph || visible.instantL100km || visible.instantKmL">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Instant consumption:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span ng-if="visible.instantLph">{{ instantLph }}</span>
-        <span ng-if="visible.instantLph && (visible.instantL100km || visible.instantKmL)"> | </span>
-        <span ng-if="visible.instantL100km">{{ instantL100km }}</span>
-        <span ng-if="visible.instantL100km && visible.instantKmL"> | </span>
-        <span ng-if="visible.instantKmL">{{ instantKmL }}</span>
-      </td>
-    </tr>
-
-    <tr ng-if="visible.instantGraph">
-        <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-          Instant {{ unitFlowUnit }} history:
-        </td>
-        <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-          <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
-            <polyline ng-attr-points="{{ fuelType === 'Food' ? avgHistory : instantHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#5fdcff' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
-          </svg>
-        </td>
-    </tr>
-
-    <tr ng-if="visible.instantKmLGraph">
-        <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-          Instant {{ unitEfficiencyUnit }} history:
-        </td>
-        <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-          <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
-            <polyline ng-attr-points="{{ instantKmLHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#5fdcff' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
-          </svg>
-        </td>
-    </tr>
-
-    <tr ng-if="visible.instantCO2">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Instant CO₂ emissions:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ccefff; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        {{ instantCO2 }}
-      </td>
-    </tr>
-
     <tr ng-if="visible.range">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#69e0ff; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Range:
@@ -370,6 +370,42 @@
       </td>
     </tr>
 
+    <tr ng-if="visible.tripDistance">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip distance:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span id="tripDistanceDisplay">{{ data8 }}</span>
+      </td>
+    </tr>
+    <tr ng-if="visible.tripFuelUsed">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip fuel used:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>Liquid: {{ tripFuelUsedLiquid }}</span>
+        <span> | </span>
+        <span>Electricity: {{ tripFuelUsedElectric }}</span>
+      </td>
+    </tr>
+    <tr ng-if="visible.tripTotalCost">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip total fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>Liquid: {{ tripTotalCostLiquid }}</span>
+        <span> | </span>
+        <span>Electricity: {{ tripTotalCostElectric }}</span>
+      </td>
+    </tr>
+    <tr ng-if="visible.tripTotalCO2">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip total CO₂ emissions:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        {{ tripTotalCO2 }}
+      </td>
+    </tr>
     <tr ng-if="visible.tripAvgL100km || visible.tripAvgKmL">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip average consumption:
@@ -380,7 +416,46 @@
         <span ng-if="visible.tripAvgKmL">{{ tripAvgKmL }}</span>
       </td>
     </tr>
+    <tr ng-if="visible.tripGraph">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip average history:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
+          <polyline ng-attr-points="{{ tripAvgHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#ffa64d' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
+        </svg>
+      </td>
+    </tr>
 
+    <tr ng-if="visible.tripKmLGraph">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip average {{ unitEfficiencyUnit }} history:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
+          <polyline ng-attr-points="{{ tripAvgKmLHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#ffa64d' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
+        </svg>
+      </td>
+    </tr>
+    <tr ng-if="visible.tripRange">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip range:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        {{ data9 }}
+      </td>
+    </tr>
+
+    <tr ng-if="visible.tripAvgCost">
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        Trip average fuel cost:
+      </td>
+      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
+        <span>Liquid: {{ tripAvgCostLiquid }}</span>
+        <span> | </span>
+        <span>Electricity: {{ tripAvgCostElectric }}</span>
+      </td>
+    </tr>
     <tr ng-if="visible.tripAvgCO2">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip average CO₂ emissions:
@@ -594,90 +669,6 @@
                       </svg>
       </td>
     </tr>
-
-    <tr ng-if="visible.tripTotalCO2">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Trip total CO₂ emissions:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        {{ tripTotalCO2 }}
-      </td>
-    </tr>
-
-    <tr ng-if="visible.tripGraph">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Trip average history:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
-          <polyline ng-attr-points="{{ tripAvgHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#ffa64d' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
-        </svg>
-      </td>
-    </tr>
-
-    <tr ng-if="visible.tripKmLGraph">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Trip average {{ unitEfficiencyUnit }} history:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <svg viewBox="0 0 100 40" preserveAspectRatio="none" ng-attr-style="{{ 'width:100%; height:40px;' + (useCustomStyles ? ' background:rgba(0,200,255,0.05);' : '') }}">
-          <polyline ng-attr-points="{{ tripAvgKmLHistory }}" ng-attr-style="{{ 'fill:none;stroke:' + (useCustomStyles ? '#ffa64d' : 'currentColor') + ';stroke-width:1;' }}"></polyline>
-        </svg>
-      </td>
-    </tr>
-
-    <tr ng-if="visible.tripDistance">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Trip distance:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span id="tripDistanceDisplay">{{ data8 }}</span>
-      </td>
-    </tr>
-
-    <tr ng-if="visible.tripRange">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Trip range:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        {{ data9 }}
-      </td>
-    </tr>
-
-    <tr ng-if="visible.tripFuelUsed">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; width:38%; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Trip fuel used:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span>Liquid: {{ tripFuelUsedLiquid }}</span>
-        <span> | </span>
-        <span>Electricity: {{ tripFuelUsedElectric }}</span>
-      </td>
-    </tr>
-
-    <tr ng-if="visible.tripAvgCost">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Trip average fuel cost:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span>Liquid: {{ tripAvgCostLiquid }}</span>
-        <span> | </span>
-        <span>Electricity: {{ tripAvgCostElectric }}</span>
-      </td>
-    </tr>
-
-    <tr ng-if="visible.tripTotalCost">
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        Trip total fuel cost:
-      </td>
-      <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#FFE7CC; border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
-        <span>Liquid: {{ tripTotalCostLiquid }}</span>
-        <span> | </span>
-        <span>Electricity: {{ tripTotalCostElectric }}</span>
-      </td>
-    </tr>
-
-    <tr ng-if="visible.tripReset">
       <td ng-attr-style="{{ useCustomStyles ? 'padding:3px 2px; color:#ffa64d; font-weight:500; text-shadow:0 0 3px rgba(0,255,255,0.4); border-bottom:1px solid rgba(0,180,255,0.10);' : '' }}">
         Trip reset:
       </td>
