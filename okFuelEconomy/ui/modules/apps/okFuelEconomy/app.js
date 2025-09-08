@@ -1471,16 +1471,31 @@ angular.module('beamng.apps')
             : typeof streams.time === 'number'
             ? streams.time
             : null;
+        var paused = gamePaused;
+        if (streams) {
+          if (typeof streams.paused === 'boolean') paused = streams.paused;
+          if (streams.game && typeof streams.game.paused === 'boolean') paused = streams.game.paused;
+          if (streams.gameState) {
+            if (typeof streams.gameState.paused === 'boolean') paused = streams.gameState.paused;
+            if (
+              typeof streams.gameState.state === 'string' &&
+              streams.gameState.state.toLowerCase().indexOf('pause') !== -1
+            ) {
+              paused = true;
+            }
+          }
+        }
+        gamePaused = paused;
+        if (paused || simDt === 0) {
+          lastTime_ms = performance.now();
+          return;
+        }
         if (simTime !== null) {
           if (lastSimTime !== null && simTime === lastSimTime) {
             lastTime_ms = performance.now();
             return;
           }
           lastSimTime = simTime;
-        }
-        if (gamePaused || simDt === 0) {
-          lastTime_ms = performance.now();
-          return;
         }
         var now_ms = performance.now();
         var dt =
