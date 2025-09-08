@@ -847,7 +847,10 @@ angular.module('beamng.apps')
                 ? nw.require
                 : null));
       if (nodeRequire) {
-        try { endpointModule = nodeRequire('./localEndpoint'); } catch (e) {}
+        try { endpointModule = nodeRequire('./localEndpoint'); }
+        catch (e) { console.error('[okFE] failed to load endpoint module', e); }
+      } else {
+        console.warn('[okFE] node require unavailable; endpoint disabled');
       }
 
       function collectExportData() {
@@ -863,17 +866,29 @@ angular.module('beamng.apps')
       }
 
       function startEndpoint() {
-        if (endpointModule) endpointModule.start(collectExportData);
+        if (endpointModule) {
+          console.log('[okFE] enabling endpoint');
+          endpointModule.start(collectExportData);
+        }
       }
 
       function stopEndpoint() {
-        if (endpointModule) endpointModule.stop();
+        if (endpointModule) {
+          console.log('[okFE] disabling endpoint');
+          endpointModule.stop();
+        }
       }
 
       $scope.endpointEnabled = localStorage.getItem(ENDPOINT_KEY) === 'true';
-      if ($scope.endpointEnabled) startEndpoint();
+      if ($scope.endpointEnabled) {
+        console.log('[okFE] endpoint enabled on startup');
+        startEndpoint();
+      } else {
+        console.log('[okFE] endpoint disabled on startup');
+      }
       $scope.toggleEndpoint = function () {
         $scope.endpointEnabled = !$scope.endpointEnabled;
+        console.log('[okFE] endpoint', $scope.endpointEnabled ? 'enabled' : 'disabled', 'via toggle');
         try {
           localStorage.setItem(
             ENDPOINT_KEY,
