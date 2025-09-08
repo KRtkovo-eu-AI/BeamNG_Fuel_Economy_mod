@@ -3,7 +3,7 @@
      layout="column">
   <strong ng-if="visible.heading"
           ng-attr-style="{{ useCustomStyles ? 'display:block; margin:2px 0 4px; padding-left: 2px; font-size:1em; font-weight:600; color:#3fd6ff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '' }}">
-    Fuel Economy: {{ vehicleNameStr }}
+    Fuel Economy{{ gamePaused ? ' (game paused)' : '' }}: {{ vehicleNameStr }}
   </strong>
 
   <table ng-attr-style="{{ useCustomStyles ? 'width:100%; border-collapse:collapse; font-size:0.85em;' : '' }}">
