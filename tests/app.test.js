@@ -210,11 +210,11 @@ describe('app.js utility functions', () => {
   });
 
   describe('resolveAverageConsumption', () => {
-    it('uses previous average when engine is off', () => {
+    it('resets averages when engine is off', () => {
       const recent = { queue: [5] };
       const avg = resolveAverageConsumption(false, 0, recent, 3);
-      assert.strictEqual(avg, 5);
-      assert.deepStrictEqual(recent.queue, [5]);
+      assert.strictEqual(avg, 0);
+      assert.deepStrictEqual(recent.queue, []);
     });
     it('averages samples while running', () => {
       const recent = { queue: [10] };
@@ -231,6 +231,20 @@ describe('app.js utility functions', () => {
       const recent = { queue: [20, 20, 20, 20, 20] };
       const avg = resolveAverageConsumption(true, 5, recent, 5);
       assert.ok(avg > 5 && avg < 20);
+    });
+    it('starts fresh after engine restarts', () => {
+      const recent = { queue: [10, 20] };
+      resolveAverageConsumption(false, 0, recent, 5);
+      const avg = resolveAverageConsumption(true, 30, recent, 5);
+      assert.strictEqual(avg, 30);
+      assert.deepStrictEqual(recent.queue, [30]);
+    });
+
+    it('drops negative samples to prevent underflow', () => {
+      const recent = { queue: [15] };
+      const avg = resolveAverageConsumption(true, -10, recent, 5);
+      assert.strictEqual(avg, 0);
+      assert.deepStrictEqual(recent.queue, []);
     });
   });
 
