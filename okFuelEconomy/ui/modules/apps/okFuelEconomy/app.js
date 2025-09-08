@@ -149,6 +149,11 @@ function resolveAverageConsumption(
   if (engineRunning) {
     avgRecent.queue.push(inst_l_per_100km);
     trimQueue(avgRecent.queue, maxEntries);
+  } else {
+    // Reset recent averages when the engine is not running so
+    // stale values are not reused after vehicle resets or when
+    // switching to an engine-off state.
+    avgRecent.queue = [];
   }
   return calculateAverage(avgRecent.queue);
 }
@@ -1219,6 +1224,13 @@ angular.module('beamng.apps')
           $scope.avgKmLHistory = '';
           speedAvg = { queue: [] };
           avgRecent = { queue: [] };
+          // Also clear accumulated overall averages so a new trip
+          // starts with a clean state after engine shutdowns or
+          // vehicle resets.
+          overall.queue = [];
+          overall.co2Queue = [];
+          $scope.tripAvgHistory = '';
+          $scope.tripAvgKmLHistory = '';
       }
 
       function hardReset(preserveTripFuel) {
@@ -1472,7 +1484,10 @@ angular.module('beamng.apps')
           var throttle = streams.electrics.throttle_input || 0;
           var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
           if (!engineRunning && engineWasRunning) {
+            // Engine was just turned off – clear instant and average
+            // histories so subsequent runs start fresh.
             resetInstantHistory();
+            resetAvgHistory();
           }
           engineWasRunning = engineRunning;
           if (!engineRunning) {

@@ -1888,8 +1888,9 @@ describe('controller integration', () => {
       assert.strictEqual($scope.avgKmLHistory, '');
       const avgAfter = JSON.parse(store.okFuelEconomyAvgHistory);
       const overallAfter = JSON.parse(store.okFuelEconomyOverall);
+      // Both recent and overall averages should start fresh after a reset.
       assert.equal(avgAfter.queue.length, 1);
-      assert.equal(overallAfter.queue.length, overallBefore.queue.length + 1);
+      assert.equal(overallAfter.queue.length, 1);
   });
 
   it('skips history updates when engine is off', () => {
@@ -1969,8 +1970,8 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
-    assert.strictEqual($scope.avgHistory, avgHist);
-    assert.strictEqual($scope.tripAvgHistory, tripHist);
+    assert.strictEqual($scope.avgHistory, '');
+    assert.strictEqual($scope.tripAvgHistory, '');
     assert.strictEqual($scope.tripAvgCostLiquid, tripCost);
     assert.strictEqual($scope.instantHistory, '');
   });
@@ -2023,8 +2024,8 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
-    assert.strictEqual($scope.avgHistory, avgHist);
-    assert.strictEqual($scope.tripAvgHistory, tripHist);
+    assert.strictEqual($scope.avgHistory, '');
+    assert.strictEqual($scope.tripAvgHistory, '');
     assert.strictEqual($scope.tripAvgCostLiquid, tripCost);
     assert.strictEqual($scope.instantHistory, '');
   });
@@ -2075,8 +2076,8 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
-    assert.strictEqual($scope.avgHistory, avgHist);
-    assert.strictEqual($scope.tripAvgHistory, tripHist);
+    assert.strictEqual($scope.avgHistory, '');
+    assert.strictEqual($scope.tripAvgHistory, '');
     assert.strictEqual($scope.tripAvgCostLiquid, tripCost);
     assert.strictEqual($scope.instantHistory, '');
   });
