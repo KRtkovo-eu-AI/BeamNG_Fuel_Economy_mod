@@ -1071,6 +1071,7 @@ angular.module('beamng.apps')
       var distance_m = 0;
       var lastDistance_m = 0;
       var lastTime_ms = performance.now();
+      var gamePaused = false;
       var startFuel_l = null;
       var previousFuel_l = null;
       var tripFuelUsedLiquid_l = 0;
@@ -1431,12 +1432,21 @@ angular.module('beamng.apps')
           $scope.tripFuelUsedElectric = '';
           $scope.data6 = formatDistance(0, resetMode, 1); // reset trip
           $scope.tripAvgHistory = '';
-          $scope.tripAvgKmLHistory = '';
-          $scope.avgHistory = '';
-          $scope.avgKmLHistory = '';
-          saveAvgHistory();
-          saveOverall();
+      $scope.tripAvgKmLHistory = '';
+      $scope.avgHistory = '';
+      $scope.avgKmLHistory = '';
+      saveAvgHistory();
+      saveOverall();
       };
+
+      $scope.$on('GamePaused', function () {
+        gamePaused = true;
+      });
+
+      $scope.$on('GameResumed', function () {
+        gamePaused = false;
+        lastTime_ms = performance.now();
+      });
 
       $scope.$on('VehicleFocusChanged', function () {
         $log.debug('<ok-fuel-economy> vehicle changed -> reset trip');
@@ -1449,6 +1459,10 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
+          if (gamePaused) {
+            lastTime_ms = performance.now();
+            return;
+          }
           if ($scope.fuelType === 'Food') {
             fetchFuelType();
             if (!streams.electrics) return;
