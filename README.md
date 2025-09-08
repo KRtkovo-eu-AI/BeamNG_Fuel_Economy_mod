@@ -21,6 +21,9 @@ This repository contains a UI mod for BeamNG.drive that displays fuel economy in
 - Hide or show heading and individual data points through an in-app settings dialog that remembers user choices.
 - Switch between the default BeamNG style and a custom neon-themed look.
 - Optional fuel cost calculator showing average, trip average and total costs (both overall and trip) driven by prices set in `fuelPrice.json`.
+- Track CO₂ and NOₓ emissions including trip totals, averages and EU compliance grading.
+- Support additional fuel types such as hydrogen and an on-foot “Food” mode with dedicated consumption and cost metrics.
+- Edit fuel prices in game with unit-aware fields and add or remove fuel types.
 
 Data are gathered via `StreamsManager` from the *electrics* and *engineInfo* channels. All calculations are performed client-side using helper functions like `calculateFuelFlow`, `calculateInstantConsumption`, `calculateRange` and `trimQueue`.
 
