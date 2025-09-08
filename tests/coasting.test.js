@@ -11,6 +11,8 @@ const {
   EPS_SPEED
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
+const RADPS_TO_RPM = 60 / (2 * Math.PI);
+
 describe('coasting behaviour', () => {
   it('updates instant consumption and CO2 as RPM drops during coasting', () => {
     const speed = 27.8; // ~100 km/h
@@ -30,5 +32,16 @@ describe('coasting behaviour', () => {
     assert.ok(flow1 > flow2);
     assert.ok(inst1 > inst2);
     assert.ok(co2 > 0);
+  });
+
+  it('interprets rpm values supplied in rad/s', () => {
+    const speed = 27.8;
+    const lastFlow = 0.02;
+    const idleFlow = 0.0005;
+    const throttle = 0;
+    const idleRpm = 800;
+    const rpmRad = 1500 / RADPS_TO_RPM;
+    const flow = smoothFuelFlow(0, speed, throttle, lastFlow, idleFlow, idleRpm, rpmRad, EPS_SPEED);
+    assert.ok(Math.abs(flow - idleFlow * 1500 / idleRpm) < 1e-9);
   });
 });
