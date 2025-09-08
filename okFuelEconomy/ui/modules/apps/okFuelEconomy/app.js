@@ -745,7 +745,8 @@ angular.module('beamng.apps')
     replace: true,
     restrict: 'EA',
     scope: true,
-    controller: ['$log', '$scope', function ($log, $scope) {
+    controller: ['$log', '$scope', '$timeout', function ($log, $scope, $timeout) {
+      if (typeof $timeout !== 'function') $timeout = function (fn) { fn(); };
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
 
@@ -833,6 +834,7 @@ angular.module('beamng.apps')
       var UNIT_MODE_KEY = 'okFuelEconomyUnitMode';
       var STYLE_KEY = 'okFuelEconomyUseCustomStyles';
       var PREFERRED_UNIT_KEY = 'okFuelEconomyPreferredUnit';
+      var ROW_ORDER_KEY = 'okFeRowOrder';
       $scope.useCustomStyles = localStorage.getItem(STYLE_KEY) !== 'false';
       $scope.toggleCustomStyles = function () {
         $scope.useCustomStyles = !$scope.useCustomStyles;
@@ -1067,6 +1069,59 @@ angular.module('beamng.apps')
         } catch (e) { /* ignore */ }
         $scope.settingsOpen = false;
       };
+
+      function saveRowOrder() {
+        var tbody = document.getElementById('dataRows');
+        if (!tbody) return;
+        var order = Array.prototype.map.call(tbody.children, function (r) { return r.id; });
+        try { localStorage.setItem(ROW_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
+      }
+
+      $scope.moveRow = function ($event, dir) {
+        var item = $event.target.closest('.setting-item');
+        if (!item) return;
+        var rowId = item.getAttribute('data-row');
+        var tbody = document.getElementById('dataRows');
+        var settingsList = document.getElementById('settingsList');
+        var row = document.getElementById(rowId);
+        if (!row || !tbody || !settingsList) return;
+        if (dir < 0) {
+          var prevRow = row.previousElementSibling;
+          var prevItem = item.previousElementSibling;
+          if (prevRow && prevItem) {
+            tbody.insertBefore(row, prevRow);
+            settingsList.insertBefore(item, prevItem);
+          }
+        } else {
+          var nextRow = row.nextElementSibling;
+          var nextItem = item.nextElementSibling;
+          if (nextRow && nextItem) {
+            tbody.insertBefore(nextRow, row);
+            settingsList.insertBefore(nextItem, item);
+          }
+        }
+        saveRowOrder();
+      };
+
+        function loadRowOrder() {
+          if (typeof document === 'undefined') return;
+          var order;
+          try { order = JSON.parse(localStorage.getItem(ROW_ORDER_KEY)); } catch (e) { order = null; }
+          if (!Array.isArray(order)) return;
+          var tbody = document.getElementById('dataRows');
+          var settingsList = document.getElementById('settingsList');
+          if (!tbody || !settingsList) return;
+          var rows = {};
+          Array.prototype.forEach.call(tbody.children, function (r) { rows[r.id] = r; });
+          var settings = {};
+          Array.prototype.forEach.call(settingsList.children, function (s) { settings[s.getAttribute('data-row')] = s; });
+          order.forEach(function (id) {
+            if (rows[id]) tbody.appendChild(rows[id]);
+            if (settings[id]) settingsList.appendChild(settings[id]);
+          });
+        }
+
+        $timeout(loadRowOrder, 0);
 
       // UI outputs
       $scope.data1 = ''; // distance measured
