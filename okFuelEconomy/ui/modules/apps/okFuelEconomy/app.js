@@ -747,8 +747,36 @@ angular.module('beamng.apps')
     scope: true,
     controller: ['$log', '$scope', '$timeout', function ($log, $scope, $timeout) {
       if (typeof $timeout !== 'function') $timeout = function (fn) { fn(); };
-      var streamsList = ['electrics', 'engineInfo'];
+      var streamsList = ['electrics', 'engineInfo', 'okGameState'];
       StreamsManager.add(streamsList);
+      if (bngApi && typeof bngApi.engineLua === 'function') {
+        bngApi.engineLua('extensions.load("okGameState")');
+      }
+
+      $scope.gamePaused = false;
+
+      function pollGamePaused() {
+        if (!bngApi || typeof bngApi.engineLua !== 'function') return;
+        bngApi.engineLua(
+          'extensions.okGameState and extensions.okGameState.getState and extensions.okGameState.getState().paused',
+          function (res) {
+            var paused =
+              res === true || res === 1 || res === '1' || res === 'true';
+            if (typeof $scope.$evalAsync === 'function') {
+              $scope.$evalAsync(function () {
+                $scope.gamePaused = paused;
+              });
+            } else {
+              $scope.gamePaused = paused;
+            }
+          }
+        );
+      }
+      var pauseTimer = setInterval(pollGamePaused, 250);
+      if (pauseTimer.unref) pauseTimer.unref();
+      $scope.$on('$destroy', function () {
+        clearInterval(pauseTimer);
+      });
 
         $scope.fuelPrices = { Gasoline: 0, Electricity: 0 };
         $scope.liquidFuelPriceValue = 0;
@@ -1538,6 +1566,9 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
+          if (streams.okGameState && typeof streams.okGameState.paused !== 'undefined') {
+            $scope.gamePaused = !!streams.okGameState.paused;
+          }
           if ($scope.fuelType === 'Food') {
             fetchFuelType();
             if (!streams.electrics) return;
