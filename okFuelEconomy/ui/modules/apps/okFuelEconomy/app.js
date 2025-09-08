@@ -6,6 +6,7 @@ var EPS_SPEED = 0.005; // [m/s]
 var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
 var MIN_RPM_RUNNING = 100; // below this rpm the engine is considered off
 var DEFAULT_IDLE_FLOW_LPS = 0.0002; // ~0.72 L/h fallback when idle flow unknown
+var DEFAULT_IDLE_RPM = 800; // assume typical idle speed when unknown
 var FOOD_CAPACITY_KCAL = 2000;
 var FOOD_REST_KCAL_PER_H = 80;
 var FOOD_WALK_KCAL_PER_H = 300;
@@ -57,6 +58,8 @@ function smoothFuelFlow(
   throttle,
   lastFuelFlow_lps,
   idleFuelFlow_lps,
+  idleRpm,
+  rpm,
   EPS_SPEED,
   isElectric
 ) {
@@ -72,11 +75,13 @@ function smoothFuelFlow(
     // Always use fresh positive readings, even with zero throttle.
     return fuelFlow_lps;
   }
-  var target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : DEFAULT_IDLE_FLOW_LPS;
+  var baseIdle = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : DEFAULT_IDLE_FLOW_LPS;
+  var baseRpm = idleRpm > 0 ? idleRpm : DEFAULT_IDLE_RPM;
 
   if (throttle <= 0.05) {
-    // Coasting or idling with a stale sensor reading.
-    return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
+    // Coasting or idling with a stale sensor reading – scale idle by RPM.
+    var currentRpm = rpm > 0 ? rpm : baseRpm;
+    return (baseIdle * currentRpm) / baseRpm;
   }
 
   if (speed_mps > EPS_SPEED) {
@@ -85,7 +90,7 @@ function smoothFuelFlow(
   }
 
   // Vehicle stopped with throttle: smoothly approach idle or fallback flow.
-  return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
+  return lastFuelFlow_lps + (baseIdle - lastFuelFlow_lps) * 0.1;
 }
 
 function trimQueue(queue, maxEntries) {
@@ -1004,6 +1009,7 @@ angular.module('beamng.apps')
       var tripCo2_g = 0;
       var lastFuelFlow_lps = 0; // last smoothed value
       var idleFuelFlow_lps = 0;
+      var idleRpm = 0;
       var foodFuel_kcal = FOOD_CAPACITY_KCAL;
         var lastThrottle = 0;
         var engineWasRunning = false;
@@ -1229,6 +1235,10 @@ angular.module('beamng.apps')
         startFuel_l = null;
         previousFuel_l = null;
         lastCapacity_l = null;
+        lastFuelFlow_lps = 0;
+        idleFuelFlow_lps = 0;
+        idleRpm = 0;
+        lastThrottle = 0;
         if (!preserveTripFuel) {
           tripFuelUsedLiquid_l = 0;
           tripFuelUsedElectric_l = 0;
@@ -1482,6 +1492,7 @@ angular.module('beamng.apps')
           engineWasRunning = engineRunning;
           if (!engineRunning) {
             idleFuelFlow_lps = 0;
+            idleRpm = 0;
           }
 
           if (!Number.isFinite(currentFuel_l) || !Number.isFinite(capacity_l)) return;
@@ -1567,6 +1578,8 @@ angular.module('beamng.apps')
               idleFuelFlow_lps > 0
                 ? Math.min(idleFuelFlow_lps, rawFuelFlow_lps)
                 : rawFuelFlow_lps;
+            var rpmTacho = streams.electrics.rpmTacho || 0;
+            idleRpm = idleRpm > 0 ? Math.min(idleRpm, rpmTacho) : rpmTacho;
           }
           var fuelFlow_lps = smoothFuelFlow(
             rawFuelFlow_lps,
@@ -1574,6 +1587,8 @@ angular.module('beamng.apps')
             throttle,
             lastFuelFlow_lps,
             idleFuelFlow_lps,
+            idleRpm,
+            streams.electrics.rpmTacho || 0,
             EPS_SPEED,
             $scope.unitMode === 'electric'
           );
