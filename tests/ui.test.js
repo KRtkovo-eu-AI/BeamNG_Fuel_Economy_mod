@@ -726,6 +726,7 @@ describe('UI template styling', () => {
     const tripAvgCo2Before = $scope.tripAvgCO2;
     const tripClassBefore = $scope.tripCo2Class;
     const tripTotalCo2Before = $scope.tripTotalCO2;
+    const tripTotalNoxBefore = $scope.tripTotalNOx;
 
     // leaving the vehicle triggers a fuel type fetch that returns Food
     handlers['VehicleFocusChanged']();
@@ -736,6 +737,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.tripAvgCO2, tripAvgCo2Before);
     assert.strictEqual($scope.tripCo2Class, tripClassBefore);
     assert.strictEqual($scope.tripTotalCO2, tripTotalCo2Before);
+    assert.strictEqual($scope.tripTotalNOx, tripTotalNoxBefore);
 
     // subsequent stream updates while on foot must not alter trip values
     const streamsFoot = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, trip: 0, throttle_input: 0, rpmTacho: 0 } };
@@ -746,6 +748,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.tripAvgCO2, tripAvgCo2Before);
     assert.strictEqual($scope.tripCo2Class, tripClassBefore);
     assert.strictEqual($scope.tripTotalCO2, tripTotalCo2Before);
+    assert.strictEqual($scope.tripTotalNOx, tripTotalNoxBefore);
 
     $scope.resetOverall();
     assert.strictEqual($scope.tripTotalCostLiquid, '');
@@ -753,6 +756,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.tripAvgCO2, '0 g/km');
     assert.strictEqual($scope.tripCo2Class, 'A');
     assert.strictEqual($scope.tripTotalCO2, '');
+    assert.strictEqual($scope.tripTotalNOx, '');
   });
 
   it('keeps avg and trip CO₂ classes separate', async () => {
@@ -917,7 +921,7 @@ describe('UI template styling', () => {
   });
 
   it('provides all data placeholders and icons', () => {
-    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgCO2','tripTotalCO2','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric','tripCo2Class'];
+    const placeholders = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgCO2','tripTotalCO2','tripTotalNOx','tripAvgHistory','tripAvgKmLHistory','avgHistory','avgKmLHistory','data8','data9','unitDistanceUnit','tripFuelUsedLiquid','tripFuelUsedElectric','tripCo2Class'];
     placeholders.forEach(p => {
       if (p === 'instantHistory') {
         assert.ok(html.includes('instantHistory'), 'missing instantHistory');
@@ -965,12 +969,13 @@ describe('UI template styling', () => {
     assert.ok(html.includes('ng-if="visible.tripAvgL100km || visible.tripAvgKmL"'));
     assert.ok(html.includes('ng-if="visible.tripAvgCO2"'));
     assert.ok(html.includes('ng-if="visible.tripTotalCO2"'));
+    assert.ok(html.includes('ng-if="visible.tripTotalNOx"'));
     assert.ok(html.includes('ng-if="visible.instantGraph"'));
     assert.ok(html.includes('ng-if="visible.avgCost"'));
     assert.ok(html.includes('ng-if="visible.tripFuelUsed"'));
     assert.ok(html.includes('ng-if="visible.tripAvgCost"'));
     assert.ok(html.includes('ng-if="visible.tripTotalCost"'));
-    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgCO2','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantCO2','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripAvgCO2','visible.tripTotalCO2','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripFuelUsed','visible.tripAvgCost','visible.tripTotalCost'];
+    const toggles = ['visible.heading','visible.distanceMeasured','visible.distanceEcu','visible.fuelUsed','visible.fuelLeft','visible.fuelCap','visible.avgL100km','visible.avgKmL','visible.avgCO2','visible.avgGraph','visible.avgKmLGraph','visible.instantLph','visible.instantL100km','visible.instantKmL','visible.instantCO2','visible.instantGraph','visible.instantKmLGraph','visible.tripAvgL100km','visible.tripAvgKmL','visible.tripAvgCO2','visible.tripTotalCO2','visible.tripTotalNOx','visible.tripGraph','visible.tripKmLGraph','visible.costPrice','visible.avgCost','visible.totalCost','visible.tripFuelUsed','visible.tripAvgCost','visible.tripTotalCost'];
     toggles.forEach(t => {
       assert.ok(html.includes(`ng-model="${t}"`), `missing toggle ${t}`);
     });
@@ -1000,6 +1005,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.visible.tripAvgCost, false);
     assert.strictEqual($scope.visible.tripTotalCost, false);
     assert.strictEqual($scope.visible.tripTotalCO2, false);
+    assert.strictEqual($scope.visible.tripTotalNOx, false);
   });
   it('applies currency before engine starts', async () => {
     let directiveDef;
@@ -1080,6 +1086,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
     assert.strictEqual($scope.tripTotalCO2, '4.78 kg');
+    assert.strictEqual($scope.tripTotalNOx, '20 g');
     assert.ok(Math.abs(parseFloat($scope.totalCost) - parseFloat($scope.fuelUsed) * 1.5) < 1e-6);
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
@@ -1098,6 +1105,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '2.00 kWh');
     assert.strictEqual($scope.tripTotalCO2, '4.78 kg');
+    assert.strictEqual($scope.tripTotalNOx, '20 g');
     assert.ok(Math.abs(parseFloat($scope.totalCost) - parseFloat($scope.fuelUsed) * 0.5) < 1e-6);
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
@@ -1119,6 +1127,7 @@ describe('controller integration', () => {
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
     assert.strictEqual($scope.tripTotalCO2, '9.57 kg');
+    assert.strictEqual($scope.tripTotalNOx, '40 g');
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
@@ -1270,6 +1279,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripAvgCO2, '60 g/km');
     assert.strictEqual($scope.tripCo2Class, 'A');
     assert.strictEqual($scope.tripTotalCO2, '4.78 kg');
+    assert.strictEqual($scope.tripTotalNOx, '20 g');
 
     $scope.resetOverall();
     const storedAfter = JSON.parse(store.okFuelEconomyOverall);
@@ -1282,6 +1292,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripAvgCO2, '0 g/km');
     assert.strictEqual($scope.tripCo2Class, 'A');
     assert.strictEqual($scope.tripTotalCO2, '');
+    assert.strictEqual($scope.tripTotalNOx, '');
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
@@ -1556,7 +1567,7 @@ describe('controller integration', () => {
     streams.engineInfo[11] = 49.9;
     $scope.on_streamsUpdate(null, streams);
 
-    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','co2Class','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgCO2','tripTotalCO2','tripCo2Class','data8','data9'];
+    const fields = ['data1','fuelUsed','fuelLeft','fuelCap','avgL100km','avgKmL','avgCO2','avgCo2Class','data4','instantLph','instantL100km','instantKmL','instantCO2','co2Class','instantHistory','instantKmLHistory','data6','tripAvgL100km','tripAvgKmL','tripAvgCO2','tripTotalCO2','tripTotalNOx','tripCo2Class','data8','data9'];
     fields.forEach(f => {
       assert.notStrictEqual($scope[f], '', `${f} empty`);
     });
@@ -2556,6 +2567,7 @@ describe('controller integration', () => {
     $scope.visible.avgCO2 = false;
     $scope.visible.tripAvgCO2 = false;
     $scope.visible.tripTotalCO2 = false;
+    $scope.visible.tripTotalNOx = false;
     $scope.saveSettings();
 
     assert.ok(store.okFuelEconomyVisible.includes('"heading":false'));
@@ -2566,6 +2578,7 @@ describe('controller integration', () => {
     assert.ok(store.okFuelEconomyVisible.includes('"avgCO2":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"tripAvgCO2":false'));
     assert.ok(store.okFuelEconomyVisible.includes('"tripTotalCO2":false'));
+    assert.ok(store.okFuelEconomyVisible.includes('"tripTotalNOx":false'));
 
     const $scope2 = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope2);
@@ -2577,6 +2590,7 @@ describe('controller integration', () => {
     assert.equal($scope2.visible.avgCO2, false);
     assert.equal($scope2.visible.tripAvgCO2, false);
     assert.equal($scope2.visible.tripTotalCO2, false);
+    assert.equal($scope2.visible.tripTotalNOx, false);
     assert.equal($scope2.visible.fuelUsed, true);
   });
 });
