@@ -1462,17 +1462,19 @@ angular.module('beamng.apps')
       });
 
       $scope.$on('streamsUpdate', function (event, streams) {
-        if (gamePaused) {
+        var simDt = typeof streams.dt === 'number' ? streams.dt : null;
+        if (gamePaused || simDt === 0) {
           lastTime_ms = performance.now();
           return;
         }
+        var now_ms = performance.now();
+        var dt =
+          simDt !== null ? simDt : Math.max(0, (now_ms - lastTime_ms) / 1000);
+        lastTime_ms = now_ms;
         $scope.$evalAsync(function () {
           if ($scope.fuelType === 'Food') {
             fetchFuelType();
             if (!streams.electrics) return;
-            var now_ms = performance.now();
-            var dt = Math.max(0, (now_ms - lastTime_ms) / 1000);
-            lastTime_ms = now_ms;
             var speed_mps = resolveSpeed(
               streams.electrics.wheelspeed,
               streams.electrics.airspeed,
@@ -1559,10 +1561,6 @@ angular.module('beamng.apps')
           }
           if (!streams.engineInfo || !streams.electrics) return;
           if (!lastFuelType) fetchFuelType();
-
-          var now_ms = performance.now();
-          var dt = Math.max(0, (now_ms - lastTime_ms) / 1000);
-          lastTime_ms = now_ms;
 
           var speed_mps = resolveSpeed(
             streams.electrics.wheelspeed,
