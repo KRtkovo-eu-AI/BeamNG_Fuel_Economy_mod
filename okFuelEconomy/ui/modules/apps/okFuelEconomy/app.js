@@ -839,8 +839,15 @@ angular.module('beamng.apps')
       var ENDPOINT_KEY = 'okFuelEconomyEndpoint';
 
       var endpointModule;
-      if (typeof require === 'function') {
-        try { endpointModule = require('./localEndpoint'); } catch (e) {}
+      var nodeRequire = typeof require === 'function'
+        ? require
+        : (typeof window !== 'undefined' && typeof window.require === 'function'
+            ? window.require
+            : (typeof nw !== 'undefined' && typeof nw.require === 'function'
+                ? nw.require
+                : null));
+      if (nodeRequire) {
+        try { endpointModule = nodeRequire('./localEndpoint'); } catch (e) {}
       }
 
       function collectExportData() {

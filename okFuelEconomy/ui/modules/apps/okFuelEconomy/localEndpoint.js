@@ -29,7 +29,13 @@ function start(dataFn) {
     }
   });
   return new Promise(resolve => {
-    server.listen(PORT, '127.0.0.1', resolve);
+    server.once('error', err => {
+      console.error('localEndpoint error', err);
+      server = null;
+      resolve();
+    });
+    // Bind to all interfaces so both localhost and network clients work.
+    server.listen(PORT, resolve);
   });
 }
 
