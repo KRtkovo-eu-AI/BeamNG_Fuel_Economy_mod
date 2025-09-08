@@ -765,9 +765,15 @@ angular.module('beamng.apps')
             if (typeof $scope.$evalAsync === 'function') {
               $scope.$evalAsync(function () {
                 $scope.gamePaused = paused;
+                if (paused) {
+                  lastTime_ms = performance.now();
+                }
               });
             } else {
               $scope.gamePaused = paused;
+              if (paused) {
+                lastTime_ms = performance.now();
+              }
             }
           }
         );
@@ -1568,6 +1574,10 @@ angular.module('beamng.apps')
         $scope.$evalAsync(function () {
           if (streams.okGameState && typeof streams.okGameState.paused !== 'undefined') {
             $scope.gamePaused = !!streams.okGameState.paused;
+          }
+          if ($scope.gamePaused) {
+            lastTime_ms = performance.now();
+            return;
           }
           if ($scope.fuelType === 'Food') {
             fetchFuelType();
