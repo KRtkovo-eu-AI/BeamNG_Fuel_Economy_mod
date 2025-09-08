@@ -51,7 +51,16 @@ describe('regeneration scenario', () => {
 
       const currentFuel = previousFuel + delta;
       const rawFlow = calculateFuelFlow(currentFuel, previousFuel, dt);
-      const flow = smoothFuelFlow(rawFlow, speed, throttle, lastFlow, idleFlow, EPS_SPEED);
+      const flow = smoothFuelFlow(
+        rawFlow,
+        speed,
+        throttle,
+        lastFlow,
+        idleFlow,
+        800,
+        2000,
+        EPS_SPEED
+      );
       const inst = calculateInstantConsumption(flow, speed);
 
       if (rawFlow < 0) {

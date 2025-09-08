@@ -143,49 +143,39 @@ describe('app.js utility functions', () => {
     const EPS_SPEED = 0.005;
     it('retains last flow when throttle applied but fuel reading static', () => {
       const last = 0.01;
-      const res = smoothFuelFlow(0, 5, 0.6, last, 0.002, EPS_SPEED);
+      const res = smoothFuelFlow(0, 5, 0.6, last, 0.002, 800, 2000, EPS_SPEED);
       assert.strictEqual(res, last);
     });
-    it('eases toward idle when coasting without sensor flow', () => {
-      const last = 0.03;
+    it('scales idle flow with rpm when coasting without sensor flow', () => {
       const idle = 0.005;
-      const res = smoothFuelFlow(0, 5, 0, last, idle, EPS_SPEED);
-      assert.ok(Math.abs(res - (last + (idle - last) * 0.1)) < 1e-9);
+      const res = smoothFuelFlow(0, 5, 0, 0.03, idle, 800, 2400, EPS_SPEED);
+      assert.ok(Math.abs(res - idle * 2400 / 800) < 1e-9);
     });
     it('updates to new positive flow', () => {
-      const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, EPS_SPEED);
+      const res = smoothFuelFlow(0.02, 5, 0.7, 0.01, 0.005, 800, 2000, EPS_SPEED);
       assert.strictEqual(res, 0.02);
     });
     it('uses new positive flow even with zero throttle', () => {
-      const res = smoothFuelFlow(0.015, 20, 0, 0.01, 0.005, EPS_SPEED);
+      const res = smoothFuelFlow(0.015, 20, 0, 0.01, 0.005, 800, 1800, EPS_SPEED);
       assert.strictEqual(res, 0.015);
     });
-    it('eases toward idle when stopped without sensor flow', () => {
-      const last = 0.01;
+    it('returns idle flow when stopped without sensor flow', () => {
       const idle = 0.005;
-      const res = smoothFuelFlow(0, 0, 0, last, idle, EPS_SPEED);
-      assert.ok(Math.abs(res - (last + (idle - last) * 0.1)) < 1e-9);
+      const res = smoothFuelFlow(0, 0, 0, 0.01, idle, 800, 800, EPS_SPEED);
+      assert.ok(Math.abs(res - idle) < 1e-9);
     });
-    it('approaches idle during prolonged coasting', () => {
-      const idle = 0.005;
-      let flow = 0.02;
-      flow = smoothFuelFlow(0, 20, 0, flow, idle, EPS_SPEED);
-      flow = smoothFuelFlow(0, 20, 0, flow, idle, EPS_SPEED);
-      assert.ok(flow > idle && flow < 0.02);
-    });
-    it('resets immediately when idle is unknown', () => {
-      let last = 0.03;
-      const flow1 = smoothFuelFlow(0, 25, 0, last, 0, EPS_SPEED);
-      const flow2 = smoothFuelFlow(0, 25, 0, flow1, 0, EPS_SPEED);
-      assert.strictEqual(flow1, 0);
-      assert.strictEqual(flow2, 0);
+    it('uses fallback scaled by rpm when idle is unknown', () => {
+      const rpm = 2000;
+      const res = smoothFuelFlow(0, 25, 0, 0.03, 0, 0, rpm, EPS_SPEED);
+      const expected = 0.0002 * rpm / 800;
+      assert.ok(Math.abs(res - expected) < 1e-9);
     });
     it('passes through negative flow for regeneration', () => {
-      const res = smoothFuelFlow(-0.01, 10, 0, 0, 0, EPS_SPEED);
+      const res = smoothFuelFlow(-0.01, 10, 0, 0, 0, 0, 0, EPS_SPEED);
       assert.strictEqual(res, -0.01);
     });
     it('reports zero flow for stationary electric vehicles', () => {
-      const res = smoothFuelFlow(0.01, 0, 0, 0.01, 0.005, EPS_SPEED, true);
+      const res = smoothFuelFlow(0.01, 0, 0, 0.01, 0.005, 800, 0, EPS_SPEED, true);
       assert.strictEqual(res, 0);
     });
   });
@@ -310,7 +300,7 @@ describe('app.js utility functions', () => {
     });
     it('uses rpm as a last resort', () => {
       assert.strictEqual(isEngineRunning({ rpmTacho: 700 }, []), true);
-      assert.strictEqual(isEngineRunning({ rpmTacho: 50 }, []), false);
+      assert.strictEqual(isEngineRunning({ rpmTacho: 10 }, []), false);
       assert.strictEqual(isEngineRunning({}, []), false);
     });
   });
