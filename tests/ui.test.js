@@ -731,6 +731,38 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.tripTotalCO2, '');
   });
 
+  it('keeps avg and trip CO₂ classes separate', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => {}, activeObjectLua: () => {} };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (n, fn) => { handlers[n] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 50));
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 27.78, trip: 0, throttle_input: 0.5, rpmTacho: 2000 } };
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+    handlers['streamsUpdate'](null, streams);
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual($scope.avgCo2Class, 'A');
+    assert.strictEqual($scope.tripCo2Class, 'A');
+
+    $scope.tripCo2Class = 'G';
+    assert.strictEqual($scope.avgCo2Class, 'A');
+
+    $scope.avgCo2Class = 'B';
+    assert.strictEqual($scope.tripCo2Class, 'G');
+  });
+
   it('loads fuel prices via bngApi.engineLua when require is unavailable', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
