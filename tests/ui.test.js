@@ -2160,7 +2160,7 @@ describe('controller integration', () => {
     for (let i = 0; i < 5; i++) {
       now += 1000;
       streams.engineInfo[11] -= 0.1;
-      streams.dt = 0;
+      streams.dt = 1;
       $scope.on_streamsUpdate(null, streams);
     }
 
@@ -2181,6 +2181,78 @@ describe('controller integration', () => {
     streams.dt = 1;
     $scope.on_streamsUpdate(null, streams);
   
+    assert.notStrictEqual($scope.instantHistory, instantBefore);
+    assert.notStrictEqual($scope.tripAvgHistory, tripBefore);
+  });
+
+  it('halts calculations when simulation time is static', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({ queue: [], distance: 0, previousAvg: 0, previousAvgTrip: 0, fuelUsedLiquid: 0, fuelUsedElectric: 0 }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] })
+    };
+    global.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k,v) => { store[k] = v; } };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: { wheelspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 },
+      dt: 1,
+      simTime: 0
+    };
+    streams.engineInfo[11] = 60;
+    streams.engineInfo[12] = 80;
+
+    for (let i = 0; i < 3; i++) {
+      now += 1000;
+      streams.engineInfo[11] -= 0.1;
+      streams.simTime += 1;
+      $scope.on_streamsUpdate(null, streams);
+    }
+
+    const instantBefore = $scope.instantHistory;
+    const instantKmLBefore = $scope.instantKmLHistory;
+    const avgConsBefore = $scope.avgL100km;
+    const avgBefore = $scope.avgHistory;
+    const avgKmLBefore = $scope.avgKmLHistory;
+    const avgCo2Before = $scope.avgCO2;
+    const rangeBefore = $scope.data4;
+    const tripBefore = $scope.tripAvgHistory;
+    const tripKmLBefore = $scope.tripAvgKmLHistory;
+
+    for (let i = 0; i < 5; i++) {
+      now += 1000;
+      streams.engineInfo[11] -= 0.1;
+      // simTime intentionally not advanced
+      $scope.on_streamsUpdate(null, streams);
+    }
+
+    assert.strictEqual($scope.instantHistory, instantBefore);
+    assert.strictEqual($scope.instantKmLHistory, instantKmLBefore);
+    assert.strictEqual($scope.avgL100km, avgConsBefore);
+    assert.strictEqual($scope.avgHistory, avgBefore);
+    assert.strictEqual($scope.avgKmLHistory, avgKmLBefore);
+    assert.strictEqual($scope.avgCO2, avgCo2Before);
+    assert.strictEqual($scope.data4, rangeBefore);
+    assert.strictEqual($scope.tripAvgHistory, tripBefore);
+    assert.strictEqual($scope.tripAvgKmLHistory, tripKmLBefore);
+
+    now += 1000;
+    streams.engineInfo[11] -= 0.1;
+    streams.simTime += 1;
+    $scope.on_streamsUpdate(null, streams);
+
     assert.notStrictEqual($scope.instantHistory, instantBefore);
     assert.notStrictEqual($scope.tripAvgHistory, tripBefore);
   });

@@ -1072,6 +1072,7 @@ angular.module('beamng.apps')
       var lastDistance_m = 0;
       var lastTime_ms = performance.now();
       var gamePaused = false;
+      var lastSimTime = null;
       var startFuel_l = null;
       var previousFuel_l = null;
       var tripFuelUsedLiquid_l = 0;
@@ -1447,6 +1448,7 @@ angular.module('beamng.apps')
       $scope.on_GameResumed = function () {
         gamePaused = false;
         lastTime_ms = performance.now();
+        lastSimTime = null;
       };
 
       $scope.$on('GamePaused', $scope.on_GamePaused);
@@ -1463,6 +1465,19 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         var simDt = typeof streams.dt === 'number' ? streams.dt : null;
+        var simTime =
+          typeof streams.simTime === 'number'
+            ? streams.simTime
+            : typeof streams.time === 'number'
+            ? streams.time
+            : null;
+        if (simTime !== null) {
+          if (lastSimTime !== null && simTime === lastSimTime) {
+            lastTime_ms = performance.now();
+            return;
+          }
+          lastSimTime = simTime;
+        }
         if (gamePaused || simDt === 0) {
           lastTime_ms = performance.now();
           return;
