@@ -18,6 +18,7 @@ var FOOD_WALK_KCAL_PER_H = 300;
 var FOOD_RUN_KCAL_PER_H = 600;
 var foodBaseRate;
 var EU_SPEED_WINDOW_MS = 10000; // retain EU speed samples for 10 s
+var EMISSIONS_BASE_TEMP_C = 90; // baseline engine temp for emissions calculations
 
 var CO2_FACTORS_G_PER_L = {
   Gasoline: 2392,
@@ -26,6 +27,7 @@ var CO2_FACTORS_G_PER_L = {
   Electricity: 0,
   Air: 0,
   Ethanol: 1510,
+  Hydrogen: 0,
   Nitromethane: 820,
   Nitromethan: 820,
   Food: 0.001 // approx. CO2 from human flatulence per kcal
@@ -38,6 +40,7 @@ var NOX_FACTORS_G_PER_L = {
   Electricity: 0,
   Air: 0,
   Ethanol: 3,
+  Hydrogen: 0,
   Nitromethane: 12,
   Nitromethan: 12,
   Food: 0
@@ -433,13 +436,43 @@ function convertVolumePerDistance(lPerKm, mode) {
     : lPerKm;
 }
 
-function calculateCO2gPerKm(lPer100km, fuelType) {
-  var factor = CO2_FACTORS_G_PER_L[fuelType] != null
+function calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric) {
+  if (isElectric) return 0;
+  var base = CO2_FACTORS_G_PER_L[fuelType] != null
     ? CO2_FACTORS_G_PER_L[fuelType]
     : CO2_FACTORS_G_PER_L.Gasoline;
+  var temp =
+    typeof engineTempC === 'number' ? engineTempC : EMISSIONS_BASE_TEMP_C;
+  if (base === 0) {
+    return base;
+  }
+  var delta = Math.abs(temp - EMISSIONS_BASE_TEMP_C);
+  base = base * (1 + delta / 100);
+  if (n2oActive) base *= 1.2;
+  return base;
+}
+
+function calculateCO2gPerKm(lPer100km, fuelType, engineTempC, n2oActive, isElectric) {
+  var factor = calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric);
   if (!Number.isFinite(lPer100km)) return Infinity;
   var capped = Math.min(lPer100km, MAX_CONSUMPTION);
   return (capped / 100) * factor;
+}
+
+function calculateNOxFactor(fuelType, engineTempC, n2oActive, isElectric) {
+  if (isElectric) return 0;
+  var base = NOX_FACTORS_G_PER_L[fuelType] != null
+    ? NOX_FACTORS_G_PER_L[fuelType]
+    : NOX_FACTORS_G_PER_L.Gasoline;
+  var temp = typeof engineTempC === 'number' ? engineTempC : 0;
+  var tempExcess = Math.max(0, temp - EMISSIONS_BASE_TEMP_C);
+  if (fuelType === 'Hydrogen') {
+    base = tempExcess * 0.1;
+  } else {
+    base = base * (1 + tempExcess / 100);
+  }
+  if (n2oActive) base *= 1.2;
+  return base;
 }
 
 function formatCO2(gPerKm, decimals, mode) {
@@ -546,7 +579,9 @@ if (typeof module !== 'undefined') {
     convertVolumeToUnit,
     convertDistanceToUnit,
     convertVolumePerDistance,
+    calculateCO2Factor,
     calculateCO2gPerKm,
+    calculateNOxFactor,
     formatCO2,
     classifyCO2,
     meetsEuCo2Limit,
@@ -1530,6 +1565,8 @@ angular.module('beamng.apps')
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
           var throttle = streams.electrics.throttle_input || 0;
+          var engineTemp_c = streams.engineInfo[13] || 0;
+          var n2oActive = !!(streams.electrics && streams.electrics.n2oActive);
           var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
           if (!engineRunning && engineWasRunning) {
             // Engine was just turned off – clear instant and average
@@ -1581,15 +1618,37 @@ angular.module('beamng.apps')
                 overall.fuelUsedElectric = tripFuelUsedElectric_l;
                 tripCostElectric += deltaFuelUnit * $scope.electricityPriceValue;
                 var electricDelta = Math.max(0, deltaTripFuel);
-                tripCo2_g += electricDelta * CO2_FACTORS_G_PER_L.Electricity;
-                tripNox_g += electricDelta * NOX_FACTORS_G_PER_L.Electricity;
+                var co2Factor = calculateCO2Factor(
+                  'Electricity',
+                  engineTemp_c,
+                  n2oActive,
+                  true
+                );
+                var noxFactor = calculateNOxFactor(
+                  'Electricity',
+                  engineTemp_c,
+                  n2oActive,
+                  true
+                );
+                tripCo2_g += electricDelta * co2Factor;
+                tripNox_g += electricDelta * noxFactor;
               } else if (deltaTripFuel > 0) {
                 tripFuelUsedLiquid_l += deltaTripFuel;
                 overall.fuelUsedLiquid = tripFuelUsedLiquid_l;
                 tripCostLiquid += deltaFuelUnit * $scope.liquidFuelPriceValue;
-                var factor = CO2_FACTORS_G_PER_L[$scope.fuelType] != null ? CO2_FACTORS_G_PER_L[$scope.fuelType] : CO2_FACTORS_G_PER_L.Gasoline;
-                var noxFactor = NOX_FACTORS_G_PER_L[$scope.fuelType] != null ? NOX_FACTORS_G_PER_L[$scope.fuelType] : NOX_FACTORS_G_PER_L.Gasoline;
-                tripCo2_g += deltaTripFuel * factor;
+                var co2Factor = calculateCO2Factor(
+                  $scope.fuelType,
+                  engineTemp_c,
+                  n2oActive,
+                  false
+                );
+                var noxFactor = calculateNOxFactor(
+                  $scope.fuelType,
+                  engineTemp_c,
+                  n2oActive,
+                  false
+                );
+                tripCo2_g += deltaTripFuel * co2Factor;
                 tripNox_g += deltaTripFuel * noxFactor;
               }
               overall.tripCo2 = tripCo2_g;
@@ -1677,7 +1736,13 @@ angular.module('beamng.apps')
               1
             );
             $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
-            var co2_val = calculateCO2gPerKm(inst_l_per_100km, $scope.fuelType);
+            var co2_val = calculateCO2gPerKm(
+              inst_l_per_100km,
+              $scope.fuelType,
+              engineTemp_c,
+              n2oActive,
+              $scope.unitMode === 'electric'
+            );
             $scope.instantCO2 = formatCO2(co2_val, 0, $scope.unitMode);
             $scope.co2Class = classifyCO2(co2_val);
             lastInstantUpdate_ms = now_ms;
@@ -1746,7 +1811,13 @@ angular.module('beamng.apps')
           ) {
             avg_l_per_100km_ok = 0;
           }
-          var avgCo2Val = calculateCO2gPerKm(avg_l_per_100km_ok, $scope.fuelType);
+          var avgCo2Val = calculateCO2gPerKm(
+            avg_l_per_100km_ok,
+            $scope.fuelType,
+            engineTemp_c,
+            n2oActive,
+            $scope.unitMode === 'electric'
+          );
 
           // ---------- Overall update (NEW) ----------
           if (sampleValid) {
