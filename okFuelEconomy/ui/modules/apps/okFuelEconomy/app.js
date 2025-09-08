@@ -146,13 +146,13 @@ function resolveAverageConsumption(
   avgRecent,
   maxEntries
 ) {
-  if (engineRunning) {
+  if (engineRunning && inst_l_per_100km >= 0) {
     avgRecent.queue.push(inst_l_per_100km);
     trimQueue(avgRecent.queue, maxEntries);
   } else {
-    // Reset recent averages when the engine is not running so
-    // stale values are not reused after vehicle resets or when
-    // switching to an engine-off state.
+    // Reset recent averages when the engine is not running or when an
+    // invalid (negative) sample is encountered so stale or refuel
+    // events do not introduce bogus values.
     avgRecent.queue = [];
   }
   return calculateAverage(avgRecent.queue);
@@ -1585,7 +1585,8 @@ angular.module('beamng.apps')
             EPS_SPEED,
             $scope.unitMode === 'electric'
           );
-          if (!engineRunning) {
+          var sampleValid = engineRunning && fuelFlow_lps >= 0;
+          if (!sampleValid) {
             fuelFlow_lps = 0;
             lastFuelFlow_lps = 0;
           } else {
@@ -1594,8 +1595,8 @@ angular.module('beamng.apps')
           previousFuel_l = currentFuel_l;
           lastThrottle = throttle;
 
-          var inst_l_per_h = fuelFlow_lps * 3600;
-          var inst_l_per_100km = engineRunning
+          var inst_l_per_h = sampleValid ? fuelFlow_lps * 3600 : 0;
+          var inst_l_per_100km = sampleValid
             ? calculateInstantConsumption(fuelFlow_lps, speed_mps)
             : 0;
           var eff =
@@ -1605,15 +1606,11 @@ angular.module('beamng.apps')
           eff = Math.min(eff, MAX_EFFICIENCY);
           if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
             $scope.instantLph = formatFlow(inst_l_per_h, $scope.unitMode, 1);
-            if (Number.isFinite(inst_l_per_100km)) {
-              $scope.instantL100km = formatConsumptionRate(
-                inst_l_per_100km,
-                $scope.unitMode,
-                1
-              );
-            } else {
-              $scope.instantL100km = 'Infinity';
-            }
+            $scope.instantL100km = formatConsumptionRate(
+              inst_l_per_100km,
+              $scope.unitMode,
+              1
+            );
             $scope.instantKmL = formatEfficiency(eff, $scope.unitMode, 2);
             var co2_val = calculateCO2gPerKm(inst_l_per_100km, $scope.fuelType);
             $scope.instantCO2 = formatCO2(co2_val, 0, $scope.unitMode);
@@ -1651,7 +1648,7 @@ angular.module('beamng.apps')
             return;
           }
 
-          if (engineRunning) {
+          if (sampleValid) {
             instantHistory.queue.push(inst_l_per_h);
             trimQueue(instantHistory.queue, INSTANT_MAX_ENTRIES);
             $scope.instantHistory = buildQueueGraphPoints(instantHistory.queue, 100, 40);
@@ -1668,10 +1665,12 @@ angular.module('beamng.apps')
               saveInstantEffHistory();
               instantEffHistory.lastSaveTime = now_ms;
             }
+          } else {
+            resetInstantHistory();
           }
 
           var avg_l_per_100km_ok = resolveAverageConsumption(
-            engineRunning,
+            sampleValid,
             inst_l_per_100km,
             avgRecent,
             AVG_MAX_ENTRIES
@@ -1685,7 +1684,7 @@ angular.module('beamng.apps')
           var avgCo2Val = calculateCO2gPerKm(avg_l_per_100km_ok, $scope.fuelType);
 
           // ---------- Overall update (NEW) ----------
-          if (engineRunning) {
+          if (sampleValid) {
             overall.queue.push(avg_l_per_100km_ok);
             trimQueue(overall.queue, MAX_ENTRIES);
             overall.co2Queue.push(avgCo2Val);
@@ -1719,7 +1718,7 @@ angular.module('beamng.apps')
           );
 
           // ---------- Average Consumption ----------
-          if (engineRunning) {
+          if (sampleValid) {
             overall.previousAvgTrip = avg_l_per_100km_ok;
 
             avgHistory.queue.push(avg_l_per_100km_ok);
@@ -1739,6 +1738,10 @@ angular.module('beamng.apps')
             }
             // Record the resolved speed (airspeed or wheelspeed) for EU compliance checks.
             // (handled globally above)
+          } else {
+            avgHistory = { queue: [] };
+            $scope.avgHistory = '';
+            $scope.avgKmLHistory = '';
           }
 
           var mode = getActiveUnitMode();

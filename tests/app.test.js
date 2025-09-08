@@ -239,6 +239,13 @@ describe('app.js utility functions', () => {
       assert.strictEqual(avg, 30);
       assert.deepStrictEqual(recent.queue, [30]);
     });
+
+    it('drops negative samples to prevent underflow', () => {
+      const recent = { queue: [15] };
+      const avg = resolveAverageConsumption(true, -10, recent, 5);
+      assert.strictEqual(avg, 0);
+      assert.deepStrictEqual(recent.queue, []);
+    });
   });
 
   describe('buildQueueGraphPoints', () => {
