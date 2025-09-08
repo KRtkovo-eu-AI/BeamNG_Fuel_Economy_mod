@@ -9,7 +9,8 @@ const {
   calculateInstantConsumption,
   calculateCO2gPerKm,
   EPS_SPEED,
-  MIN_RPM_RUNNING
+  MIN_RPM_RUNNING,
+  normalizeRpm
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 const RADPS_TO_RPM = 60 / (2 * Math.PI);
@@ -35,15 +36,16 @@ describe('coasting behaviour', () => {
     assert.ok(co2 > 0);
   });
 
-  it('interprets rpm values supplied in rad/s', () => {
+  it('interprets rad/s values above 300 when engineRunning is false', () => {
     const speed = 27.8;
     const lastFlow = 0.02;
     const idleFlow = 0.0005;
     const throttle = 0;
     const idleRpm = 800;
-    const rpmRad = 1500 / RADPS_TO_RPM;
-    const flow = smoothFuelFlow(0, speed, throttle, lastFlow, idleFlow, idleRpm, rpmRad, EPS_SPEED);
-    assert.ok(Math.abs(flow - idleFlow * 1500 / idleRpm) < 1e-9);
+    const rpmRad = 3000 / RADPS_TO_RPM;
+    const rpm = normalizeRpm(rpmRad, false);
+    const flow = smoothFuelFlow(0, speed, throttle, lastFlow, idleFlow, idleRpm, rpm, EPS_SPEED);
+    assert.ok(Math.abs(flow - idleFlow * 3000 / idleRpm) < 1e-9);
   });
 
   it('keeps instant metrics non-zero when engineRunning flag is false', () => {
@@ -52,7 +54,7 @@ describe('coasting behaviour', () => {
     const idleFlow = 0.0005;
     const throttle = 0;
     const idleRpm = 800;
-    const rpm = 2000;
+    const rpm = normalizeRpm(2000 / RADPS_TO_RPM, false);
     const fuelFlow = smoothFuelFlow(0, speed, throttle, lastFlow, idleFlow, idleRpm, rpm, EPS_SPEED);
     const sampleValid = (false || rpm >= MIN_RPM_RUNNING) && fuelFlow >= 0;
     const inst = sampleValid ? calculateInstantConsumption(fuelFlow, speed) : 0;

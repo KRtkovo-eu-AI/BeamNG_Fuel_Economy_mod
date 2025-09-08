@@ -36,8 +36,10 @@ function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
   return (previousFuel - currentFuel) / dtSeconds; // L/s
 }
 
-function normalizeRpm(rpm) {
-  return rpm > 0 && rpm < 300 ? rpm * RADPS_TO_RPM : rpm;
+function normalizeRpm(rpm, engineRunning) {
+  if (rpm <= 0) return 0;
+  if (engineRunning === false) return rpm * RADPS_TO_RPM;
+  return rpm < 300 ? rpm * RADPS_TO_RPM : rpm;
 }
 
 function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
@@ -82,7 +84,7 @@ function smoothFuelFlow(
   }
   var baseIdle = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : DEFAULT_IDLE_FLOW_LPS;
   var baseRpm = idleRpm > 0 ? idleRpm : DEFAULT_IDLE_RPM;
-  var currentRpm = normalizeRpm(rpm);
+  var currentRpm = rpm;
 
   if (throttle <= 0.05) {
     // Coasting or idling with a stale sensor reading – scale idle by RPM.
@@ -195,7 +197,10 @@ function isEngineRunning(electrics, engineInfo) {
   ) {
     return engineInfo[14] > 0;
   }
-  var rpm = normalizeRpm((electrics && electrics.rpmTacho) || 0);
+  var rpm = normalizeRpm(
+    (electrics && electrics.rpmTacho) || 0,
+    electrics && electrics.engineRunning
+  );
   return rpm >= MIN_RPM_RUNNING;
 }
 
@@ -498,6 +503,7 @@ if (typeof module !== 'undefined') {
     MIN_RPM_RUNNING,
     calculateFuelFlow,
     calculateInstantConsumption,
+    normalizeRpm,
     smoothFuelFlow,
     trimQueue,
     calculateMedian,
@@ -1576,7 +1582,10 @@ angular.module('beamng.apps')
             previousFuel_l = currentFuel_l;
           }
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
-          var rpmTacho = normalizeRpm(streams.electrics.rpmTacho || 0);
+          var rpmTacho = normalizeRpm(
+            streams.electrics.rpmTacho || 0,
+            engineRunning
+          );
           if (
             $scope.unitMode !== 'electric' &&
             throttle <= 0.05 &&
