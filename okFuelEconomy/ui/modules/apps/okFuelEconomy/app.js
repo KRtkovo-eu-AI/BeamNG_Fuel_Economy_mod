@@ -495,6 +495,7 @@ if (typeof module !== 'undefined') {
   module.exports = {
     EPS_SPEED,
     MIN_VALID_SPEED_MPS,
+    MIN_RPM_RUNNING,
     calculateFuelFlow,
     calculateInstantConsumption,
     smoothFuelFlow,
@@ -1598,7 +1599,9 @@ angular.module('beamng.apps')
             EPS_SPEED,
             $scope.unitMode === 'electric'
           );
-          var sampleValid = engineRunning && fuelFlow_lps >= 0;
+          var sampleValid =
+            (engineRunning || rpmTacho >= MIN_RPM_RUNNING) &&
+            fuelFlow_lps >= 0;
           if (!sampleValid) {
             fuelFlow_lps = 0;
             lastFuelFlow_lps = 0;

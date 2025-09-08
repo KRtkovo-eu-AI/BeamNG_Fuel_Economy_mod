@@ -8,7 +8,8 @@ const {
   smoothFuelFlow,
   calculateInstantConsumption,
   calculateCO2gPerKm,
-  EPS_SPEED
+  EPS_SPEED,
+  MIN_RPM_RUNNING
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 const RADPS_TO_RPM = 60 / (2 * Math.PI);
@@ -43,5 +44,21 @@ describe('coasting behaviour', () => {
     const rpmRad = 1500 / RADPS_TO_RPM;
     const flow = smoothFuelFlow(0, speed, throttle, lastFlow, idleFlow, idleRpm, rpmRad, EPS_SPEED);
     assert.ok(Math.abs(flow - idleFlow * 1500 / idleRpm) < 1e-9);
+  });
+
+  it('keeps instant metrics non-zero when engineRunning flag is false', () => {
+    const speed = 27.8;
+    const lastFlow = 0.02;
+    const idleFlow = 0.0005;
+    const throttle = 0;
+    const idleRpm = 800;
+    const rpm = 2000;
+    const fuelFlow = smoothFuelFlow(0, speed, throttle, lastFlow, idleFlow, idleRpm, rpm, EPS_SPEED);
+    const sampleValid = (false || rpm >= MIN_RPM_RUNNING) && fuelFlow >= 0;
+    const inst = sampleValid ? calculateInstantConsumption(fuelFlow, speed) : 0;
+    const co2 = calculateCO2gPerKm(inst, 'Gasoline');
+    assert.ok(sampleValid);
+    assert.ok(inst > 0);
+    assert.ok(co2 > 0);
   });
 });

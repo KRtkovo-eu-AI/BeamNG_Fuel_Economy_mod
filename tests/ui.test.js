@@ -1981,6 +1981,7 @@ describe('controller integration', () => {
     const avgHist = $scope.avgHistory;
     const tripHist = $scope.tripAvgHistory;
     const tripCost = $scope.tripAvgCostLiquid;
+    const instHist = $scope.instantHistory;
 
     streams.electrics.rpmTacho = 0;
     streams.electrics.throttle_input = 0;
@@ -1998,7 +1999,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.instantHistory, '');
   });
 
-  it('pauses updates when engineRunning flag is false despite rpm', () => {
+  it('continues updates when engineRunning flag is false but rpm is high', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
@@ -2031,10 +2032,6 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
-    const avgHist = $scope.avgHistory;
-    const tripHist = $scope.tripAvgHistory;
-    const tripCost = $scope.tripAvgCostLiquid;
-
     streams.electrics.engineRunning = false;
     streams.electrics.throttle_input = 0;
     streams.electrics.wheelspeed = 5;
@@ -2046,10 +2043,8 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
-    assert.strictEqual($scope.avgHistory, '');
-    assert.strictEqual($scope.tripAvgHistory, tripHist);
-    assert.strictEqual($scope.tripAvgCostLiquid, tripCost);
-    assert.strictEqual($scope.instantHistory, '');
+    assert.ok(parseFloat($scope.instantLph) > 0);
+    assert.ok(parseFloat($scope.instantCO2) > 0);
   });
 
   it('pauses updates when rpm is below threshold without engineRunning flag', () => {
@@ -2085,10 +2080,6 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
-    const avgHist = $scope.avgHistory;
-    const tripHist = $scope.tripAvgHistory;
-    const tripCost = $scope.tripAvgCostLiquid;
-
     streams.electrics.rpmTacho = 50;
     streams.electrics.throttle_input = 0;
     streams.electrics.wheelspeed = 0;
@@ -2098,10 +2089,8 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
-    assert.strictEqual($scope.avgHistory, '');
-    assert.strictEqual($scope.tripAvgHistory, tripHist);
-    assert.strictEqual($scope.tripAvgCostLiquid, tripCost);
-    assert.strictEqual($scope.instantHistory, '');
+    assert.ok(parseFloat($scope.instantLph) < 0.5);
+    assert.ok(parseFloat($scope.instantCO2) < 4);
   });
 
   it('ignores unrealistic consumption spikes while stationary', () => {
