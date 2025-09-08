@@ -1003,6 +1003,42 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, { okGameState: { paused: true } });
     assert.strictEqual($scope.gamePaused, true);
   });
+
+  it('polls pause state without return prefix', () => {
+    let directiveDef;
+    const cmds = [];
+    let pollFn;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: (cmd, cb) => {
+        cmds.push(cmd);
+        if (typeof cb === 'function') cb(false);
+      },
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    const realSetInterval = global.setInterval;
+    global.setInterval = (fn, ms) => {
+      if (!pollFn) pollFn = fn;
+      return { unref() {} };
+    };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {}, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    cmds.length = 0; // ignore extension load
+    pollFn();
+    assert.deepStrictEqual(cmds, [
+      'extensions.okGameState and extensions.okGameState.getState and extensions.okGameState.getState().paused',
+    ]);
+
+    global.setInterval = realSetInterval;
+  });
   it('hides cost fields by default', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

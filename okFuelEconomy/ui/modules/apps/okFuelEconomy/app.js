@@ -758,7 +758,7 @@ angular.module('beamng.apps')
       function pollGamePaused() {
         if (!bngApi || typeof bngApi.engineLua !== 'function') return;
         bngApi.engineLua(
-          'return extensions.okGameState and extensions.okGameState.getState and extensions.okGameState.getState().paused',
+          'extensions.okGameState and extensions.okGameState.getState and extensions.okGameState.getState().paused',
           function (res) {
             var paused =
               res === true || res === 1 || res === '1' || res === 'true';
