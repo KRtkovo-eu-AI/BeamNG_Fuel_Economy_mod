@@ -843,21 +843,21 @@ angular.module('beamng.apps')
       if (typeof window !== 'undefined') {
         if (typeof window.requireNode === 'function') nodeRequire = window.requireNode;
         else if (typeof window.nodeRequire === 'function') nodeRequire = window.nodeRequire;
-        else if (typeof window.require === 'function' && window.require.main) nodeRequire = window.require;
+        else if (typeof window.require === 'function') nodeRequire = window.require;
       }
       if (!nodeRequire && typeof nw !== 'undefined' && typeof nw.require === 'function') {
         nodeRequire = nw.require;
       }
-      if (!nodeRequire && typeof require === 'function' && require.main) {
+      if (!nodeRequire && typeof require === 'function') {
         nodeRequire = require;
       }
       if (nodeRequire) {
         try { endpointModule = nodeRequire('./localEndpoint'); }
-        catch (e) { console.error('[okFE] failed to load endpoint module', e); }
+        catch (e) { console.warn('[okFE] failed to load endpoint module', e); }
       }
       var endpointSupported = !!endpointModule;
       if (!endpointSupported) {
-        console.warn('[okFE] node require unavailable; endpoint disabled');
+        console.warn('[okFE] endpoint module unavailable; endpoint disabled');
       }
 
       function collectExportData() {
