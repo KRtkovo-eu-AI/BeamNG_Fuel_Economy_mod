@@ -746,6 +746,7 @@ angular.module('beamng.apps')
     restrict: 'EA',
     scope: true,
     controller: ['$log', '$scope', '$timeout', function ($log, $scope, $timeout) {
+      if (typeof $timeout !== 'function') $timeout = function (fn) { fn(); };
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
 
@@ -1102,24 +1103,25 @@ angular.module('beamng.apps')
         saveRowOrder();
       };
 
-      function loadRowOrder() {
-        var order;
-        try { order = JSON.parse(localStorage.getItem(ROW_ORDER_KEY)); } catch (e) { order = null; }
-        if (!Array.isArray(order)) return;
-        var tbody = document.getElementById('dataRows');
-        var settingsList = document.getElementById('settingsList');
-        if (!tbody || !settingsList) return;
-        var rows = {};
-        Array.prototype.forEach.call(tbody.children, function (r) { rows[r.id] = r; });
-        var settings = {};
-        Array.prototype.forEach.call(settingsList.children, function (s) { settings[s.getAttribute('data-row')] = s; });
-        order.forEach(function (id) {
-          if (rows[id]) tbody.appendChild(rows[id]);
-          if (settings[id]) settingsList.appendChild(settings[id]);
-        });
-      }
+        function loadRowOrder() {
+          if (typeof document === 'undefined') return;
+          var order;
+          try { order = JSON.parse(localStorage.getItem(ROW_ORDER_KEY)); } catch (e) { order = null; }
+          if (!Array.isArray(order)) return;
+          var tbody = document.getElementById('dataRows');
+          var settingsList = document.getElementById('settingsList');
+          if (!tbody || !settingsList) return;
+          var rows = {};
+          Array.prototype.forEach.call(tbody.children, function (r) { rows[r.id] = r; });
+          var settings = {};
+          Array.prototype.forEach.call(settingsList.children, function (s) { settings[s.getAttribute('data-row')] = s; });
+          order.forEach(function (id) {
+            if (rows[id]) tbody.appendChild(rows[id]);
+            if (settings[id]) settingsList.appendChild(settings[id]);
+          });
+        }
 
-      $timeout(loadRowOrder, 0);
+        $timeout(loadRowOrder, 0);
 
       // UI outputs
       $scope.data1 = ''; // distance measured
