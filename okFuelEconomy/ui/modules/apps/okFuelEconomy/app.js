@@ -1449,6 +1449,19 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
+          var paused = false;
+          if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+            try {
+              var ts = bngApi.engineLua('return be:getTimeScale()');
+              paused = parseFloat(ts) === 0;
+            } catch (e) {
+              paused = false;
+            }
+          }
+          if (paused) {
+            lastTime_ms = performance.now();
+            return;
+          }
           if ($scope.fuelType === 'Food') {
             fetchFuelType();
             if (!streams.electrics) return;
