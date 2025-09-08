@@ -402,6 +402,8 @@ describe('app.js utility functions', () => {
   describe('CO2 helpers', () => {
     it('computes g/km from consumption and fuel type', () => {
       assert.strictEqual(calculateCO2gPerKm(5, 'Gasoline'), 5 / 100 * 2392);
+      assert.strictEqual(calculateCO2gPerKm(5, 'Diesel'), 5 / 100 * 2640);
+      assert.strictEqual(calculateCO2gPerKm(5, 'LPG/CNG'), 5 / 100 * 1660);
       assert.strictEqual(calculateCO2gPerKm(5, 'Air'), 0);
       assert.strictEqual(calculateCO2gPerKm(5, 'Ethanol'), 5 / 100 * 1510);
       assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethane'), 5 / 100 * 820);
@@ -423,6 +425,12 @@ describe('app.js utility functions', () => {
       assert.strictEqual(classifyCO2(119), 'A');
       assert.strictEqual(classifyCO2(130), 'B');
       assert.strictEqual(classifyCO2(160), 'D');
+    });
+
+    it('estimates total emissions for a 1 km trip', () => {
+      const perKm = calculateCO2gPerKm(5, 'Gasoline');
+      const totalKg = perKm / 1000; // 1 km distance
+      assert.ok(Math.abs(totalKg - 0.1196) < 1e-6);
     });
   });
 
