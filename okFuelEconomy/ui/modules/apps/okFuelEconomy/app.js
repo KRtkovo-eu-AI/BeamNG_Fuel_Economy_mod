@@ -714,6 +714,9 @@ angular.module('beamng.apps')
     controller: ['$log', '$scope', function ($log, $scope) {
       var streamsList = ['electrics', 'engineInfo', 'gameState'];
       StreamsManager.add(streamsList);
+      if (bngApi && typeof bngApi.engineLua === 'function') {
+        bngApi.engineLua('extensions.load("okGamePause")');
+      }
 
         $scope.fuelPrices = { Gasoline: 0, Electricity: 0 };
         $scope.liquidFuelPriceValue = 0;

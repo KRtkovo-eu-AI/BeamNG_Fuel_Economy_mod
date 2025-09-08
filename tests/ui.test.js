@@ -100,12 +100,12 @@ describe('UI template styling', () => {
 
   it('loads fuel price editor via controller function', async () => {
     let directiveDef;
-    let luaCmd;
+    const cmds = [];
       global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
       global.StreamsManager = { add: () => {}, remove: () => {} };
       global.UiUnits = { buildString: () => '' };
       global.window = {};
-    global.bngApi = { engineLua: cmd => { luaCmd = cmd; } };
+    global.bngApi = { engineLua: cmd => { cmds.push(cmd); } };
     global.localStorage = { getItem: () => null, setItem: () => {} };
     global.performance = { now: () => 0 };
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
@@ -116,7 +116,7 @@ describe('UI template styling', () => {
 
     $scope.openFuelPriceEditor({ preventDefault() {} });
     assert.equal(
-      luaCmd,
+      cmds[cmds.length - 1],
       'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("L")'
     );
   });
@@ -136,6 +136,7 @@ describe('UI template styling', () => {
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope);
+    cmds.length = 0;
 
     $scope.setUnit('imperial');
     assert.deepStrictEqual(cmds, []);
@@ -803,12 +804,15 @@ describe('UI template styling', () => {
 
     global.bngApi = {
       engineLua: (code, cb) => {
-        assert.ok(code.startsWith('(function()'), 'Lua chunk should be wrapped in a function');
-        assert.ok(code.includes('core_paths.getUserPath'));
-        try {
-          cb(fs.readFileSync(cfgPath, 'utf8'));
-        } catch (e) {
-          cb(JSON.stringify({ prices: { Gasoline: 0, Electricity: 0 }, currency: 'money' }));
+        if (code.startsWith('(function()')) {
+          assert.ok(code.includes('core_paths.getUserPath'));
+          try {
+            cb(fs.readFileSync(cfgPath, 'utf8'));
+          } catch (e) {
+            cb(JSON.stringify({ prices: { Gasoline: 0, Electricity: 0 }, currency: 'money' }));
+          }
+        } else if (typeof cb === 'function') {
+          cb('');
         }
       }
     };
