@@ -20,6 +20,9 @@ var foodBaseRate;
 var EU_SPEED_WINDOW_MS = 10000; // retain EU speed samples for 10 s
 var EMISSIONS_BASE_TEMP_C = 90; // baseline engine temp for emissions calculations
 
+// Optional localhost endpoint server for external access
+var endpointServer;
+
 var CO2_FACTORS_G_PER_L = {
   Gasoline: 2392,
   Diesel: 2640,
@@ -1086,6 +1089,85 @@ angular.module('beamng.apps')
           Object.assign($scope.visible, s);
         }
       } catch (e) { /* ignore */ }
+
+      var HOST_KEY = 'okfe_host';
+      var endpointFields = [
+        'heading',
+        'distanceMeasured',
+        'distanceEcu',
+        'fuelUsed',
+        'fuelLeft',
+        'fuelCap',
+        'fuelType',
+        'costPrice',
+        'totalCost',
+        'instantLph',
+        'instantL100km',
+        'instantKmL',
+        'instantCO2',
+        'avgL100km',
+        'avgKmL',
+        'avgCost',
+        'avgCO2',
+        'range',
+        'tripDistance',
+        'tripFuelUsed',
+        'tripTotalCost',
+        'tripTotalCO2',
+        'tripTotalNOx',
+        'tripAvgL100km',
+        'tripAvgKmL',
+        'tripRange',
+        'tripAvgCost',
+        'tripAvgCO2'
+      ];
+
+      function collectEndpointData() {
+        var data = {};
+        endpointFields.forEach(function (f) {
+          data[f] = $scope[f];
+        });
+        return data;
+      }
+
+      function startEndpoint() {
+        if (endpointServer || typeof require !== 'function') return;
+        try {
+          var http = require('http');
+          var fs = require('fs');
+          var path = require('path');
+          endpointServer = http.createServer(function (req, res) {
+            if (req.url === '/data') {
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify(collectEndpointData()));
+            } else {
+              res.setHeader('Content-Type', 'text/html');
+              res.end(fs.readFileSync(path.join(__dirname, 'app.html'), 'utf8'));
+            }
+          }).listen(8099);
+        } catch (e) {
+          endpointServer = null;
+        }
+      }
+
+      function stopEndpoint() {
+        if (endpointServer) {
+          endpointServer.close();
+          endpointServer = null;
+        }
+      }
+
+      try {
+        $scope.hostEnabled = localStorage.getItem(HOST_KEY) === '1';
+      } catch (e) { $scope.hostEnabled = false; }
+
+      $scope.toggleEndpoint = function () {
+        $scope.hostEnabled = !$scope.hostEnabled;
+        try { localStorage.setItem(HOST_KEY, $scope.hostEnabled ? '1' : '0'); } catch (e) {}
+        if ($scope.hostEnabled) startEndpoint(); else stopEndpoint();
+      };
+
+      if ($scope.hostEnabled) startEndpoint();
 
       $scope.saveSettings = function () {
         try {

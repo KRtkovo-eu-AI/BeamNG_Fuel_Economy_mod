@@ -986,6 +986,12 @@
           <label><input type="checkbox" ng-model="visible.tripReset"> Trip reset</label>
         </div>
       </div>
+      <div class="setting-item" style="display:flex; align-items:center; margin-top:8px;">
+        <button id="endpointToggle" ng-click="toggleEndpoint()"
+                ng-attr-style="{{ 'font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : 'color: #ff7722; border: 1px solid #ff7722;') }}">
+          {{ hostEnabled ? 'Disable' : 'Enable' }} Localhost Endpoint
+        </button>
+      </div>
     </div><br>
     <button id="settingsSaveButton" ng-click="saveSettings()"
             ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : 'color: #ff7722; border: 1px solid #ff7722;') }}">
