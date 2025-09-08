@@ -757,18 +757,20 @@ angular.module('beamng.apps')
 
       function pollGamePaused() {
         if (!bngApi || typeof bngApi.engineLua !== 'function') return;
-        var res = bngApi.engineLua(
-          'return extensions.okGameState and extensions.okGameState.getState and extensions.okGameState.getState().paused'
+        bngApi.engineLua(
+          'return extensions.okGameState and extensions.okGameState.getState and extensions.okGameState.getState().paused',
+          function (res) {
+            var paused =
+              res === true || res === 1 || res === '1' || res === 'true';
+            if (typeof $scope.$evalAsync === 'function') {
+              $scope.$evalAsync(function () {
+                $scope.gamePaused = paused;
+              });
+            } else {
+              $scope.gamePaused = paused;
+            }
+          }
         );
-        var paused =
-          res === true || res === 1 || res === '1' || res === 'true';
-        if (typeof $scope.$evalAsync === 'function') {
-          $scope.$evalAsync(function () {
-            $scope.gamePaused = paused;
-          });
-        } else {
-          $scope.gamePaused = paused;
-        }
       }
       var pauseTimer = setInterval(pollGamePaused, 250);
       if (pauseTimer.unref) pauseTimer.unref();
