@@ -18,11 +18,14 @@ describe('coasting behaviour', () => {
     const idleFlow = 0; // idle unknown
     const throttle = 0;
 
-    const flow = smoothFuelFlow(0, speed, throttle, lastFlow, idleFlow, EPS_SPEED);
-    const inst = calculateInstantConsumption(flow, speed);
+    const flow1 = smoothFuelFlow(0, speed, throttle, lastFlow, idleFlow, EPS_SPEED);
+    const flow2 = smoothFuelFlow(0, speed, throttle, flow1, idleFlow, EPS_SPEED);
+    const inst = calculateInstantConsumption(flow2, speed);
     const co2 = calculateCO2gPerKm(inst, 'Gasoline');
 
-    assert.ok(flow > 0);
+    assert.ok(flow1 < lastFlow);
+    assert.ok(flow2 < flow1);
+    assert.ok(flow2 > 0);
     assert.ok(inst > 0);
     assert.ok(co2 > 0);
   });

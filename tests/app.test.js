@@ -173,12 +173,14 @@ describe('app.js utility functions', () => {
       flow = smoothFuelFlow(0, 20, 0, flow, idle, EPS_SPEED);
       assert.ok(flow > idle && flow < 0.02);
     });
-    it('retains last flow when idle is unknown', () => {
-      let last = 0.03;
-      const flow1 = smoothFuelFlow(0, 25, 0, last, 0, EPS_SPEED);
-      const flow2 = smoothFuelFlow(0, 25, 0, flow1, 0, EPS_SPEED);
-      assert.strictEqual(flow1, last);
-      assert.strictEqual(flow2, last);
+    it('decays toward fallback when idle is unknown', () => {
+      let flow = 0.03;
+      flow = smoothFuelFlow(0, 25, 0, flow, 0, EPS_SPEED);
+      const afterFirst = flow;
+      flow = smoothFuelFlow(0, 25, 0, flow, 0, EPS_SPEED);
+      assert.ok(afterFirst < 0.03);
+      assert.ok(flow < afterFirst);
+      assert.ok(flow > 0);
     });
     it('passes through negative flow for regeneration', () => {
       const res = smoothFuelFlow(-0.01, 10, 0, 0, 0, EPS_SPEED);

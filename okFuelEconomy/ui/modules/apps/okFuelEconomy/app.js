@@ -5,6 +5,7 @@
 var EPS_SPEED = 0.005; // [m/s]
 var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
 var MIN_RPM_RUNNING = 100; // below this rpm the engine is considered off
+var DEFAULT_IDLE_FLOW_LPS = 0.0002; // ~0.72 L/h fallback when idle flow unknown
 var FOOD_CAPACITY_KCAL = 2000;
 var FOOD_REST_KCAL_PER_H = 80;
 var FOOD_WALK_KCAL_PER_H = 300;
@@ -71,16 +72,11 @@ function smoothFuelFlow(
     // Always use fresh positive readings, even with zero throttle.
     return fuelFlow_lps;
   }
-  const target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : 0;
+  var target = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : DEFAULT_IDLE_FLOW_LPS;
 
   if (throttle <= 0.05) {
     // Coasting or idling with a stale sensor reading.
-    if (target > 0) {
-      return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
-    }
-    // Unknown idle flow – retain the last known flow so readings do not
-    // collapse to zero while the engine is still running.
-    return lastFuelFlow_lps;
+    return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
   }
 
   if (speed_mps > EPS_SPEED) {
@@ -88,7 +84,7 @@ function smoothFuelFlow(
     return lastFuelFlow_lps;
   }
 
-  // Vehicle stopped with throttle: smoothly approach idle flow.
+  // Vehicle stopped with throttle: smoothly approach idle or fallback flow.
   return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
 }
 
@@ -1564,11 +1560,13 @@ angular.module('beamng.apps')
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
           if (
             $scope.unitMode !== 'electric' &&
-            speed_mps <= EPS_SPEED &&
             throttle <= 0.05 &&
             rawFuelFlow_lps > 0
           ) {
-            idleFuelFlow_lps = rawFuelFlow_lps;
+            idleFuelFlow_lps =
+              idleFuelFlow_lps > 0
+                ? Math.min(idleFuelFlow_lps, rawFuelFlow_lps)
+                : rawFuelFlow_lps;
           }
           var fuelFlow_lps = smoothFuelFlow(
             rawFuelFlow_lps,
