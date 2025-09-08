@@ -407,6 +407,10 @@ describe('app.js utility functions', () => {
       assert.strictEqual(calculateCO2gPerKm(5, 'Nitromethan'), 5 / 100 * 820);
       assert.ok(Math.abs(calculateCO2gPerKm(5, 'Food') - 5 / 100 * 0.001) < 1e-9);
     });
+    it('caps extreme consumption when computing emissions', () => {
+      const capped = calculateCO2gPerKm(10000, 'Gasoline');
+      assert.strictEqual(capped, (MAX_CONSUMPTION / 100) * 2392);
+    });
     it('formats CO2 emissions', () => {
       const val = calculateCO2gPerKm(5, 'Gasoline');
       assert.strictEqual(

@@ -7,7 +7,9 @@ var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
 var MIN_RPM_RUNNING = 100; // below this rpm the engine is considered off
 var DEFAULT_IDLE_FLOW_LPS = 0.0002; // ~0.72 L/h fallback when idle flow unknown
 var DEFAULT_IDLE_RPM = 800; // assume typical idle speed when unknown
-var MAX_CONSUMPTION = 1000; // [L/100km] ignore unrealistic spikes
+// Limit extreme instantaneous consumption figures to keep the display
+// within a realistic range even when flooring the throttle from a stop.
+var MAX_CONSUMPTION = 100; // [L/100km] ignore unrealistic spikes
 var MAX_EFFICIENCY = 100; // [km/L] cap unrealistic efficiency
 var RADPS_TO_RPM = 60 / (2 * Math.PI); // convert rad/s telemetry to rpm
 var FOOD_CAPACITY_KCAL = 2000;
@@ -424,7 +426,8 @@ function calculateCO2gPerKm(lPer100km, fuelType) {
     ? CO2_FACTORS_G_PER_L[fuelType]
     : CO2_FACTORS_G_PER_L.Gasoline;
   if (!Number.isFinite(lPer100km)) return Infinity;
-  return (lPer100km / 100) * factor;
+  var capped = Math.min(lPer100km, MAX_CONSUMPTION);
+  return (capped / 100) * factor;
 }
 
 function formatCO2(gPerKm, decimals, mode) {
