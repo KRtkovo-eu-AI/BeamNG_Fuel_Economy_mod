@@ -690,66 +690,6 @@
     </tbody>
   </table>
 
-  <script>
-  (function() {
-    const STORAGE_KEY = 'okFeRowOrder';
-    const tbody = document.getElementById('dataRows');
-    const settingsList = document.getElementById('settingsList');
-    if (!tbody || !settingsList) return;
-
-    function move(rowId, dir) {
-      const row = document.getElementById(rowId);
-      const setting = settingsList.querySelector(`[data-row="${rowId}"]`);
-      if (!row || !setting) return;
-      if (dir < 0) {
-        const prevRow = row.previousElementSibling;
-        const prevSet = setting.previousElementSibling;
-        if (prevRow && prevSet) {
-          tbody.insertBefore(row, prevRow);
-          settingsList.insertBefore(setting, prevSet);
-        }
-      } else {
-        const nextRow = row.nextElementSibling;
-        const nextSet = setting.nextElementSibling;
-        if (nextRow && nextSet) {
-          tbody.insertBefore(nextRow, row);
-          settingsList.insertBefore(nextSet, setting);
-        }
-      }
-      saveOrder();
-    }
-
-    settingsList.addEventListener('click', e => {
-      if (e.target.classList.contains('move-up')) {
-        const item = e.target.closest('.setting-item');
-        move(item.dataset.row, -1);
-      } else if (e.target.classList.contains('move-down')) {
-        const item = e.target.closest('.setting-item');
-        move(item.dataset.row, 1);
-      }
-    });
-
-    function saveOrder() {
-      const order = Array.from(tbody.children).map(r => r.id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
-    }
-
-    (function loadOrder() {
-      const order = JSON.parse(localStorage.getItem(STORAGE_KEY));
-      if (Array.isArray(order)) {
-        const rowMap = {};
-        Array.from(tbody.children).forEach(r => rowMap[r.id] = r);
-        const setMap = {};
-        Array.from(settingsList.children).forEach(s => setMap[s.dataset.row] = s);
-        order.forEach(id => {
-          if (rowMap[id]) tbody.appendChild(rowMap[id]);
-          if (setMap[id]) settingsList.appendChild(setMap[id]);
-        });
-      }
-    })();
-  })();
-  </script>
-
   <!-- Reset icon (global) -->
   <span class="material-icons"
         ng-click="reset($event)"
@@ -1051,6 +991,65 @@
             ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : 'color: #ff7722; border: 1px solid #ff7722;') }}">
       <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
     </button><br><br>
-    <p ng-attr-style="{{ useCustomStyles ? 'margin-top:4px; color:#aeeaff; font-size: 11px; font-style: italic;' : '' }}">Fuel Economy v1.0.9</p>
+      <p ng-attr-style="{{ useCustomStyles ? 'margin-top:4px; color:#aeeaff; font-size: 11px; font-style: italic;' : '' }}">Fuel Economy v1.0.9</p>
+    </div>
+    <script>
+    (function() {
+      const STORAGE_KEY = 'okFeRowOrder';
+      const tbody = document.getElementById('dataRows');
+      const settingsList = document.getElementById('settingsList');
+      if (!tbody || !settingsList) return;
+
+      function move(rowId, dir) {
+        const row = document.getElementById(rowId);
+        const setting = settingsList.querySelector(`[data-row="${rowId}"]`);
+        if (!row || !setting) return;
+        if (dir < 0) {
+          const prevRow = row.previousElementSibling;
+          const prevSet = setting.previousElementSibling;
+          if (prevRow && prevSet) {
+            tbody.insertBefore(row, prevRow);
+            settingsList.insertBefore(setting, prevSet);
+          }
+        } else {
+          const nextRow = row.nextElementSibling;
+          const nextSet = setting.nextElementSibling;
+          if (nextRow && nextSet) {
+            tbody.insertBefore(nextRow, row);
+            settingsList.insertBefore(nextSet, setting);
+          }
+        }
+        saveOrder();
+      }
+
+      settingsList.addEventListener('click', e => {
+        if (e.target.classList.contains('move-up')) {
+          const item = e.target.closest('.setting-item');
+          move(item.dataset.row, -1);
+        } else if (e.target.classList.contains('move-down')) {
+          const item = e.target.closest('.setting-item');
+          move(item.dataset.row, 1);
+        }
+      });
+
+      function saveOrder() {
+        const order = Array.from(tbody.children).map(r => r.id);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
+      }
+
+      (function loadOrder() {
+        const order = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (Array.isArray(order)) {
+          const rowMap = {};
+          Array.from(tbody.children).forEach(r => rowMap[r.id] = r);
+          const setMap = {};
+          Array.from(settingsList.children).forEach(s => setMap[s.dataset.row] = s);
+          order.forEach(id => {
+            if (rowMap[id]) tbody.appendChild(rowMap[id]);
+            if (setMap[id]) settingsList.appendChild(setMap[id]);
+          });
+        }
+      })();
+    })();
+    </script>
   </div>
-</div>
