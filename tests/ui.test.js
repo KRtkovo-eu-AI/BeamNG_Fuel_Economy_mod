@@ -886,9 +886,9 @@ describe('UI template styling', () => {
     assert.ok(html.includes('<span class="material-icons"')); 
     assert.ok(html.includes('save</span>'));
 
-    assert.ok(html.includes('ng-if="avgCo2Compliant && avgCo2Class"'));
+    assert.ok(html.includes('<span ng-if="avgCo2Compliant"> | </span>'));
     ['A','B','C','D','E','F','G'].forEach(cls => {
-      assert.ok(html.includes(`<svg ng-if="avgCo2Class === '${cls}'"`), `missing avg svg ${cls}`);
+      assert.ok(html.includes(`<svg ng-if="avgCo2Compliant && avgCo2Class === '${cls}'"`), `missing avg svg ${cls}`);
       assert.ok(html.includes(`<svg ng-if="tripCo2Class === '${cls}'"`), `missing trip svg ${cls}`);
     });
     assert.ok(!html.includes('<use'));
