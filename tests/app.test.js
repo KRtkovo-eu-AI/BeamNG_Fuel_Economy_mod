@@ -467,8 +467,10 @@ describe('app.js utility functions', () => {
     it('scales CO2 for gasoline with temp and N2O', () => {
       const base = calculateCO2Factor('Gasoline', 90, false, false);
       const hot = calculateCO2Factor('Gasoline', 140, false, false);
+      const cold = calculateCO2Factor('Gasoline', 40, false, false);
       const boosted = calculateCO2Factor('Gasoline', 90, true, false);
       assert.ok(hot > base);
+      assert.ok(cold > base);
       assert.ok(boosted > base);
     });
     it('returns zero CO2 factor for electricity', () => {

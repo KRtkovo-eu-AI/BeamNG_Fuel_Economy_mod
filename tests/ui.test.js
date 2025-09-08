@@ -292,7 +292,7 @@ describe('UI template styling', () => {
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
-    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80; streams.engineInfo[13] = 90;
     now = 0; $scope.on_streamsUpdate(null, streams);
     streams.engineInfo[11] = 58; now = 100000; $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.totalCost, '3.00 USD');
@@ -716,7 +716,7 @@ describe('UI template styling', () => {
     $scope.liquidFuelPriceValue = 1.5;
     $scope.currency = 'USD';
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
-    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80; streams.engineInfo[13] = 90;
     now = 0; handlers['streamsUpdate'](null, streams);
     await new Promise(r => setTimeout(r, 0));
     streams.engineInfo[11] = 58; now = 100000; handlers['streamsUpdate'](null, streams);
@@ -868,10 +868,10 @@ describe('UI template styling', () => {
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
-    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80; streams.engineInfo[13] = 90;
     now = 0;
     $scope.on_streamsUpdate(null, streams);
-    streams.engineInfo[11] = 58;
+    streams.engineInfo[11] = 58; streams.engineInfo[13] = 90;
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
@@ -1069,10 +1069,10 @@ describe('controller integration', () => {
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
-    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80; streams.engineInfo[13] = 90;
     now = 0;
     $scope.on_streamsUpdate(null, streams);
-    streams.engineInfo[11] = 58;
+    streams.engineInfo[11] = 58; streams.engineInfo[13] = 90;
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
@@ -1158,10 +1158,10 @@ describe('controller integration', () => {
     await new Promise(resolve => setImmediate(resolve));
 
     const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 200, trip: 0, throttle_input: 0.5, rpmTacho: 1000 } };
-    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80;
+    streams.engineInfo[11] = 60; streams.engineInfo[12] = 80; streams.engineInfo[13] = 90;
     now = 0;
     $scope.on_streamsUpdate(null, streams);
-    streams.engineInfo[11] = 58;
+    streams.engineInfo[11] = 58; streams.engineInfo[13] = 90;
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
@@ -1210,7 +1210,7 @@ describe('controller integration', () => {
 
     now = 0;
     $scope.on_streamsUpdate(null, streams);
-    streams.engineInfo[11] = 58;
+    streams.engineInfo[11] = 58; streams.engineInfo[13] = 90;
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
@@ -1219,7 +1219,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripFuelUsedLiquid, '0.00 L');
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostElectric) - parseFloat($scope.tripFuelUsedElectric) * 0.5) < 1e-6);
 
-    streams.engineInfo[11] = 59;
+    streams.engineInfo[11] = 59; streams.engineInfo[13] = 90;
     now = 200000;
     $scope.on_streamsUpdate(null, streams);
     assert.strictEqual($scope.tripTotalCostElectric, '0.50 USD');
@@ -1265,7 +1265,7 @@ describe('controller integration', () => {
 
     now = 0;
     $scope.on_streamsUpdate(null, streams);
-    streams.engineInfo[11] = 58;
+    streams.engineInfo[11] = 58; streams.engineInfo[13] = 90;
     now = 100000;
     $scope.on_streamsUpdate(null, streams);
 
@@ -2084,6 +2084,7 @@ describe('controller integration', () => {
     };
     streams.engineInfo[11] = 60;
     streams.engineInfo[12] = 80;
+    streams.engineInfo[13] = 90;
 
     for (let i = 0; i < 3; i++) {
       now += 1000;

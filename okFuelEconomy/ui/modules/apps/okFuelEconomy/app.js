@@ -441,12 +441,13 @@ function calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric) {
   var base = CO2_FACTORS_G_PER_L[fuelType] != null
     ? CO2_FACTORS_G_PER_L[fuelType]
     : CO2_FACTORS_G_PER_L.Gasoline;
-  var temp = typeof engineTempC === 'number' ? engineTempC : 0;
-  var tempExcess = Math.max(0, temp - EMISSIONS_BASE_TEMP_C);
+  var temp =
+    typeof engineTempC === 'number' ? engineTempC : EMISSIONS_BASE_TEMP_C;
   if (base === 0) {
     return base;
   }
-  base = base * (1 + tempExcess / 100);
+  var delta = Math.abs(temp - EMISSIONS_BASE_TEMP_C);
+  base = base * (1 + delta / 100);
   if (n2oActive) base *= 1.2;
   return base;
 }
