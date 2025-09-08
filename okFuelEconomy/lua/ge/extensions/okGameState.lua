@@ -13,6 +13,8 @@ local function getState()
   return { paused = paused }
 end
 
+M.getState = getState
+
 M.onExtensionLoaded = function()
   if streams and streams.registerStream then
     streams.registerStream('okGameState', getState)
