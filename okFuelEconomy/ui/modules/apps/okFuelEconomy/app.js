@@ -712,7 +712,7 @@ angular.module('beamng.apps')
     restrict: 'EA',
     scope: true,
     controller: ['$log', '$scope', function ($log, $scope) {
-      var streamsList = ['electrics', 'engineInfo'];
+      var streamsList = ['electrics', 'engineInfo', 'gameState'];
       StreamsManager.add(streamsList);
 
         $scope.fuelPrices = { Gasoline: 0, Electricity: 0 };
@@ -1473,10 +1473,10 @@ angular.module('beamng.apps')
             : null;
         var paused = gamePaused;
         if (streams) {
-          if (typeof streams.paused === 'boolean') paused = streams.paused;
-          if (streams.game && typeof streams.game.paused === 'boolean') paused = streams.game.paused;
+          if ('paused' in streams) paused = !!streams.paused;
+          if (streams.game && 'paused' in streams.game) paused = !!streams.game.paused;
           if (streams.gameState) {
-            if (typeof streams.gameState.paused === 'boolean') paused = streams.gameState.paused;
+            if ('paused' in streams.gameState) paused = !!streams.gameState.paused;
             if (
               typeof streams.gameState.state === 'string' &&
               streams.gameState.state.toLowerCase().indexOf('pause') !== -1

@@ -2110,6 +2110,23 @@ describe('controller integration', () => {
     assert.ok(parseFloat($scope.instantCO2) < 4);
   });
 
+  it('requests gameState stream for pause detection', () => {
+    let directiveDef;
+    let added;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: list => { added = list; }, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.window = {};
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    controllerFn({ debug: () => {} }, { $on: () => {} });
+    assert.ok(added.includes('gameState'));
+  });
+
   it('pauses calculations when the game is paused', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
@@ -2209,7 +2226,7 @@ describe('controller integration', () => {
       engineInfo: Array(15).fill(0),
       electrics: { wheelspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 },
       dt: 1,
-      game: { paused: false }
+      gameState: { paused: false }
     };
     streams.engineInfo[11] = 60;
     streams.engineInfo[12] = 80;
@@ -2223,7 +2240,7 @@ describe('controller integration', () => {
     const instantBefore = $scope.instantHistory;
     const tripBefore = $scope.tripAvgHistory;
 
-    streams.game.paused = true;
+    streams.gameState.paused = true;
 
     for (let i = 0; i < 5; i++) {
       now += 1000;
@@ -2234,7 +2251,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.instantHistory, instantBefore);
     assert.strictEqual($scope.tripAvgHistory, tripBefore);
 
-    streams.game.paused = false;
+    streams.gameState.paused = false;
 
     now += 1000;
     streams.engineInfo[11] -= 0.1;
