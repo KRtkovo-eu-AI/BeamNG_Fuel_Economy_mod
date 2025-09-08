@@ -1061,7 +1061,8 @@ angular.module('beamng.apps')
         tripRange: true,
         tripAvgCost: false,
         tripAvgCO2: true,
-        tripReset: true
+        tripReset: true,
+        webEndpoint: false
       };
       try {
         var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
@@ -1093,6 +1094,13 @@ angular.module('beamng.apps')
         }
       } catch (e) { /* ignore */ }
 
+      var webEndpointRunning = false;
+      if ($scope.visible.webEndpoint && bngApi && typeof bngApi.engineLua === 'function') {
+        bngApi.engineLua('extensions.load("okWebServer")');
+        bngApi.engineLua('extensions.okWebServer.start()');
+        webEndpointRunning = true;
+      }
+
       $scope.saveSettings = function () {
         try {
           localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible));
@@ -1101,6 +1109,19 @@ angular.module('beamng.apps')
             localStorage.setItem(PREFERRED_UNIT_KEY, $scope.unitMode);
           }
         } catch (e) { /* ignore */ }
+
+        if ($scope.visible.webEndpoint && !webEndpointRunning) {
+          if (bngApi && typeof bngApi.engineLua === 'function') {
+            bngApi.engineLua('extensions.load("okWebServer")');
+            bngApi.engineLua('extensions.okWebServer.start()');
+          }
+          webEndpointRunning = true;
+        } else if (!$scope.visible.webEndpoint && webEndpointRunning) {
+          if (bngApi && typeof bngApi.engineLua === 'function') {
+            bngApi.engineLua('extensions.okWebServer.stop()');
+          }
+          webEndpointRunning = false;
+        }
         $scope.settingsOpen = false;
       };
 
@@ -2089,6 +2110,41 @@ angular.module('beamng.apps')
           $scope.data8 = formatDistance(overall.distance, mode, 1);
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
+
+          if (webEndpointRunning && bngApi && typeof bngApi.engineLua === 'function') {
+            var payload = {
+              distanceMeasured: $scope.data1,
+              distanceEcu: $scope.data6,
+              fuelUsed: $scope.fuelUsed,
+              fuelLeft: $scope.fuelLeft,
+              fuelCap: $scope.fuelCap,
+              avgL100km: $scope.avgL100km,
+              avgKmL: $scope.avgKmL,
+              range: $scope.data4,
+              instantLph: $scope.instantLph,
+              instantL100km: $scope.instantL100km,
+              instantKmL: $scope.instantKmL,
+              tripAvgL100km: $scope.tripAvgL100km,
+              tripAvgKmL: $scope.tripAvgKmL,
+              avgCO2: $scope.avgCO2,
+              tripAvgCO2: $scope.tripAvgCO2,
+              tripCo2Class: $scope.tripCo2Class,
+              costPrice: $scope.costPrice,
+              avgCost: $scope.avgCost,
+              totalCost: $scope.totalCost,
+              tripAvgCostLiquid: $scope.tripAvgCostLiquid,
+              tripAvgCostElectric: $scope.tripAvgCostElectric,
+              tripTotalCostLiquid: $scope.tripTotalCostLiquid,
+              tripTotalCostElectric: $scope.tripTotalCostElectric,
+              tripFuelUsedLiquid: $scope.tripFuelUsedLiquid,
+              tripFuelUsedElectric: $scope.tripFuelUsedElectric,
+              tripTotalCO2: $scope.tripTotalCO2,
+              tripTotalNOx: $scope.tripTotalNOx,
+              vehicleName: $scope.vehicleNameStr
+            };
+            bngApi.engineLua('extensions.okWebServer.setData(' + JSON.stringify(JSON.stringify(payload)) + ')');
+          }
+
           lastDistance_m = distance_m;
           initialized = true;
         });
