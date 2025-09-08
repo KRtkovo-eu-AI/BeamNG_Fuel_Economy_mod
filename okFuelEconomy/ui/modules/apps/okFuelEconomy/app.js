@@ -1440,14 +1440,17 @@ angular.module('beamng.apps')
       saveOverall();
       };
 
-      $scope.$on('GamePaused', function () {
+      $scope.on_GamePaused = function () {
         gamePaused = true;
-      });
+      };
 
-      $scope.$on('GameResumed', function () {
+      $scope.on_GameResumed = function () {
         gamePaused = false;
         lastTime_ms = performance.now();
-      });
+      };
+
+      $scope.$on('GamePaused', $scope.on_GamePaused);
+      $scope.$on('GameResumed', $scope.on_GameResumed);
 
       $scope.$on('VehicleFocusChanged', function () {
         $log.debug('<ok-fuel-economy> vehicle changed -> reset trip');
