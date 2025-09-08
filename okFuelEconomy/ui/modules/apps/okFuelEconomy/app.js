@@ -747,8 +747,13 @@ angular.module('beamng.apps')
     scope: true,
     controller: ['$log', '$scope', '$timeout', function ($log, $scope, $timeout) {
       if (typeof $timeout !== 'function') $timeout = function (fn) { fn(); };
-      var streamsList = ['electrics', 'engineInfo'];
+      var streamsList = ['electrics', 'engineInfo', 'okGameState'];
       StreamsManager.add(streamsList);
+      if (bngApi && typeof bngApi.engineLua === 'function') {
+        bngApi.engineLua('extensions.load("okGameState")');
+      }
+
+      $scope.gamePaused = false;
 
         $scope.fuelPrices = { Gasoline: 0, Electricity: 0 };
         $scope.liquidFuelPriceValue = 0;
@@ -1538,6 +1543,9 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
+          if (streams.okGameState && typeof streams.okGameState.paused !== 'undefined') {
+            $scope.gamePaused = !!streams.okGameState.paused;
+          }
           if ($scope.fuelType === 'Food') {
             fetchFuelType();
             if (!streams.electrics) return;

@@ -136,7 +136,7 @@ describe('UI template styling', () => {
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
     const $scope = { $on: () => {} };
     controllerFn({ debug: () => {} }, $scope);
-
+    cmds.length = 0;
     $scope.setUnit('imperial');
     assert.deepStrictEqual(cmds, []);
   });
@@ -803,6 +803,7 @@ describe('UI template styling', () => {
 
     global.bngApi = {
       engineLua: (code, cb) => {
+        if (!code.includes('core_paths.getUserPath')) return;
         assert.ok(code.startsWith('(function()'), 'Lua chunk should be wrapped in a function');
         assert.ok(code.includes('core_paths.getUserPath'));
         try {
