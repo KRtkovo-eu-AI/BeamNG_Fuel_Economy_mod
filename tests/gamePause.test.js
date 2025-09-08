@@ -12,7 +12,7 @@ it('halts updates when the game is paused', () => {
   let paused = false;
   global.bngApi = {
     engineLua: cmd => {
-      if (cmd === 'return be:getTimeScale()') {
+      if (cmd === 'return getTimeScale()') {
         return paused ? 0 : 1;
       }
       return '';
