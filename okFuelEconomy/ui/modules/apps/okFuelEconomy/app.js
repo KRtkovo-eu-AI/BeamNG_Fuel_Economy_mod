@@ -78,8 +78,9 @@ function smoothFuelFlow(
     if (target > 0) {
       return lastFuelFlow_lps + (target - lastFuelFlow_lps) * 0.1;
     }
-    // Unknown idle flow – treat as engine off/fuel cut.
-    return 0;
+    // Unknown idle flow – retain the last known flow so readings do not
+    // collapse to zero while the engine is still running.
+    return lastFuelFlow_lps;
   }
 
   if (speed_mps > EPS_SPEED) {

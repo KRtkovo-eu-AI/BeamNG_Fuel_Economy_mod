@@ -20,7 +20,7 @@ const {
 // Driving segments used for repeated environment cycles
 const segments = [
   { name: 'launch', duration: 100, speed: 30, flow: 0.004, throttle: 0.8 },
-  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, expectZero: true },
+  { name: 'coastNoIdle', duration: 100, speed: 20, flow: 0, throttle: 0, expectHold: true },
   { name: 'city', duration: 100, speed: 0, flow: 0.001, throttle: 0 },
   { name: 'mountains', duration: 100, speed: 15, flow: 0.004, throttle: 0.6 },
   { name: 'countryside', duration: 100, speed: 20, flow: 0.002, throttle: 0.5 },
@@ -52,6 +52,7 @@ function runCycle() {
 
   for (const seg of segments) {
     const idleBefore = idleFlow;
+    const beforeFlow = lastFlow;
     let startFlow, endFlow;
     if (seg.throttle <= 0.05 && lastThrottle > 0.05) {
       prev = fuel;
@@ -70,7 +71,7 @@ function runCycle() {
         idleFlow,
         EPS_SPEED
       );
-      if (seg.expectZero || seg.expectIdle) {
+      if (seg.expectHold || seg.expectIdle) {
         if (t === 0) startFlow = flow;
         if (t === seg.duration - 1) endFlow = flow;
       }
@@ -91,9 +92,9 @@ function runCycle() {
     if (seg.expectIdleSame) {
       assert.strictEqual(idleFlow, idleBefore);
     }
-    if (seg.expectZero) {
-      assert.strictEqual(startFlow, 0);
-      assert.strictEqual(endFlow, 0);
+    if (seg.expectHold) {
+      assert.strictEqual(startFlow, beforeFlow);
+      assert.strictEqual(endFlow, beforeFlow);
     }
     if (seg.expectIdle) {
       assert.ok(startFlow > endFlow);
