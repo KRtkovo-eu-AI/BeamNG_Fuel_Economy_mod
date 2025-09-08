@@ -750,6 +750,31 @@ angular.module('beamng.apps')
       var streamsList = ['electrics', 'engineInfo'];
       StreamsManager.add(streamsList);
 
+        $scope.gamePaused = false;
+
+        function detectGamePause() {
+          if (typeof bngApi === 'undefined') return;
+
+          if (bngApi.engine && typeof bngApi.engine.on === 'function') {
+            bngApi.engine.on('GameStateChanged', function (state) {
+              if (typeof state.paused !== 'undefined') {
+                $scope.$evalAsync(function () {
+                  $scope.gamePaused = state.paused;
+                });
+              }
+            });
+            bngApi.engine.on('GamePausedChanged', function (data) {
+              $scope.$evalAsync(function () {
+                $scope.gamePaused = data.paused;
+              });
+            });
+          }
+
+          // Initial state detection left to game events; no direct engineLua query
+        }
+
+        detectGamePause();
+
         $scope.fuelPrices = { Gasoline: 0, Electricity: 0 };
         $scope.liquidFuelPriceValue = 0;
         $scope.electricityPriceValue = 0;
