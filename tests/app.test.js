@@ -27,6 +27,7 @@ const {
   classifyCO2,
   meetsEuCo2Limit,
   MIN_VALID_SPEED_MPS,
+  MAX_CONSUMPTION,
   resolveUnitModeForFuelType,
   formatFuelTypeLabel,
   getUnitLabels
@@ -73,6 +74,12 @@ describe('app.js utility functions', () => {
       assert.strictEqual(
         calculateInstantConsumption(-0.001, 10),
         -0.001 / 10 * 100000
+      );
+    });
+    it('caps unrealistic values', () => {
+      assert.strictEqual(
+        calculateInstantConsumption(2, 0),
+        MAX_CONSUMPTION
       );
     });
   });
