@@ -1,5 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
 
 function setup(store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: true }) }) {
   let directiveDef;
@@ -88,7 +90,6 @@ test('migrates legacy trip visibility flags', () => {
 });
 
 test('lua web server exposes ui.html', () => {
-  const fs = require('node:fs');
   const content = fs.readFileSync('okFuelEconomy/lua/ge/extensions/okWebServer.lua', 'utf8');
   assert.ok(content.includes('ui.html'));
   assert.ok(content.includes('dataRows'));
@@ -99,14 +100,38 @@ test('lua web server exposes ui.html', () => {
   assert.ok(content.includes('lastOrder'));
   assert.ok(content.includes('Used'));
   assert.ok(content.includes('Measured'));
-  assert.ok(content.includes('Average consumption'));
+  assert.ok(content.includes('row-averageConsumption'));
   assert.ok(content.includes('Trip fuel used'));
   assert.ok(content.includes('Trip total fuel cost'));
-  assert.ok(content.includes('Trip average consumption'));
+  assert.ok(content.includes('row-tripAvgConsumption'));
   assert.ok(content.includes('Trip average fuel cost'));
   assert.ok(content.includes('Trip total CO₂ emissions'));
   assert.ok(content.includes('Trip total NOₓ emissions'));
   assert.ok(content.includes('Trip average CO₂ emissions'));
   assert.ok(content.includes('avgCo2Class'));
   assert.ok(content.includes('tripCo2Class'));
+});
+
+test('ui.html respects row order', () => {
+  const lua = fs.readFileSync('okFuelEconomy/lua/ge/extensions/okWebServer.lua', 'utf8');
+  let script = lua.match(/<script>([\s\S]*?)<\/script>/)[1];
+  script = script.replace('refresh();setInterval(refresh,1000);', '');
+  const tbody = {
+    children: [],
+    appendChild(el) { this.children.push(el); },
+    set innerHTML(v) { this.children = []; },
+  };
+  const sandbox = {
+    document: {
+      createElement: (tag) => ({ tag, id: '', className: '', children: [], textContent: '', appendChild(el) { this.children.push(el); } }),
+      createTextNode: (text) => ({ textContent: text }),
+      getElementById: (id) => (id === 'dataRows' ? tbody : null),
+      body: {},
+    },
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(script, sandbox);
+  sandbox.buildRows({ rowOrder: ['row-tripDistance', 'row-distance'], visible: { tripDistance: true, distanceMeasured: true } });
+  const order = tbody.children.map((r) => r.id);
+  assert.deepStrictEqual(order.slice(0, 2), ['row-tripDistance', 'row-distance']);
 });
