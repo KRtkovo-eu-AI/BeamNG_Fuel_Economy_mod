@@ -7,6 +7,7 @@ local server = nil
 local clients = {}
 local running = false
 local data = {}
+local listenPort = nil
 
 local function loadAppHtml()
   if M._cachedHtml then return M._cachedHtml end
@@ -29,26 +30,40 @@ end
 
 local function start()
   if running then return end
-  server = socket.tcp()
+
+  local ports = {8099, 23512}
+  local err
+  for _, p in ipairs(ports) do
+    local s = socket.tcp()
+    if not s then
+      err = 'failed to create tcp socket'
+      break
+    end
+    s:setoption('reuseaddr', true)
+    local ok
+    ok, err = s:bind('127.0.0.1', p)
+    if not ok then
+      ok, err = s:bind('0.0.0.0', p)
+    end
+    if ok then
+      server = s
+      listenPort = p
+      break
+    else
+      s:close()
+      log('W', 'okWebServer', 'bind failed on port ' .. p .. ': ' .. tostring(err))
+    end
+  end
+
   if not server then
-    log('E', 'okWebServer', 'failed to create tcp socket')
+    log('E', 'okWebServer', 'unable to bind: ' .. tostring(err))
     return
   end
-  server:setoption('reuseaddr', true)
-  local ok, err = server:bind('127.0.0.1', 8099)
-  if not ok then
-    ok, err = server:bind('0.0.0.0', 8099)
-  end
-  if not ok then
-    log('E', 'okWebServer', 'bind failed: ' .. tostring(err))
-    server:close()
-    server = nil
-    return
-  end
+
   server:listen()
   server:settimeout(0)
   running = true
-  log('I', 'okWebServer', 'listening on http://127.0.0.1:8099')
+  log('I', 'okWebServer', 'listening on http://127.0.0.1:' .. listenPort)
 end
 
 local function stop()
@@ -59,6 +74,7 @@ local function stop()
   server = nil
   running = false
   log('I', 'okWebServer', 'stopped')
+  listenPort = nil
 end
 
 function M.setData(jsonStr)
@@ -120,6 +136,10 @@ M.start = start
 M.stop = stop
 M.update = update
 M.onUpdate = update
+
+function M.getPort()
+  return listenPort
+end
 
 return M
 
