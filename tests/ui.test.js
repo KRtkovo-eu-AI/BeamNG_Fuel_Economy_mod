@@ -2161,6 +2161,80 @@ describe('controller integration', () => {
     assert.ok(parseFloat($scope.instantCO2) < 4);
   });
 
+  it('stops updating when ignition is off in electric mode', () => {
+    let directiveDef;
+    global.angular = {
+      module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }),
+    };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    const store = {
+      okFuelEconomyOverall: JSON.stringify({
+        queue: [],
+        distance: 0,
+        previousAvg: 0,
+        previousAvgTrip: 0,
+        fuelUsedLiquid: 0,
+        fuelUsedElectric: 0,
+      }),
+      okFuelEconomyAvgHistory: JSON.stringify({ queue: [] }),
+    };
+    global.localStorage = {
+      getItem: (k) => (k in store ? store[k] : null),
+      setItem: (k, v) => {
+        store[k] = v;
+      },
+    };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = {
+      $on: (name, cb) => {
+        $scope['on_' + name] = cb;
+      },
+      $evalAsync: (fn) => fn(),
+    };
+    controllerFn({ debug: () => {} }, $scope);
+    $scope.unitMode = 'electric';
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: {
+        wheelspeed: 10,
+        throttle_input: 0.5,
+        rpmTacho: 1000,
+        engineRunning: true,
+        ignitionLevel: 2,
+        trip: 0,
+      },
+    };
+    streams.engineInfo[11] = 60;
+    streams.engineInfo[12] = 80;
+
+    for (let i = 0; i < 3; i++) {
+      now += 1000;
+      streams.engineInfo[11] -= 0.1;
+      $scope.on_streamsUpdate(null, streams);
+    }
+
+    streams.electrics.ignitionLevel = 0;
+    streams.electrics.engineRunning = false;
+    streams.electrics.wheelspeed = 0;
+    streams.electrics.throttle_input = 0;
+    streams.electrics.rpmTacho = 0;
+
+    for (let i = 0; i < 3; i++) {
+      now += 1000;
+      $scope.on_streamsUpdate(null, streams);
+    }
+
+    assert.strictEqual($scope.instantHistory, '');
+  });
+
   it('ignores unrealistic consumption spikes while stationary', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

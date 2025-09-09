@@ -7,7 +7,8 @@ global.angular = { module: () => ({ directive: () => ({}) }) };
 const {
   calculateFuelFlow,
   calculateInstantConsumption,
-  smoothFuelFlow
+  smoothFuelFlow,
+  resolveAverageConsumption
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 function pseudoRandom(seed) {
@@ -73,5 +74,18 @@ describe('regeneration scenario', () => {
     }
 
     assert.ok(sawRegen, 'expected at least one regenerative event');
+  });
+
+  it('keeps negative averages for electric regeneration', () => {
+    const avgRecent = { queue: [] };
+    const result = resolveAverageConsumption(
+      true,
+      -2,
+      avgRecent,
+      10,
+      true
+    );
+    assert.strictEqual(result, -2);
+    assert.deepStrictEqual(avgRecent.queue, [-2]);
   });
 });

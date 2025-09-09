@@ -211,15 +211,16 @@ function resolveAverageConsumption(
   engineRunning,
   inst_l_per_100km,
   avgRecent,
-  maxEntries
+  maxEntries,
+  allowNegative
 ) {
-  if (engineRunning && inst_l_per_100km >= 0) {
+  if (engineRunning && (inst_l_per_100km >= 0 || allowNegative)) {
     avgRecent.queue.push(inst_l_per_100km);
     trimQueue(avgRecent.queue, maxEntries);
   } else {
     // Reset recent averages when the engine is not running or when an
-    // invalid (negative) sample is encountered so stale or refuel
-    // events do not introduce bogus values.
+    // invalid sample is encountered so stale or refuel events do not
+    // introduce bogus values.
     avgRecent.queue = [];
   }
   return calculateAverage(avgRecent.queue);
@@ -240,11 +241,11 @@ function resolveSpeed(wheelSpeed_mps, airSpeed_mps, EPS_SPEED) {
 
 function isEngineRunning(electrics, engineInfo) {
   if (electrics) {
-    if (typeof electrics.engineRunning === 'boolean') {
-      return electrics.engineRunning;
-    }
     if (typeof electrics.ignitionLevel === 'number') {
       return electrics.ignitionLevel > 1;
+    }
+    if (typeof electrics.engineRunning === 'boolean') {
+      return electrics.engineRunning;
     }
   }
   if (
@@ -1938,7 +1939,7 @@ angular.module('beamng.apps')
           );
           var sampleValid =
             (engineRunning || rpmTacho >= MIN_RPM_RUNNING) &&
-            fuelFlow_lps >= 0;
+            ($scope.unitMode === 'electric' || fuelFlow_lps >= 0);
           if (!sampleValid) {
             fuelFlow_lps = 0;
             lastFuelFlow_lps = 0;
@@ -2032,7 +2033,8 @@ angular.module('beamng.apps')
             sampleValid,
             inst_l_per_100km,
             avgRecent,
-            AVG_MAX_ENTRIES
+            AVG_MAX_ENTRIES,
+            $scope.unitMode === 'electric'
           );
           if (
             !Number.isFinite(avg_l_per_100km_ok) ||

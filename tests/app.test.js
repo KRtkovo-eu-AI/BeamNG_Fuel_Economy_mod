@@ -287,23 +287,29 @@ describe('app.js utility functions', () => {
   });
 
   describe('isEngineRunning', () => {
-    it('prefers the engineRunning flag when present', () => {
+    it('prefers ignition level when present', () => {
+      assert.strictEqual(
+        isEngineRunning(
+          { ignitionLevel: 0, engineRunning: true, rpmTacho: 800 },
+          []
+        ),
+        false
+      );
+      assert.strictEqual(
+        isEngineRunning(
+          { ignitionLevel: 2, engineRunning: false, rpmTacho: 0 },
+          []
+        ),
+        true
+      );
+    });
+    it('falls back to engineRunning flag', () => {
       assert.strictEqual(
         isEngineRunning({ engineRunning: false, rpmTacho: 800 }, []),
         false
       );
       assert.strictEqual(
         isEngineRunning({ engineRunning: true, rpmTacho: 0 }, []),
-        true
-      );
-    });
-    it('falls back to ignition level', () => {
-      assert.strictEqual(
-        isEngineRunning({ ignitionLevel: 0, rpmTacho: 900 }, []),
-        false
-      );
-      assert.strictEqual(
-        isEngineRunning({ ignitionLevel: 2, rpmTacho: 0 }, []),
         true
       );
     });
