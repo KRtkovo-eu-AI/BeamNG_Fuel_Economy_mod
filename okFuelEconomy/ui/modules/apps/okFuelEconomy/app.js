@@ -889,7 +889,7 @@ angular.module('beamng.apps')
         var liquid = preferredLiquidUnit === 'imperial' ? 'gal' : 'L';
         fuelPriceEditorLoaded = true;
         bngApi.engineLua(
-          'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("' + liquid + '")'
+          'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("' + liquid + '") extensions.fuelPriceEditor.open()'
         );
       };
       $scope.unitModeLabels = {

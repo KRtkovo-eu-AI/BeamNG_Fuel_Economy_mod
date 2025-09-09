@@ -11,6 +11,9 @@ local uiState = {
   currency = im.ArrayChar(32, 'money')
 }
 
+local isOpen = false
+local openPtr = im.BoolPtr(false)
+
 local liquidUnit = 'L'
 
 local function unitLabel(name)
@@ -97,7 +100,12 @@ local function removeFuelType(name)
 end
 
 local function onUpdate()
-  im.Begin('Fuel Price Editor')
+  if not isOpen then return end
+  if not im.Begin('Fuel Price Editor', openPtr) then
+    im.End()
+    if not openPtr[0] then isOpen = false end
+    return
+  end
   local names = {}
   for name, _ in pairs(uiState.prices) do
     table.insert(names, name)
@@ -121,6 +129,7 @@ local function onUpdate()
   end
 
   im.End()
+  if not openPtr[0] then isOpen = false end
 end
 
 local function onExtensionLoaded()
@@ -137,6 +146,11 @@ end
 M.onUpdate = onUpdate
 M.onExtensionLoaded = onExtensionLoaded
 M.onFileChanged = onFileChanged
+
+function M.open()
+  openPtr[0] = true
+  isOpen = true
+end
 
 function M.setLiquidUnit(unit)
   if unit == 'gal' then
