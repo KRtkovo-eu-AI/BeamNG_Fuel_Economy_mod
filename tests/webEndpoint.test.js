@@ -53,6 +53,7 @@ test('updates web server with latest data', () => {
   assert.ok(payload.hasOwnProperty('tripRange'));
   assert.ok(payload.tripRange.hasOwnProperty('value'));
   assert.ok(payload.tripRange.hasOwnProperty('unit'));
+  assert.ok(payload.hasOwnProperty('avgCo2Class'));
   assert.strictEqual(payload.gameStatus, 'running');
   assert.strictEqual(payload.gameIsPaused, 0);
   assert.ok(payload.hasOwnProperty('fuelType'));

@@ -1636,6 +1636,7 @@ angular.module('beamng.apps')
             tripAvgL100km: extractValueUnit($scope.tripAvgL100km),
             tripAvgKmL: extractValueUnit($scope.tripAvgKmL),
             avgCO2: extractValueUnit($scope.avgCO2),
+            avgCo2Class: $scope.avgCo2Class,
             tripAvgCO2: extractValueUnit($scope.tripAvgCO2),
             tripCo2Class: $scope.tripCo2Class,
             costPrice: extractValueUnit($scope.costPrice),
