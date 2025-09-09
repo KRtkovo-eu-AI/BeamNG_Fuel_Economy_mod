@@ -46,14 +46,14 @@ const ROWS={
 "row-range":{label:"Range",fields:[{key:"range",label:""}]},
 "row-tripDistance":{label:"Trip distance",fields:[{key:"tripDistance",label:""}]},
 "row-tripFuelUsed":{label:"Trip fuel used",fields:[{key:"tripFuelUsedLiquid",label:"Liquid"},{key:"tripFuelUsedElectric",label:"Electric"}]},
-"row-tripTotalCost":{label:"Trip total cost",fields:[{key:"tripTotalCostLiquid",label:"Liquid"},{key:"tripTotalCostElectric",label:"Electric"}]},
-"row-tripTotalCO2":{label:"Trip total CO₂",fields:[{key:"tripTotalCO2",label:""}]},
-"row-tripTotalNOx":{label:"Trip total NOₓ",fields:[{key:"tripTotalNOx",label:""}]},
+"row-tripTotalCost":{label:"Trip total fuel cost",fields:[{key:"tripTotalCostLiquid",label:"Liquid"},{key:"tripTotalCostElectric",label:"Electric"}]},
+"row-tripTotalCO2":{label:"Trip total CO₂ emissions",fields:[{key:"tripTotalCO2",label:""}]},
+"row-tripTotalNOx":{label:"Trip total NOₓ emissions",fields:[{key:"tripTotalNOx",label:""}]},
 "row-tripAvgL100km":{label:"Trip average consumption",fields:[{key:"tripAvgL100km",label:""}]},
 "row-tripAvgKmL":{label:"Trip average efficiency",fields:[{key:"tripAvgKmL",label:""}]},
 "row-tripRange":{label:"Trip range",fields:[{key:"tripRange",label:""}]},
-"row-tripAvgCost":{label:"Trip average cost",fields:[{key:"tripAvgCostLiquid",label:"Liquid"},{key:"tripAvgCostElectric",label:"Electric"}]},
-"row-tripAvgCO2":{label:"Trip average CO₂",fields:[{key:"tripAvgCO2",label:""}]}
+"row-tripAvgCost":{label:"Trip average fuel cost",fields:[{key:"tripAvgCostLiquid",label:"Liquid"},{key:"tripAvgCostElectric",label:"Electric"}]},
+"row-tripAvgCO2":{label:"Trip average CO₂ emissions",fields:[{key:"tripAvgCO2",label:""}]}
 };
 function buildRows(s){
 const tbody=document.getElementById('dataRows');tbody.innerHTML='';
@@ -90,7 +90,12 @@ if(k==='settings')return;
 const el=document.getElementById(k);
 if(!el)return;
 const v=state[k];
-if(v&&typeof v==='object'&&v.value!=null){el.textContent=v.value+(v.unit?' '+v.unit:'');}
+if(v&&typeof v==='object'&&v.value!=null){
+ let text=v.value+(v.unit?' '+v.unit:'');
+ if(k==='avgCO2'&&state.avgCo2Class){text+=' | '+state.avgCo2Class;}
+ if(k==='tripAvgCO2'&&state.tripCo2Class){text+=' | '+state.tripCo2Class;}
+ el.textContent=text;
+}
 else if(typeof v==='string'){el.textContent=v;}
 });
 }

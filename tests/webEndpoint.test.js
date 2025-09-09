@@ -89,4 +89,14 @@ test('lua web server exposes ui.html', () => {
   assert.ok(content.includes('lastOrder'));
   assert.ok(content.includes('Used'));
   assert.ok(content.includes('Measured'));
+  assert.ok(content.includes('Average consumption'));
+  assert.ok(content.includes('Trip fuel used'));
+  assert.ok(content.includes('Trip total fuel cost'));
+  assert.ok(content.includes('Trip average consumption'));
+  assert.ok(content.includes('Trip average fuel cost'));
+  assert.ok(content.includes('Trip total CO₂ emissions'));
+  assert.ok(content.includes('Trip total NOₓ emissions'));
+  assert.ok(content.includes('Trip average CO₂ emissions'));
+  assert.ok(content.includes('avgCo2Class'));
+  assert.ok(content.includes('tripCo2Class'));
 });
