@@ -211,15 +211,16 @@ function resolveAverageConsumption(
   engineRunning,
   inst_l_per_100km,
   avgRecent,
-  maxEntries
+  maxEntries,
+  allowNegative
 ) {
-  if (engineRunning && inst_l_per_100km >= 0) {
+  if (engineRunning && (inst_l_per_100km >= 0 || allowNegative)) {
     avgRecent.queue.push(inst_l_per_100km);
     trimQueue(avgRecent.queue, maxEntries);
   } else {
     // Reset recent averages when the engine is not running or when an
-    // invalid (negative) sample is encountered so stale or refuel
-    // events do not introduce bogus values.
+    // invalid sample is encountered so stale or refuel events do not
+    // introduce bogus values.
     avgRecent.queue = [];
   }
   return calculateAverage(avgRecent.queue);
@@ -1937,8 +1938,9 @@ angular.module('beamng.apps')
             $scope.unitMode === 'electric'
           );
           var sampleValid =
-            (engineRunning || rpmTacho >= MIN_RPM_RUNNING) &&
-            fuelFlow_lps >= 0;
+            (engineRunning || rpmTacho >= MIN_RPM_RUNNING ||
+              $scope.unitMode === 'electric') &&
+            ($scope.unitMode === 'electric' || fuelFlow_lps >= 0);
           if (!sampleValid) {
             fuelFlow_lps = 0;
             lastFuelFlow_lps = 0;
@@ -2001,7 +2003,7 @@ angular.module('beamng.apps')
             avgSpeed_kph <= 65 &&
             topSpeedValid;
 
-          if (!engineRunning && initialized) {
+          if (!engineRunning && initialized && $scope.unitMode !== 'electric') {
             previousFuel_l = currentFuel_l;
             lastThrottle = throttle;
             return;
@@ -2032,7 +2034,8 @@ angular.module('beamng.apps')
             sampleValid,
             inst_l_per_100km,
             avgRecent,
-            AVG_MAX_ENTRIES
+            AVG_MAX_ENTRIES,
+            $scope.unitMode === 'electric'
           );
           if (
             !Number.isFinite(avg_l_per_100km_ok) ||
