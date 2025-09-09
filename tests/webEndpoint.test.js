@@ -30,6 +30,7 @@ test('starts web server when enabled', () => {
 test('updates web server with latest data', () => {
   const { calls, $scope } = setup();
   calls.length = 0;
+  $scope.fuelType = 'Gasoline';
   const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
   streams.engineInfo[11] = 50;
   streams.engineInfo[12] = 60;
@@ -44,6 +45,11 @@ test('updates web server with latest data', () => {
   assert.ok(payload.tripTotalCO2.hasOwnProperty('unit'));
   assert.strictEqual(payload.gameStatus, 'running');
   assert.strictEqual(payload.gameIsPaused, 0);
+  assert.ok(payload.hasOwnProperty('fuelType'));
+  assert.ok(payload.settings);
+  assert.ok(payload.settings.visible);
+  assert.ok(Object.prototype.hasOwnProperty.call(payload.settings, 'rowOrder'));
+  assert.strictEqual(payload.settings.useCustomStyles, true);
 });
 
 test('payload marks paused state', () => {
@@ -60,4 +66,11 @@ test('payload marks paused state', () => {
   const payload = JSON.parse(JSON.parse(arg));
   assert.strictEqual(payload.gameStatus, 'paused');
   assert.strictEqual(payload.gameIsPaused, 1);
+});
+
+test('lua web server exposes ui.html', () => {
+  const fs = require('node:fs');
+  const content = fs.readFileSync('okFuelEconomy/lua/ge/extensions/okWebServer.lua', 'utf8');
+  assert.ok(content.includes('ui.html'));
+  assert.ok(content.includes('dataRows'));
 });

@@ -1602,6 +1602,8 @@ angular.module('beamng.apps')
 
       function sendWebData() {
         if ($scope.webEndpointRunning && bngApi && typeof bngApi.engineLua === 'function') {
+          var rowOrder;
+          try { rowOrder = JSON.parse(localStorage.getItem(ROW_ORDER_KEY)); } catch (e) { rowOrder = null; }
           var payload = {
             distanceMeasured: extractValueUnit($scope.data1),
             distanceEcu: extractValueUnit($scope.data6),
@@ -1631,8 +1633,14 @@ angular.module('beamng.apps')
             tripTotalCO2: extractValueUnit($scope.tripTotalCO2),
             tripTotalNOx: extractValueUnit($scope.tripTotalNOx),
             vehicleName: $scope.vehicleNameStr,
+            fuelType: $scope.fuelType,
             gameStatus: $scope.gamePaused ? 'paused' : 'running',
-            gameIsPaused: $scope.gamePaused ? 1 : 0
+            gameIsPaused: $scope.gamePaused ? 1 : 0,
+            settings: {
+              visible: $scope.visible,
+              rowOrder: rowOrder,
+              useCustomStyles: $scope.useCustomStyles
+            }
           };
           bngApi.engineLua('extensions.okWebServer.setData(' + JSON.stringify(JSON.stringify(payload)) + ')');
         }
