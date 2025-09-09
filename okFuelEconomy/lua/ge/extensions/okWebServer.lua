@@ -39,33 +39,31 @@ const ROWS={
 "row-totalCost":{label:"Total fuel cost",fields:[{key:"totalCost",label:""}]},
 "row-instantConsumption":{label:"Instant consumption",fields:[{key:"instantLph",label:""},{key:"instantL100km",label:""},{key:"instantKmL",label:""}]},
 "row-instantCO2":{label:"Instant CO₂ emissions",fields:[{key:"instantCO2",label:""}]},
-"row-avgL100km":{label:"Average consumption",fields:[{key:"avgL100km",label:""}]},
-"row-avgKmL":{label:"Average efficiency",fields:[{key:"avgKmL",label:""}]},
+"row-averageConsumption":{label:"Average consumption",fields:[{key:"avgL100km",label:""},{key:"avgKmL",label:""}]},
 "row-averageCost":{label:"Average fuel cost",fields:[{key:"avgCost",label:""}]},
 "row-averageCO2":{label:"Average CO₂ emissions",fields:[{key:"avgCO2",label:""}]},
 "row-range":{label:"Range",fields:[{key:"range",label:""}]},
 "row-tripDistance":{label:"Trip distance",fields:[{key:"tripDistance",label:""}]},
 "row-tripFuelUsed":{label:"Trip fuel used",fields:[{key:"tripFuelUsedLiquid",label:"Liquid"},{key:"tripFuelUsedElectric",label:"Electric"}]},
-"row-tripTotalCost":{label:"Trip total cost",fields:[{key:"tripTotalCostLiquid",label:"Liquid"},{key:"tripTotalCostElectric",label:"Electric"}]},
-"row-tripTotalCO2":{label:"Trip total CO₂",fields:[{key:"tripTotalCO2",label:""}]},
-"row-tripTotalNOx":{label:"Trip total NOₓ",fields:[{key:"tripTotalNOx",label:""}]},
-"row-tripAvgL100km":{label:"Trip average consumption",fields:[{key:"tripAvgL100km",label:""}]},
-"row-tripAvgKmL":{label:"Trip average efficiency",fields:[{key:"tripAvgKmL",label:""}]},
+"row-tripTotalCost":{label:"Trip total fuel cost",fields:[{key:"tripTotalCostLiquid",label:"Liquid"},{key:"tripTotalCostElectric",label:"Electric"}]},
+"row-tripTotalCO2":{label:"Trip total CO₂ emissions",fields:[{key:"tripTotalCO2",label:""}]},
+"row-tripTotalNOx":{label:"Trip total NOₓ emissions",fields:[{key:"tripTotalNOx",label:""}]},
+"row-tripAvgConsumption":{label:"Trip average consumption",fields:[{key:"tripAvgL100km",label:""},{key:"tripAvgKmL",label:""}]},
 "row-tripRange":{label:"Trip range",fields:[{key:"tripRange",label:""}]},
-"row-tripAvgCost":{label:"Trip average cost",fields:[{key:"tripAvgCostLiquid",label:"Liquid"},{key:"tripAvgCostElectric",label:"Electric"}]},
-"row-tripAvgCO2":{label:"Trip average CO₂",fields:[{key:"tripAvgCO2",label:""}]}
+"row-tripAvgCost":{label:"Trip average fuel cost",fields:[{key:"tripAvgCostLiquid",label:"Liquid"},{key:"tripAvgCostElectric",label:"Electric"}]},
+"row-tripAvgCO2":{label:"Trip average CO₂ emissions",fields:[{key:"tripAvgCO2",label:""}]}
 };
 function buildRows(s){
 const tbody=document.getElementById('dataRows');tbody.innerHTML='';
-const order=s.rowOrder||Object.keys(ROWS);
+const order=[...(new Set([...(s.rowOrder||[]),...Object.keys(ROWS)]))];
 order.forEach(id=>{
 const r=ROWS[id];if(!r)return;
-if(!r.fields.some(f=>!s.visible||s.visible[f.key]))return;
+if(!r.fields.some(f=>!s.visible||s.visible[f.key]!==false))return;
 const tr=document.createElement('tr');tr.id=id; if(id.startsWith('row-trip')) tr.className='trip';
 const td1=document.createElement('td');td1.textContent=r.label;tr.appendChild(td1);
 const td2=document.createElement('td');
 r.fields.forEach((f,i)=>{
- if(s.visible&&s.visible[f.key]){
+ if(!s.visible||s.visible[f.key]!==false){
    const container=document.createElement('span');
    if(f.label){container.appendChild(document.createTextNode(f.label+': '));}
    const span=document.createElement('span');span.id=f.key;container.appendChild(span);
@@ -81,6 +79,7 @@ async function refresh(){
 const res=await fetch('data.json');const state=await res.json();const s=state.settings||{};
 document.body.className=s.useCustomStyles?'custom':'';
 const heading=document.getElementById('heading');
+heading.style.display=(s.visible&&s.visible.heading===false)?'none':'';
 heading.textContent='Fuel Economy'+(state.gameStatus==='paused'?' (game paused)':'')+(state.vehicleName?' - '+state.vehicleName:'');
 const orderJson=JSON.stringify(s.rowOrder||[]);
 const visibleJson=JSON.stringify(s.visible||{});
@@ -90,7 +89,12 @@ if(k==='settings')return;
 const el=document.getElementById(k);
 if(!el)return;
 const v=state[k];
-if(v&&typeof v==='object'&&v.value!=null){el.textContent=v.value+(v.unit?' '+v.unit:'');}
+if(v&&typeof v==='object'&&v.value!=null){
+ let text=v.value+(v.unit?' '+v.unit:'');
+ if(k==='avgCO2'&&state.avgCo2Class){text+=' | '+state.avgCo2Class;}
+ if(k==='tripAvgCO2'&&state.tripCo2Class){text+=' | '+state.tripCo2Class;}
+ el.textContent=text;
+}
 else if(typeof v==='string'){el.textContent=v;}
 });
 }
