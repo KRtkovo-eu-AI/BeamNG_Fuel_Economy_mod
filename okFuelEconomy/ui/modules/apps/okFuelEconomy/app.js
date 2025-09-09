@@ -57,7 +57,7 @@ var NOX_FACTORS_G_PER_L = {
   Electricity: 0,
   Air: 0,
   Ethanol: 3,
-  Hydrogen: 0,
+  Hydrogen: 1,
   Nitromethane: 12,
   Nitromethan: 12,
   Food: 0,
@@ -510,11 +510,7 @@ function calculateNOxFactor(fuelType, engineTempC, n2oActive, isElectric) {
     : NOX_FACTORS_G_PER_L.Gasoline;
   var temp = typeof engineTempC === 'number' ? engineTempC : 0;
   var tempExcess = Math.max(0, temp - EMISSIONS_BASE_TEMP_C);
-  if (fuelType === 'Hydrogen') {
-    base = tempExcess * 0.1;
-  } else {
-    base = base * (1 + tempExcess / 100);
-  }
+  base = base * (1 + tempExcess / 100);
   if (n2oActive) base *= 1.2;
   return base;
 }

@@ -10,7 +10,7 @@ This document lists all fuel types recognized by the mod together with their CO�
 | Electricity | Electric energy used by fully electric drivetrains. | 0 | 0 |
 | Air | Compressed air propulsion with negligible emissions. | 0 | 0 |
 | Ethanol | Biomass-derived alcohol fuel. | 1510 | 3 |
-| Hydrogen | Hydrogen used in combustion engines or fuel cells. | 0 | 0 |
+| Hydrogen | CO₂-free fuel. Fuel cells emit no NOₓ, while combustion engines produce small amounts (~1 g/L). | 0 | 1 |
 | Nitromethane / Nitromethan | High-performance drag racing fuel. | 820 | 12 |
 | Food | Human metabolic energy used for novelty vehicles. | 0.001 | 0 |
 | Kerosene / Jet Fuel | Used by turbines and jet engines in aircraft-style or experimental cars. | 2500 | 15 |

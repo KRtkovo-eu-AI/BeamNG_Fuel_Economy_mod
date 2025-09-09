@@ -469,9 +469,12 @@ describe('app.js utility functions', () => {
   });
 
   describe('emission factors', () => {
-    it('computes temperature-based NOx for hydrogen combustion', () => {
-      assert.strictEqual(calculateNOxFactor('Hydrogen', 100, false, false), 1);
-    });
+      it('computes temperature-based NOx for hydrogen combustion', () => {
+        assert.strictEqual(
+          calculateNOxFactor('Hydrogen', 100, false, false),
+          1.1
+        );
+      });
     it('increases NOx when N2O is active', () => {
       const base = calculateNOxFactor('Hydrogen', 100, false, false);
       const boosted = calculateNOxFactor('Hydrogen', 100, true, false);
