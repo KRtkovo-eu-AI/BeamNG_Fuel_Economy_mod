@@ -1060,7 +1060,11 @@ angular.module('beamng.apps')
         range: true,
         tripDistance: true,
         tripFuelUsed: false,
+        tripFuelUsedLiquid: false,
+        tripFuelUsedElectric: false,
         tripTotalCost: false,
+        tripTotalCostLiquid: false,
+        tripTotalCostElectric: false,
         tripTotalCO2: false,
         tripTotalNOx: false,
         tripAvgL100km: true,
@@ -1069,6 +1073,8 @@ angular.module('beamng.apps')
         tripKmLGraph: true,
         tripRange: true,
         tripAvgCost: false,
+        tripAvgCostLiquid: false,
+        tripAvgCostElectric: false,
         tripAvgCO2: true,
         tripReset: true,
         webEndpoint: false
@@ -1090,6 +1096,15 @@ angular.module('beamng.apps')
           if ('tripAvg' in s && !('tripAvgL100km' in s) && !('tripAvgKmL' in s)) {
             s.tripAvgL100km = s.tripAvgKmL = s.tripAvg;
             delete s.tripAvg;
+          }
+          if ('tripFuelUsed' in s && !('tripFuelUsedLiquid' in s) && !('tripFuelUsedElectric' in s)) {
+            s.tripFuelUsedLiquid = s.tripFuelUsedElectric = s.tripFuelUsed;
+          }
+          if ('tripTotalCost' in s && !('tripTotalCostLiquid' in s) && !('tripTotalCostElectric' in s)) {
+            s.tripTotalCostLiquid = s.tripTotalCostElectric = s.tripTotalCost;
+          }
+          if ('tripAvgCost' in s && !('tripAvgCostLiquid' in s) && !('tripAvgCostElectric' in s)) {
+            s.tripAvgCostLiquid = s.tripAvgCostElectric = s.tripAvgCost;
           }
           if ('avgCostTotal' in s) { delete s.avgCostTotal; }
           if ('avgCostPerDistance' in s) { s.avgCost = s.avgCostPerDistance; delete s.avgCostPerDistance; }

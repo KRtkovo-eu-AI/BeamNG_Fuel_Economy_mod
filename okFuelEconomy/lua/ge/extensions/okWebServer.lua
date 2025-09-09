@@ -57,7 +57,7 @@ const ROWS={
 };
 function buildRows(s){
 const tbody=document.getElementById('dataRows');tbody.innerHTML='';
-const order=s.rowOrder||Object.keys(ROWS);
+const order=[...(new Set([...(s.rowOrder||[]),...Object.keys(ROWS)]))];
 order.forEach(id=>{
 const r=ROWS[id];if(!r)return;
 if(!r.fields.some(f=>!s.visible||s.visible[f.key]))return;

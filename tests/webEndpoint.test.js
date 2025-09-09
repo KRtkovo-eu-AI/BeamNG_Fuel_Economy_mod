@@ -1,14 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-function setup() {
+function setup(store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: true }) }) {
   let directiveDef;
   global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
   global.StreamsManager = { add: () => {}, remove: () => {} };
   global.UiUnits = { buildString: () => '' };
   const calls = [];
   global.bngApi = { engineLua: (cmd) => { calls.push(cmd); return ''; } };
-  const store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: true }) };
   global.localStorage = { getItem: (k) => store[k] || null, setItem: (k,v) => { store[k]=v; } };
   global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
 
@@ -75,6 +74,17 @@ test('payload marks paused state', () => {
   const payload = JSON.parse(JSON.parse(arg));
   assert.strictEqual(payload.gameStatus, 'paused');
   assert.strictEqual(payload.gameIsPaused, 1);
+});
+
+test('migrates legacy trip visibility flags', () => {
+  const store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: true, tripFuelUsed: true, tripTotalCost: true, tripAvgCost: true }) };
+  const { $scope } = setup(store);
+  assert.strictEqual($scope.visible.tripFuelUsedLiquid, true);
+  assert.strictEqual($scope.visible.tripFuelUsedElectric, true);
+  assert.strictEqual($scope.visible.tripTotalCostLiquid, true);
+  assert.strictEqual($scope.visible.tripTotalCostElectric, true);
+  assert.strictEqual($scope.visible.tripAvgCostLiquid, true);
+  assert.strictEqual($scope.visible.tripAvgCostElectric, true);
 });
 
 test('lua web server exposes ui.html', () => {
