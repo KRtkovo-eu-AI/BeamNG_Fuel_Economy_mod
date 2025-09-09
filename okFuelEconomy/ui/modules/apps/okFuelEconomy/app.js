@@ -1659,7 +1659,8 @@ angular.module('beamng.apps')
             settings: {
               visible: $scope.visible,
               rowOrder: rowOrder,
-              useCustomStyles: $scope.useCustomStyles
+              useCustomStyles: $scope.useCustomStyles,
+              unitMode: $scope.unitMode
             }
           };
           bngApi.engineLua('extensions.okWebServer.setData(' + JSON.stringify(JSON.stringify(payload)) + ')');
@@ -1764,6 +1765,7 @@ angular.module('beamng.apps')
               MAX_EFFICIENCY
             );
             lastDistance_m = distance_m;
+            sendWebData();
             return;
           }
           if (!streams.engineInfo || !streams.electrics) return;

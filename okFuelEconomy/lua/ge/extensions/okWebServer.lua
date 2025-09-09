@@ -58,12 +58,12 @@ const tbody=document.getElementById('dataRows');tbody.innerHTML='';
 const order=[...(new Set([...(s.rowOrder||[]),...Object.keys(ROWS)]))];
 order.forEach(id=>{
 const r=ROWS[id];if(!r)return;
-if(!r.fields.some(f=>!s.visible||s.visible[f.key]))return;
+if(!r.fields.some(f=>!s.visible||s.visible[f.key]!==false))return;
 const tr=document.createElement('tr');tr.id=id; if(id.startsWith('row-trip')) tr.className='trip';
 const td1=document.createElement('td');td1.textContent=r.label;tr.appendChild(td1);
 const td2=document.createElement('td');
 r.fields.forEach((f,i)=>{
- if(s.visible&&s.visible[f.key]){
+ if(!s.visible||s.visible[f.key]!==false){
    const container=document.createElement('span');
    if(f.label){container.appendChild(document.createTextNode(f.label+': '));}
    const span=document.createElement('span');span.id=f.key;container.appendChild(span);
@@ -79,6 +79,7 @@ async function refresh(){
 const res=await fetch('data.json');const state=await res.json();const s=state.settings||{};
 document.body.className=s.useCustomStyles?'custom':'';
 const heading=document.getElementById('heading');
+heading.style.display=(s.visible&&s.visible.heading===false)?'none':'';
 heading.textContent='Fuel Economy'+(state.gameStatus==='paused'?' (game paused)':'')+(state.vehicleName?' - '+state.vehicleName:'');
 const orderJson=JSON.stringify(s.rowOrder||[]);
 const visibleJson=JSON.stringify(s.visible||{});
