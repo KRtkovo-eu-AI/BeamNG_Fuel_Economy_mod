@@ -39,4 +39,6 @@ test('updates web server with latest data', () => {
   const jsonStr = JSON.parse(arg);
   const payload = JSON.parse(jsonStr);
   assert.ok(payload.hasOwnProperty('tripTotalCO2'));
+  assert.ok(payload.tripTotalCO2.hasOwnProperty('value'));
+  assert.ok(payload.tripTotalCO2.hasOwnProperty('unit'));
 });

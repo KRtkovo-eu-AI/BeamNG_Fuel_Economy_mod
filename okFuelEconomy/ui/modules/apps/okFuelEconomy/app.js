@@ -470,6 +470,15 @@ function convertVolumePerDistance(lPerKm, mode) {
     : lPerKm;
 }
 
+function extractValueUnit(str) {
+  if (typeof str !== 'string') return { value: null, unit: '' };
+  var trimmed = str.trim();
+  if (trimmed === '') return { value: null, unit: '' };
+  var parts = trimmed.split(/\s+/);
+  var num = parseFloat(parts.shift());
+  return { value: Number.isFinite(num) ? num : null, unit: parts.join(' ') };
+}
+
 function calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric) {
   if (isElectric) return 0;
   var base = CO2_FACTORS_G_PER_L[fuelType] != null
@@ -2113,33 +2122,33 @@ angular.module('beamng.apps')
 
           if (webEndpointRunning && bngApi && typeof bngApi.engineLua === 'function') {
             var payload = {
-              distanceMeasured: $scope.data1,
-              distanceEcu: $scope.data6,
-              fuelUsed: $scope.fuelUsed,
-              fuelLeft: $scope.fuelLeft,
-              fuelCap: $scope.fuelCap,
-              avgL100km: $scope.avgL100km,
-              avgKmL: $scope.avgKmL,
-              range: $scope.data4,
-              instantLph: $scope.instantLph,
-              instantL100km: $scope.instantL100km,
-              instantKmL: $scope.instantKmL,
-              tripAvgL100km: $scope.tripAvgL100km,
-              tripAvgKmL: $scope.tripAvgKmL,
-              avgCO2: $scope.avgCO2,
-              tripAvgCO2: $scope.tripAvgCO2,
+              distanceMeasured: extractValueUnit($scope.data1),
+              distanceEcu: extractValueUnit($scope.data6),
+              fuelUsed: extractValueUnit($scope.fuelUsed),
+              fuelLeft: extractValueUnit($scope.fuelLeft),
+              fuelCap: extractValueUnit($scope.fuelCap),
+              avgL100km: extractValueUnit($scope.avgL100km),
+              avgKmL: extractValueUnit($scope.avgKmL),
+              range: extractValueUnit($scope.data4),
+              instantLph: extractValueUnit($scope.instantLph),
+              instantL100km: extractValueUnit($scope.instantL100km),
+              instantKmL: extractValueUnit($scope.instantKmL),
+              tripAvgL100km: extractValueUnit($scope.tripAvgL100km),
+              tripAvgKmL: extractValueUnit($scope.tripAvgKmL),
+              avgCO2: extractValueUnit($scope.avgCO2),
+              tripAvgCO2: extractValueUnit($scope.tripAvgCO2),
               tripCo2Class: $scope.tripCo2Class,
-              costPrice: $scope.costPrice,
-              avgCost: $scope.avgCost,
-              totalCost: $scope.totalCost,
-              tripAvgCostLiquid: $scope.tripAvgCostLiquid,
-              tripAvgCostElectric: $scope.tripAvgCostElectric,
-              tripTotalCostLiquid: $scope.tripTotalCostLiquid,
-              tripTotalCostElectric: $scope.tripTotalCostElectric,
-              tripFuelUsedLiquid: $scope.tripFuelUsedLiquid,
-              tripFuelUsedElectric: $scope.tripFuelUsedElectric,
-              tripTotalCO2: $scope.tripTotalCO2,
-              tripTotalNOx: $scope.tripTotalNOx,
+              costPrice: extractValueUnit($scope.costPrice),
+              avgCost: extractValueUnit($scope.avgCost),
+              totalCost: extractValueUnit($scope.totalCost),
+              tripAvgCostLiquid: extractValueUnit($scope.tripAvgCostLiquid),
+              tripAvgCostElectric: extractValueUnit($scope.tripAvgCostElectric),
+              tripTotalCostLiquid: extractValueUnit($scope.tripTotalCostLiquid),
+              tripTotalCostElectric: extractValueUnit($scope.tripTotalCostElectric),
+              tripFuelUsedLiquid: extractValueUnit($scope.tripFuelUsedLiquid),
+              tripFuelUsedElectric: extractValueUnit($scope.tripFuelUsedElectric),
+              tripTotalCO2: extractValueUnit($scope.tripTotalCO2),
+              tripTotalNOx: extractValueUnit($scope.tripTotalNOx),
               vehicleName: $scope.vehicleNameStr
             };
             bngApi.engineLua('extensions.okWebServer.setData(' + JSON.stringify(JSON.stringify(payload)) + ')');
