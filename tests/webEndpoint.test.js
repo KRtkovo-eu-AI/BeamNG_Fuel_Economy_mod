@@ -33,5 +33,10 @@ test('updates web server with latest data', () => {
   streams.engineInfo[11] = 50;
   streams.engineInfo[12] = 60;
   $scope.on_streamsUpdate(null, streams);
-  assert.ok(calls.some((c) => c.startsWith('extensions.okWebServer.setData(')));
+  const call = calls.find((c) => c.startsWith('extensions.okWebServer.setData('));
+  assert.ok(call);
+  const arg = call.match(/setData\((.*)\)/)[1];
+  const jsonStr = JSON.parse(arg);
+  const payload = JSON.parse(jsonStr);
+  assert.ok(payload.hasOwnProperty('tripTotalCO2'));
 });
