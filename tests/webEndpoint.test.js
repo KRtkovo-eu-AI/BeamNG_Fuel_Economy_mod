@@ -21,9 +21,10 @@ function setup() {
 }
 
 test('starts web server when enabled', () => {
-  const { calls } = setup();
+  const { calls, $scope } = setup();
   assert.ok(calls.includes('extensions.load("okWebServer")'));
   assert.ok(calls.includes('extensions.okWebServer.start()'));
+  assert.strictEqual($scope.webEndpointRunning, true);
 });
 
 test('updates web server with latest data', () => {
@@ -41,4 +42,22 @@ test('updates web server with latest data', () => {
   assert.ok(payload.hasOwnProperty('tripTotalCO2'));
   assert.ok(payload.tripTotalCO2.hasOwnProperty('value'));
   assert.ok(payload.tripTotalCO2.hasOwnProperty('unit'));
+  assert.strictEqual(payload.gameStatus, 'running');
+  assert.strictEqual(payload.gameIsPaused, 0);
+});
+
+test('payload marks paused state', () => {
+  const { calls, $scope } = setup();
+  calls.length = 0;
+  $scope.gamePaused = true;
+  const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
+  streams.engineInfo[11] = 50;
+  streams.engineInfo[12] = 60;
+  $scope.on_streamsUpdate(null, streams);
+  const call = calls.find((c) => c.startsWith('extensions.okWebServer.setData('));
+  assert.ok(call);
+  const arg = call.match(/setData\((.*)\)/)[1];
+  const payload = JSON.parse(JSON.parse(arg));
+  assert.strictEqual(payload.gameStatus, 'paused');
+  assert.strictEqual(payload.gameIsPaused, 1);
 });

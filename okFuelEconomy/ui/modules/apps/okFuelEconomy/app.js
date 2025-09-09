@@ -1103,11 +1103,11 @@ angular.module('beamng.apps')
         }
       } catch (e) { /* ignore */ }
 
-      var webEndpointRunning = false;
+      $scope.webEndpointRunning = false;
       if ($scope.visible.webEndpoint && bngApi && typeof bngApi.engineLua === 'function') {
         bngApi.engineLua('extensions.load("okWebServer")');
         bngApi.engineLua('extensions.okWebServer.start()');
-        webEndpointRunning = true;
+        $scope.webEndpointRunning = true;
       }
 
       $scope.saveSettings = function () {
@@ -1119,17 +1119,17 @@ angular.module('beamng.apps')
           }
         } catch (e) { /* ignore */ }
 
-        if ($scope.visible.webEndpoint && !webEndpointRunning) {
+        if ($scope.visible.webEndpoint && !$scope.webEndpointRunning) {
           if (bngApi && typeof bngApi.engineLua === 'function') {
             bngApi.engineLua('extensions.load("okWebServer")');
             bngApi.engineLua('extensions.okWebServer.start()');
           }
-          webEndpointRunning = true;
-        } else if (!$scope.visible.webEndpoint && webEndpointRunning) {
+          $scope.webEndpointRunning = true;
+        } else if (!$scope.visible.webEndpoint && $scope.webEndpointRunning) {
           if (bngApi && typeof bngApi.engineLua === 'function') {
             bngApi.engineLua('extensions.okWebServer.stop()');
           }
-          webEndpointRunning = false;
+          $scope.webEndpointRunning = false;
         }
         $scope.settingsOpen = false;
       };
@@ -1600,6 +1600,44 @@ angular.module('beamng.apps')
         fetchFuelType();
       });
 
+      function sendWebData() {
+        if ($scope.webEndpointRunning && bngApi && typeof bngApi.engineLua === 'function') {
+          var payload = {
+            distanceMeasured: extractValueUnit($scope.data1),
+            distanceEcu: extractValueUnit($scope.data6),
+            fuelUsed: extractValueUnit($scope.fuelUsed),
+            fuelLeft: extractValueUnit($scope.fuelLeft),
+            fuelCap: extractValueUnit($scope.fuelCap),
+            avgL100km: extractValueUnit($scope.avgL100km),
+            avgKmL: extractValueUnit($scope.avgKmL),
+            range: extractValueUnit($scope.data4),
+            instantLph: extractValueUnit($scope.instantLph),
+            instantL100km: extractValueUnit($scope.instantL100km),
+            instantKmL: extractValueUnit($scope.instantKmL),
+            tripAvgL100km: extractValueUnit($scope.tripAvgL100km),
+            tripAvgKmL: extractValueUnit($scope.tripAvgKmL),
+            avgCO2: extractValueUnit($scope.avgCO2),
+            tripAvgCO2: extractValueUnit($scope.tripAvgCO2),
+            tripCo2Class: $scope.tripCo2Class,
+            costPrice: extractValueUnit($scope.costPrice),
+            avgCost: extractValueUnit($scope.avgCost),
+            totalCost: extractValueUnit($scope.totalCost),
+            tripAvgCostLiquid: extractValueUnit($scope.tripAvgCostLiquid),
+            tripAvgCostElectric: extractValueUnit($scope.tripAvgCostElectric),
+            tripTotalCostLiquid: extractValueUnit($scope.tripTotalCostLiquid),
+            tripTotalCostElectric: extractValueUnit($scope.tripTotalCostElectric),
+            tripFuelUsedLiquid: extractValueUnit($scope.tripFuelUsedLiquid),
+            tripFuelUsedElectric: extractValueUnit($scope.tripFuelUsedElectric),
+            tripTotalCO2: extractValueUnit($scope.tripTotalCO2),
+            tripTotalNOx: extractValueUnit($scope.tripTotalNOx),
+            vehicleName: $scope.vehicleNameStr,
+            gameStatus: $scope.gamePaused ? 'paused' : 'running',
+            gameIsPaused: $scope.gamePaused ? 1 : 0
+          };
+          bngApi.engineLua('extensions.okWebServer.setData(' + JSON.stringify(JSON.stringify(payload)) + ')');
+        }
+      }
+
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
           if (streams.okGameState && typeof streams.okGameState.paused !== 'undefined') {
@@ -1607,6 +1645,7 @@ angular.module('beamng.apps')
           }
           if ($scope.gamePaused) {
             lastTime_ms = performance.now();
+            sendWebData();
             return;
           }
           if ($scope.fuelType === 'Food') {
@@ -2120,39 +2159,7 @@ angular.module('beamng.apps')
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
 
-          if (webEndpointRunning && bngApi && typeof bngApi.engineLua === 'function') {
-            var payload = {
-              distanceMeasured: extractValueUnit($scope.data1),
-              distanceEcu: extractValueUnit($scope.data6),
-              fuelUsed: extractValueUnit($scope.fuelUsed),
-              fuelLeft: extractValueUnit($scope.fuelLeft),
-              fuelCap: extractValueUnit($scope.fuelCap),
-              avgL100km: extractValueUnit($scope.avgL100km),
-              avgKmL: extractValueUnit($scope.avgKmL),
-              range: extractValueUnit($scope.data4),
-              instantLph: extractValueUnit($scope.instantLph),
-              instantL100km: extractValueUnit($scope.instantL100km),
-              instantKmL: extractValueUnit($scope.instantKmL),
-              tripAvgL100km: extractValueUnit($scope.tripAvgL100km),
-              tripAvgKmL: extractValueUnit($scope.tripAvgKmL),
-              avgCO2: extractValueUnit($scope.avgCO2),
-              tripAvgCO2: extractValueUnit($scope.tripAvgCO2),
-              tripCo2Class: $scope.tripCo2Class,
-              costPrice: extractValueUnit($scope.costPrice),
-              avgCost: extractValueUnit($scope.avgCost),
-              totalCost: extractValueUnit($scope.totalCost),
-              tripAvgCostLiquid: extractValueUnit($scope.tripAvgCostLiquid),
-              tripAvgCostElectric: extractValueUnit($scope.tripAvgCostElectric),
-              tripTotalCostLiquid: extractValueUnit($scope.tripTotalCostLiquid),
-              tripTotalCostElectric: extractValueUnit($scope.tripTotalCostElectric),
-              tripFuelUsedLiquid: extractValueUnit($scope.tripFuelUsedLiquid),
-              tripFuelUsedElectric: extractValueUnit($scope.tripFuelUsedElectric),
-              tripTotalCO2: extractValueUnit($scope.tripTotalCO2),
-              tripTotalNOx: extractValueUnit($scope.tripTotalNOx),
-              vehicleName: $scope.vehicleNameStr
-            };
-            bngApi.engineLua('extensions.okWebServer.setData(' + JSON.stringify(JSON.stringify(payload)) + ')');
-          }
+          sendWebData();
 
           lastDistance_m = distance_m;
           initialized = true;
