@@ -43,6 +43,15 @@ test('updates web server with latest data', () => {
   assert.ok(payload.hasOwnProperty('tripTotalCO2'));
   assert.ok(payload.tripTotalCO2.hasOwnProperty('value'));
   assert.ok(payload.tripTotalCO2.hasOwnProperty('unit'));
+  assert.ok(payload.hasOwnProperty('instantCO2'));
+  assert.ok(payload.instantCO2.hasOwnProperty('value'));
+  assert.ok(payload.instantCO2.hasOwnProperty('unit'));
+  assert.ok(payload.hasOwnProperty('tripDistance'));
+  assert.ok(payload.tripDistance.hasOwnProperty('value'));
+  assert.ok(payload.tripDistance.hasOwnProperty('unit'));
+  assert.ok(payload.hasOwnProperty('tripRange'));
+  assert.ok(payload.tripRange.hasOwnProperty('value'));
+  assert.ok(payload.tripRange.hasOwnProperty('unit'));
   assert.strictEqual(payload.gameStatus, 'running');
   assert.strictEqual(payload.gameIsPaused, 0);
   assert.ok(payload.hasOwnProperty('fuelType'));
