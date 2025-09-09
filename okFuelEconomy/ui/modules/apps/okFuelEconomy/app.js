@@ -470,6 +470,15 @@ function convertVolumePerDistance(lPerKm, mode) {
     : lPerKm;
 }
 
+function extractValueUnit(str) {
+  if (typeof str !== 'string') return { value: null, unit: '' };
+  var trimmed = str.trim();
+  if (trimmed === '') return { value: null, unit: '' };
+  var parts = trimmed.split(/\s+/);
+  var num = parseFloat(parts.shift());
+  return { value: Number.isFinite(num) ? num : null, unit: parts.join(' ') };
+}
+
 function calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric) {
   if (isElectric) return 0;
   var base = CO2_FACTORS_G_PER_L[fuelType] != null
@@ -1061,7 +1070,8 @@ angular.module('beamng.apps')
         tripRange: true,
         tripAvgCost: false,
         tripAvgCO2: true,
-        tripReset: true
+        tripReset: true,
+        webEndpoint: false
       };
       try {
         var s = JSON.parse(localStorage.getItem(SETTINGS_KEY));
@@ -1093,6 +1103,13 @@ angular.module('beamng.apps')
         }
       } catch (e) { /* ignore */ }
 
+      $scope.webEndpointRunning = false;
+      if ($scope.visible.webEndpoint && bngApi && typeof bngApi.engineLua === 'function') {
+        bngApi.engineLua('extensions.load("okWebServer")');
+        bngApi.engineLua('extensions.okWebServer.start()');
+        $scope.webEndpointRunning = true;
+      }
+
       $scope.saveSettings = function () {
         try {
           localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible));
@@ -1101,6 +1118,19 @@ angular.module('beamng.apps')
             localStorage.setItem(PREFERRED_UNIT_KEY, $scope.unitMode);
           }
         } catch (e) { /* ignore */ }
+
+        if ($scope.visible.webEndpoint && !$scope.webEndpointRunning) {
+          if (bngApi && typeof bngApi.engineLua === 'function') {
+            bngApi.engineLua('extensions.load("okWebServer")');
+            bngApi.engineLua('extensions.okWebServer.start()');
+          }
+          $scope.webEndpointRunning = true;
+        } else if (!$scope.visible.webEndpoint && $scope.webEndpointRunning) {
+          if (bngApi && typeof bngApi.engineLua === 'function') {
+            bngApi.engineLua('extensions.okWebServer.stop()');
+          }
+          $scope.webEndpointRunning = false;
+        }
         $scope.settingsOpen = false;
       };
 
@@ -1109,6 +1139,7 @@ angular.module('beamng.apps')
         if (!tbody) return;
         var order = Array.prototype.map.call(tbody.children, function (r) { return r.id; });
         try { localStorage.setItem(ROW_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
+        sendWebData();
       }
 
       $scope.moveRow = function ($event, dir) {
@@ -1570,6 +1601,55 @@ angular.module('beamng.apps')
         fetchFuelType();
       });
 
+      function sendWebData() {
+        if ($scope.webEndpointRunning && bngApi && typeof bngApi.engineLua === 'function') {
+          var rowOrder;
+          try { rowOrder = JSON.parse(localStorage.getItem(ROW_ORDER_KEY)); } catch (e) { rowOrder = null; }
+          var payload = {
+            distanceMeasured: extractValueUnit($scope.data1),
+            distanceEcu: extractValueUnit($scope.data6),
+            fuelUsed: extractValueUnit($scope.fuelUsed),
+            fuelLeft: extractValueUnit($scope.fuelLeft),
+            fuelCap: extractValueUnit($scope.fuelCap),
+            avgL100km: extractValueUnit($scope.avgL100km),
+            avgKmL: extractValueUnit($scope.avgKmL),
+            range: extractValueUnit($scope.data4),
+            instantLph: extractValueUnit($scope.instantLph),
+            instantL100km: extractValueUnit($scope.instantL100km),
+            instantKmL: extractValueUnit($scope.instantKmL),
+            instantCO2: extractValueUnit($scope.instantCO2),
+            tripAvgL100km: extractValueUnit($scope.tripAvgL100km),
+            tripAvgKmL: extractValueUnit($scope.tripAvgKmL),
+            avgCO2: extractValueUnit($scope.avgCO2),
+            tripAvgCO2: extractValueUnit($scope.tripAvgCO2),
+            tripCo2Class: $scope.tripCo2Class,
+            costPrice: extractValueUnit($scope.costPrice),
+            avgCost: extractValueUnit($scope.avgCost),
+            totalCost: extractValueUnit($scope.totalCost),
+            tripAvgCostLiquid: extractValueUnit($scope.tripAvgCostLiquid),
+            tripAvgCostElectric: extractValueUnit($scope.tripAvgCostElectric),
+            tripTotalCostLiquid: extractValueUnit($scope.tripTotalCostLiquid),
+            tripTotalCostElectric: extractValueUnit($scope.tripTotalCostElectric),
+            tripFuelUsedLiquid: extractValueUnit($scope.tripFuelUsedLiquid),
+            tripFuelUsedElectric: extractValueUnit($scope.tripFuelUsedElectric),
+            tripTotalCO2: extractValueUnit($scope.tripTotalCO2),
+            tripTotalNOx: extractValueUnit($scope.tripTotalNOx),
+            tripDistance: extractValueUnit($scope.data8),
+            tripRange: extractValueUnit($scope.data9),
+            vehicleName: $scope.vehicleNameStr,
+            fuelType: $scope.fuelType,
+            gameStatus: $scope.gamePaused ? 'paused' : 'running',
+            gameIsPaused: $scope.gamePaused ? 1 : 0,
+            settings: {
+              visible: $scope.visible,
+              rowOrder: rowOrder,
+              useCustomStyles: $scope.useCustomStyles
+            }
+          };
+          bngApi.engineLua('extensions.okWebServer.setData(' + JSON.stringify(JSON.stringify(payload)) + ')');
+        }
+      }
+
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
           if (streams.okGameState && typeof streams.okGameState.paused !== 'undefined') {
@@ -1577,6 +1657,7 @@ angular.module('beamng.apps')
           }
           if ($scope.gamePaused) {
             lastTime_ms = performance.now();
+            sendWebData();
             return;
           }
           if ($scope.fuelType === 'Food') {
@@ -2089,6 +2170,9 @@ angular.module('beamng.apps')
           $scope.data8 = formatDistance(overall.distance, mode, 1);
           $scope.data9 = rangeOverallMedianStr;
           $scope.vehicleNameStr = bngApi.engineLua("be:getPlayerVehicle(0)");
+
+          sendWebData();
+
           lastDistance_m = distance_m;
           initialized = true;
         });
