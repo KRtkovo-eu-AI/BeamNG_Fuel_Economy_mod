@@ -178,7 +178,7 @@ test('ui.html respects row order', () => {
 
 test('ui.html hides rows and fields based on visibility settings', () => {
   const lua = fs.readFileSync('okFuelEconomy/lua/ge/extensions/okWebServer.lua', 'utf8');
-  let script = lua.match(/<script>([\s\S]*?)<\/script>/)[1];
+  let script = lua.match(/<script>([\s\S]*?)<\/script>/i)[1];
   script = script.replace('refresh();setInterval(refresh,1000);', '');
   const tbody = {
     children: [],
@@ -209,7 +209,7 @@ test('ui.html hides rows and fields based on visibility settings', () => {
 
 test('ui.html applies custom style and heading visibility', async () => {
   const lua = fs.readFileSync('okFuelEconomy/lua/ge/extensions/okWebServer.lua', 'utf8');
-  let script = lua.match(/<script>([\s\S]*?)<\/script>/)[1];
+  let script = lua.match(/<script>([\s\S]*?)<\/script>/i)[1];
   script = script.replace('refresh();setInterval(refresh,1000);', '');
   const tbody = {
     children: [],
