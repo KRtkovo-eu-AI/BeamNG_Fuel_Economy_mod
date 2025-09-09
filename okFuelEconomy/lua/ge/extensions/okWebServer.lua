@@ -34,9 +34,15 @@ local function start()
     log('E', 'okWebServer', 'failed to create tcp socket')
     return
   end
+  server:setoption('reuseaddr', true)
   local ok, err = server:bind('127.0.0.1', 8099)
   if not ok then
+    ok, err = server:bind('0.0.0.0', 8099)
+  end
+  if not ok then
     log('E', 'okWebServer', 'bind failed: ' .. tostring(err))
+    server:close()
+    server = nil
     return
   end
   server:listen()
