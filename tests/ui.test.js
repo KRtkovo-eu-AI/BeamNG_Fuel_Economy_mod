@@ -117,7 +117,7 @@ describe('UI template styling', () => {
     $scope.openFuelPriceEditor({ preventDefault() {} });
     assert.equal(
       luaCmd,
-      'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("L")'
+      'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("L") extensions.fuelPriceEditor.open()'
     );
   });
 
