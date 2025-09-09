@@ -1139,6 +1139,7 @@ angular.module('beamng.apps')
         if (!tbody) return;
         var order = Array.prototype.map.call(tbody.children, function (r) { return r.id; });
         try { localStorage.setItem(ROW_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
+        sendWebData();
       }
 
       $scope.moveRow = function ($event, dir) {

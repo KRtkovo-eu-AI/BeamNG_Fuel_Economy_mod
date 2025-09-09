@@ -85,4 +85,8 @@ test('lua web server exposes ui.html', () => {
   assert.ok(content.includes('tr.trip'));
   assert.ok(content.includes('#ffa64d'));
   assert.ok(content.includes('#FFE7CC'));
+  assert.ok(content.includes("f.label+': '"));
+  assert.ok(content.includes('lastOrder'));
+  assert.ok(content.includes('Used'));
+  assert.ok(content.includes('Measured'));
 });

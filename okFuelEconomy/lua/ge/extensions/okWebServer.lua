@@ -64,16 +64,27 @@ if(!r.fields.some(f=>!s.visible||s.visible[f.key]))return;
 const tr=document.createElement('tr');tr.id=id; if(id.startsWith('row-trip')) tr.className='trip';
 const td1=document.createElement('td');td1.textContent=r.label;tr.appendChild(td1);
 const td2=document.createElement('td');
-r.fields.forEach((f,i)=>{if(s.visible&&s.visible[f.key]){const span=document.createElement('span');span.id=f.key;td2.appendChild(span);if(i<r.fields.length-1)td2.appendChild(document.createTextNode(' | '));}});
+r.fields.forEach((f,i)=>{
+ if(s.visible&&s.visible[f.key]){
+   const container=document.createElement('span');
+   if(f.label){container.appendChild(document.createTextNode(f.label+': '));}
+   const span=document.createElement('span');span.id=f.key;container.appendChild(span);
+   td2.appendChild(container);
+   if(i<r.fields.length-1)td2.appendChild(document.createTextNode(' | '));
+ }
+});
 tr.appendChild(td2);tbody.appendChild(tr);
 });
 }
+let lastOrder='',lastVisible='';
 async function refresh(){
 const res=await fetch('data.json');const state=await res.json();const s=state.settings||{};
 document.body.className=s.useCustomStyles?'custom':'';
 const heading=document.getElementById('heading');
 heading.textContent='Fuel Economy'+(state.gameStatus==='paused'?' (game paused)':'')+(state.vehicleName?' - '+state.vehicleName:'');
-if(!refresh.init){buildRows(s);refresh.init=true;}
+const orderJson=JSON.stringify(s.rowOrder||[]);
+const visibleJson=JSON.stringify(s.visible||{});
+if(orderJson!==lastOrder||visibleJson!==lastVisible){buildRows(s);lastOrder=orderJson;lastVisible=visibleJson;}
 Object.keys(state).forEach(k=>{
 if(k==='settings')return;
 const el=document.getElementById(k);
