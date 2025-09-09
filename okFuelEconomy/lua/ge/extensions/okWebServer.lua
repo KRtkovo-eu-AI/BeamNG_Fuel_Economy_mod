@@ -24,6 +24,7 @@ body.custom td{border-bottom:1px solid rgba(0,180,255,0.1);}
 td:first-child{width:38%;font-weight:500;}
 body.custom td:first-child{color:#69e0ff;text-shadow:0 0 3px rgba(0,255,255,0.4);}
 body.custom tr.trip td:first-child{color:#ffa64d;}
+body.custom tr.trip td:nth-child(2){color:#FFE7CC;}
 </style>
 </head>
 <body>
