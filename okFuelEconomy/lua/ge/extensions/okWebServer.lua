@@ -29,11 +29,20 @@ end
 
 local function start()
   if running then return end
-  server = assert(socket.tcp())
-  server:bind('127.0.0.1', 8099)
+  server = socket.tcp()
+  if not server then
+    log('E', 'okWebServer', 'failed to create tcp socket')
+    return
+  end
+  local ok, err = server:bind('127.0.0.1', 8099)
+  if not ok then
+    log('E', 'okWebServer', 'bind failed: ' .. tostring(err))
+    return
+  end
   server:listen()
   server:settimeout(0)
   running = true
+  log('I', 'okWebServer', 'listening on http://127.0.0.1:8099')
 end
 
 local function stop()
@@ -43,6 +52,7 @@ local function stop()
   if server then server:close() end
   server = nil
   running = false
+  log('I', 'okWebServer', 'stopped')
 end
 
 function M.setData(jsonStr)
@@ -50,6 +60,7 @@ function M.setData(jsonStr)
   local ok, decoded = pcall(json.decode, jsonStr)
   if ok and type(decoded) == 'table' then
     data = decoded
+    log('D', 'okWebServer', 'data updated')
   end
 end
 
@@ -61,6 +72,7 @@ end
 
 local function handle(c, line)
   local path = line:match('GET%s+/(.-)%s+HTTP') or ''
+  log('I', 'okWebServer', 'request for ' .. (path ~= '' and path or '/'))
   if path == '' or path == 'index.html' then
     respond(c, loadAppHtml(), 'text/html')
   elseif path == 'data' then
@@ -69,6 +81,7 @@ local function handle(c, line)
     local body = 'Not found'
     local headers = 'HTTP/1.1 404 Not Found\r\nContent-Length: '..#body..'\r\n\r\n'
     c:send(headers..body)
+    log('W', 'okWebServer', '404 for ' .. path)
   end
 end
 
@@ -84,14 +97,13 @@ local function update()
 
   for i = #clients, 1, -1 do
     local c = clients[i]
-    local line = c:receive()
+    local line, err = c:receive()
     if line then
       handle(c, line)
       c:close()
       table.remove(clients, i)
-    elseif line == nil then
-      -- wait for more data next frame
-    else
+    elseif err ~= 'timeout' then
+      log('E', 'okWebServer', 'receive error: ' .. tostring(err))
       c:close()
       table.remove(clients, i)
     end
@@ -101,6 +113,7 @@ end
 M.start = start
 M.stop = stop
 M.update = update
+M.onUpdate = update
 
 return M
 
