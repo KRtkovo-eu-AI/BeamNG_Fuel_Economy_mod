@@ -82,4 +82,6 @@ test('lua web server exposes ui.html', () => {
   const content = fs.readFileSync('okFuelEconomy/lua/ge/extensions/okWebServer.lua', 'utf8');
   assert.ok(content.includes('ui.html'));
   assert.ok(content.includes('dataRows'));
+  assert.ok(content.includes('tr.trip'));
+  assert.ok(content.includes('#ffa64d'));
 });

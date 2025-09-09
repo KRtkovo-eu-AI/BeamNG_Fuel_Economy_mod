@@ -17,10 +17,13 @@ local uiHtml = [[
 <title>Fuel Economy</title>
 <style>
 body{font-family:Segoe UI,Tahoma,sans-serif;margin:0;padding:8px;}
-body.custom{padding:4px;border-radius:10px;background-color:rgba(10,15,20,0.75);background-image:linear-gradient(rgba(0,200,255,0.05) 1px,transparent 1px),linear-gradient(90deg, rgba(0,200,255,0.05) 1px,transparent 1px);background-size:16px 16px,16px 16px;color:#aeeaff;letter-spacing:0.3px;box-shadow:inset 0 0 10px rgba(0,200,255,0.25);} 
+body.custom{padding:4px;border-radius:10px;background-color:rgba(10,15,20,0.75);background-image:linear-gradient(rgba(0,200,255,0.05) 1px,transparent 1px),linear-gradient(90deg, rgba(0,200,255,0.05) 1px,transparent 1px);background-size:16px 16px,16px 16px;color:#aeeaff;letter-spacing:0.3px;box-shadow:inset 0 0 10px rgba(0,200,255,0.25);}
 table{width:100%;border-collapse:collapse;font-size:0.85em;}
-td{padding:3px 2px;border-bottom:1px solid rgba(0,180,255,0.1);}
-td:first-child{width:38%;color:#69e0ff;font-weight:500;}
+td{padding:3px 2px;}
+body.custom td{border-bottom:1px solid rgba(0,180,255,0.1);}
+td:first-child{width:38%;font-weight:500;}
+body.custom td:first-child{color:#69e0ff;text-shadow:0 0 3px rgba(0,255,255,0.4);}
+body.custom tr.trip td:first-child{color:#ffa64d;}
 </style>
 </head>
 <body>
@@ -57,7 +60,7 @@ const order=s.rowOrder||Object.keys(ROWS);
 order.forEach(id=>{
 const r=ROWS[id];if(!r)return;
 if(!r.fields.some(f=>!s.visible||s.visible[f.key]))return;
-const tr=document.createElement('tr');tr.id=id;
+const tr=document.createElement('tr');tr.id=id; if(id.startsWith('row-trip')) tr.className='trip';
 const td1=document.createElement('td');td1.textContent=r.label;tr.appendChild(td1);
 const td2=document.createElement('td');
 r.fields.forEach((f,i)=>{if(s.visible&&s.visible[f.key]){const span=document.createElement('span');span.id=f.key;td2.appendChild(span);if(i<r.fields.length-1)td2.appendChild(document.createTextNode(' | '));}});
