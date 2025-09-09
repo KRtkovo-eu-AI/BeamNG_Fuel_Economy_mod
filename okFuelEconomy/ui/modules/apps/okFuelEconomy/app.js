@@ -241,11 +241,11 @@ function resolveSpeed(wheelSpeed_mps, airSpeed_mps, EPS_SPEED) {
 
 function isEngineRunning(electrics, engineInfo) {
   if (electrics) {
-    if (typeof electrics.engineRunning === 'boolean') {
-      return electrics.engineRunning;
-    }
     if (typeof electrics.ignitionLevel === 'number') {
       return electrics.ignitionLevel > 1;
+    }
+    if (typeof electrics.engineRunning === 'boolean') {
+      return electrics.engineRunning;
     }
   }
   if (
@@ -1938,8 +1938,7 @@ angular.module('beamng.apps')
             $scope.unitMode === 'electric'
           );
           var sampleValid =
-            (engineRunning || rpmTacho >= MIN_RPM_RUNNING ||
-              $scope.unitMode === 'electric') &&
+            (engineRunning || rpmTacho >= MIN_RPM_RUNNING) &&
             ($scope.unitMode === 'electric' || fuelFlow_lps >= 0);
           if (!sampleValid) {
             fuelFlow_lps = 0;
@@ -2003,7 +2002,7 @@ angular.module('beamng.apps')
             avgSpeed_kph <= 65 &&
             topSpeedValid;
 
-          if (!engineRunning && initialized && $scope.unitMode !== 'electric') {
+          if (!engineRunning && initialized) {
             previousFuel_l = currentFuel_l;
             lastThrottle = throttle;
             return;
