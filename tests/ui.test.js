@@ -62,6 +62,7 @@ describe('UI template styling', () => {
     assert.ok(!html.includes('fetch('));
     assert.ok(html.includes('fuelPriceNotice'));
     assert.ok(html.includes('Open Fuel Price Editor'));
+    assert.ok(html.includes('Open Fuel Emissions Editor'));
     assert.ok(!html.includes('<script type="text/javascript">'));
     assert.ok(html.includes('{{ costPrice }}'));
     assert.ok(html.includes('{{ avgCost }}'));
@@ -118,6 +119,29 @@ describe('UI template styling', () => {
     assert.equal(
       luaCmd,
       'extensions.load("fuelPriceEditor") extensions.fuelPriceEditor.setLiquidUnit("L") extensions.fuelPriceEditor.open()'
+    );
+  });
+
+  it('loads fuel emissions editor via controller function', async () => {
+    let directiveDef;
+    let luaCmd;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.window = {};
+    global.bngApi = { engineLua: cmd => { luaCmd = cmd; } };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: () => {} };
+    controllerFn({ debug: () => {} }, $scope);
+
+    $scope.openFuelEmissionsEditor({ preventDefault() {} });
+    assert.equal(
+      luaCmd,
+      'extensions.load("fuelEmissionsEditor") extensions.fuelEmissionsEditor.open()'
     );
   });
 
