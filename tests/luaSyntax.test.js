@@ -21,13 +21,12 @@ function findLuaFiles(dir) {
 
 const repoRoot = path.join(__dirname, '..');
 const luaFiles = findLuaFiles(repoRoot);
+const luacCmd = ['luac', 'luac5.4', 'luac5.3', 'luac5.2', 'luac5.1'].find((cmd) => {
+  const res = spawnSync(cmd, ['-v']);
+  return res.status === 0;
+});
 
 test('all Lua scripts have valid syntax', (t) => {
-  const luacCmd = ['luac', 'luac5.4', 'luac5.3', 'luac5.2', 'luac5.1'].find((cmd) => {
-    const res = spawnSync(cmd, ['-v']);
-    return res.status === 0;
-  });
-
   if (!luacCmd) {
     t.skip('luac not installed');
     return;
@@ -41,5 +40,37 @@ test('all Lua scripts have valid syntax', (t) => {
       `${path.relative(repoRoot, file)} has syntax errors:\n${res.stderr}`
     );
   }
+});
+
+test('engineLua snippets have valid syntax', (t) => {
+  if (!luacCmd) {
+    t.skip('luac not installed');
+    return;
+  }
+  global.angular = { module: () => ({ directive: () => ({}) }) };
+  const tmp = path.join(__dirname, 'tmp.lua');
+  const scripts = [];
+  global.bngApi = {
+    engineLua(code, cb) {
+      scripts.push(code);
+      if (typeof cb === 'function') cb('{}');
+    }
+  };
+  delete require.cache[
+    require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')
+  ];
+  const {
+    loadFuelEmissionsConfig,
+    ensureFuelEmissionType
+  } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+  loadFuelEmissionsConfig();
+  ensureFuelEmissionType('Dummy');
+  delete global.bngApi;
+  for (const code of scripts) {
+    fs.writeFileSync(tmp, code);
+    const res = spawnSync(luacCmd, ['-p', tmp], { encoding: 'utf8' });
+    assert.equal(res.status, 0, `engineLua snippet has syntax errors:\n${res.stderr}`);
+  }
+  fs.unlinkSync(tmp);
 });
 

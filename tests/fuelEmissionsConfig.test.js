@@ -19,6 +19,8 @@ describe('fuel emissions config', () => {
     assert.ok(fs.existsSync(file));
     const saved1 = JSON.parse(fs.readFileSync(file, 'utf8'));
     assert.deepStrictEqual(saved1, cfg1);
+    assert.strictEqual(cfg1.CO2.Diesel, 2640);
+    assert.strictEqual(cfg1.NOx.Diesel, 20);
 
     fs.unlinkSync(file);
     const cfg2 = loadFuelEmissionsConfig();

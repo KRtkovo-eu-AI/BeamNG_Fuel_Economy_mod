@@ -688,7 +688,7 @@ function loadFuelEmissionsConfig(callback) {
       const co2 = Object.assign({}, DEFAULT_CO2_FACTORS_G_PER_L, data.CO2 || {});
       const nox = Object.assign({}, DEFAULT_NOX_FACTORS_G_PER_L, data.NOx || {});
       const cfgObj = { CO2: co2, NOx: nox };
-      fs.writeFileSync(userFile, JSON.stringify(cfgObj));
+      fs.writeFileSync(userFile, JSON.stringify(cfgObj, null, 2));
       CO2_FACTORS_G_PER_L = co2;
       NOX_FACTORS_G_PER_L = nox;
       if (typeof callback === 'function') callback(cfgObj);
@@ -703,6 +703,10 @@ function loadFuelEmissionsConfig(callback) {
 
   if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
     try {
+      var defaultsJson = JSON.stringify({
+        CO2: DEFAULT_CO2_FACTORS_G_PER_L,
+        NOx: DEFAULT_NOX_FACTORS_G_PER_L
+      });
       var lua = [
         '(function()',
         "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
@@ -710,9 +714,10 @@ function loadFuelEmissionsConfig(callback) {
         'FS:directoryCreate(dir)',
         "local p=dir..'fuelEmissions.json'",
         'local cfg=jsonReadFile(p)',
-        'if not cfg then cfg={CO2=' + JSON.stringify(DEFAULT_CO2_FACTORS_G_PER_L) + ',NOx=' + JSON.stringify(DEFAULT_NOX_FACTORS_G_PER_L) + '} jsonWriteFile(p,cfg) end',
-        'if not cfg.CO2 then cfg.CO2=' + JSON.stringify(DEFAULT_CO2_FACTORS_G_PER_L) + ' end',
-        'if not cfg.NOx then cfg.NOx=' + JSON.stringify(DEFAULT_NOX_FACTORS_G_PER_L) + ' end',
+        'local defaults=jsonDecode(' + JSON.stringify(defaultsJson) + ')',
+        'if not cfg then cfg=defaults jsonWriteFile(p,cfg) end',
+        'if not cfg.CO2 then cfg.CO2=defaults.CO2 end',
+        'if not cfg.NOx then cfg.NOx=defaults.NOx end',
         'jsonWriteFile(p,cfg)',
         'return jsonEncode(cfg)',
         'end)()'
@@ -746,17 +751,23 @@ function ensureFuelEmissionType(name) {
     try {
       const fs = require('fs');
       const data = { CO2: CO2_FACTORS_G_PER_L, NOx: NOX_FACTORS_G_PER_L };
-      fs.writeFileSync(loadFuelEmissionsConfig.userFile, JSON.stringify(data));
+      fs.writeFileSync(loadFuelEmissionsConfig.userFile, JSON.stringify(data, null, 2));
     } catch (e) {}
   } else if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    var defaultsJson = JSON.stringify({
+      CO2: DEFAULT_CO2_FACTORS_G_PER_L,
+      NOx: DEFAULT_NOX_FACTORS_G_PER_L
+    });
     var lua = [
       "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
       "local dir=user..'settings/krtektm_fuelEconomy/'",
       'FS:directoryCreate(dir)',
       "local p=dir..'fuelEmissions.json'",
-      'local cfg=jsonReadFile(p) or {CO2={},NOx={}}',
-      'if not cfg.CO2 then cfg.CO2={} end',
-      'if not cfg.NOx then cfg.NOx={} end',
+      'local cfg=jsonReadFile(p)',
+      'local defaults=jsonDecode(' + JSON.stringify(defaultsJson) + ')',
+      'if not cfg then cfg=defaults end',
+      'if not cfg.CO2 then cfg.CO2=defaults.CO2 end',
+      'if not cfg.NOx then cfg.NOx=defaults.NOx end',
       'if cfg.CO2[' + JSON.stringify(name) + ']==nil then cfg.CO2[' + JSON.stringify(name) + ']=0 end',
       'if cfg.NOx[' + JSON.stringify(name) + ']==nil then cfg.NOx[' + JSON.stringify(name) + ']=0 end',
       'jsonWriteFile(p,cfg)'
