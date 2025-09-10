@@ -5,6 +5,9 @@ local im = ui_imgui
 local emissionsPath = '/settings/krtektm_fuelEconomy/fuelEmissions.json'
 local emissionsDir = '/settings/krtektm_fuelEconomy/'
 
+local LITERS_PER_GAL = 3.78541
+local liquidUnit = 'L'
+
 local defaultEmissions = {
   Gasoline = { CO2 = 2392, NOx = 10 },
   Diesel = { CO2 = 2640, NOx = 20 },
@@ -54,17 +57,30 @@ end
 local function loadEmissions()
   data = jsonReadFile(emissionsPath) or {}
   uiState.emissions = {}
+  local factor = liquidUnit == 'gal' and LITERS_PER_GAL or 1
   for k, v in pairs(data) do
+    local co2 = v.CO2 or 0
+    local nox = v.NOx or 0
+    if k ~= 'Electricity' then
+      co2 = co2 * factor
+      nox = nox * factor
+    end
     uiState.emissions[k] = {
-      CO2 = im.FloatPtr(v.CO2 or 0),
-      NOx = im.FloatPtr(v.NOx or 0)
+      CO2 = im.FloatPtr(co2),
+      NOx = im.FloatPtr(nox)
     }
   end
 end
 
 local function saveEmissions()
   for k, v in pairs(uiState.emissions) do
-    data[k] = { CO2 = v.CO2[0], NOx = v.NOx[0] }
+    local co2 = v.CO2[0]
+    local nox = v.NOx[0]
+    if k ~= 'Electricity' and liquidUnit == 'gal' then
+      co2 = co2 / LITERS_PER_GAL
+      nox = nox / LITERS_PER_GAL
+    end
+    data[k] = { CO2 = co2, NOx = nox }
   end
   jsonWriteFile(emissionsPath, data, true)
   loadEmissions()
@@ -91,17 +107,18 @@ local function onUpdate()
   end
   table.sort(names)
   for _, name in ipairs(names) do
+    local unit = name == 'Electricity' and 'g/kWh' or ('g/' .. liquidUnit)
     im.Text(name .. ':')
     im.SameLine()
     im.SetNextItemWidth(FIELD_WIDTH)
     im.InputFloat('##' .. name .. 'CO2', uiState.emissions[name].CO2)
     im.SameLine()
-    im.Text('CO2 g/L;')
+    im.Text('CO2 ' .. unit .. ';')
     im.SameLine()
     im.SetNextItemWidth(FIELD_WIDTH)
     im.InputFloat('##' .. name .. 'NOx', uiState.emissions[name].NOx)
     im.SameLine()
-    im.Text('NOx g/L')
+    im.Text('NOx ' .. unit)
     im.SameLine()
     local disabled = name == 'Gasoline' or name == 'Electricity'
     if disabled then im.BeginDisabled() end
@@ -135,6 +152,15 @@ M.onFileChanged = onFileChanged
 function M.open()
   openPtr[0] = true
   isOpen = true
+end
+
+function M.setLiquidUnit(unit)
+  if unit == 'gal' then
+    liquidUnit = 'gal'
+  else
+    liquidUnit = 'L'
+  end
+  loadEmissions()
 end
 
 return M

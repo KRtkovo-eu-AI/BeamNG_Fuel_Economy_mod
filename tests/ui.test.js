@@ -141,7 +141,7 @@ describe('UI template styling', () => {
     $scope.openFuelEmissionsEditor({ preventDefault() {} });
     assert.equal(
       luaCmd,
-      'extensions.load("fuelEmissionsEditor") extensions.fuelEmissionsEditor.open()'
+      'extensions.load("fuelEmissionsEditor") extensions.fuelEmissionsEditor.setLiquidUnit("L") extensions.fuelEmissionsEditor.open()'
     );
   });
 
@@ -182,13 +182,16 @@ describe('UI template styling', () => {
     controllerFn({ debug: () => {} }, $scope);
 
     $scope.openFuelPriceEditor({ preventDefault() {} });
+    $scope.openFuelEmissionsEditor({ preventDefault() {} });
     cmds.length = 0;
     $scope.setUnit('imperial');
     $scope.setUnit('metric');
 
     assert.deepStrictEqual(cmds, [
       'extensions.fuelPriceEditor.setLiquidUnit("gal")',
-      'extensions.fuelPriceEditor.setLiquidUnit("L")'
+      'extensions.fuelEmissionsEditor.setLiquidUnit("gal")',
+      'extensions.fuelPriceEditor.setLiquidUnit("L")',
+      'extensions.fuelEmissionsEditor.setLiquidUnit("L")'
     ]);
   });
 

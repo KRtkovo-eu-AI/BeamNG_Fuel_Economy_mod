@@ -12,7 +12,9 @@ describe('Fuel Emissions Editor saving', () => {
     const emPath = '/settings/krtektm_fuelEconomy/fuelEmissions.json';
     const emDir = '/settings/krtektm_fuelEconomy/';
 
+    const L_PER_GAL = 3.78541;
     const data = {};
+    let liquidUnit = 'L';
     const uiState = { emissions: {} };
 
     const FS = {
@@ -38,21 +40,32 @@ describe('Fuel Emissions Editor saving', () => {
       const read = jsonReadFile(emPath);
       Object.assign(data, read);
       uiState.emissions = {};
+      const factor = liquidUnit === 'gal' ? L_PER_GAL : 1;
       Object.keys(read).forEach(k => {
+        let co2 = read[k].CO2;
+        let nox = read[k].NOx;
+        if (k !== 'Electricity') {
+          co2 *= factor;
+          nox *= factor;
+        }
         uiState.emissions[k] = {
-          CO2: { 0: read[k].CO2 },
-          NOx: { 0: read[k].NOx }
+          CO2: { 0: co2 },
+          NOx: { 0: nox }
         };
       });
     }
 
     function saveEmissions() {
+      const factor = liquidUnit === 'gal' ? L_PER_GAL : 1;
       const out = {};
       Object.keys(uiState.emissions).forEach(k => {
-        out[k] = {
-          CO2: uiState.emissions[k].CO2[0],
-          NOx: uiState.emissions[k].NOx[0]
-        };
+        let co2 = uiState.emissions[k].CO2[0];
+        let nox = uiState.emissions[k].NOx[0];
+        if (k !== 'Electricity') {
+          co2 = co2 / factor;
+          nox = nox / factor;
+        }
+        out[k] = { CO2: co2, NOx: nox };
       });
       for (const k of Object.keys(data)) delete data[k];
       Object.assign(data, out);
@@ -90,7 +103,9 @@ describe('Fuel Emissions Editor removal', () => {
       })
     );
 
+    const L_PER_GAL = 3.78541;
     const data = {};
+    let liquidUnit = 'L';
     const uiState = { emissions: {} };
 
     const jsonWriteFile = (p, tbl) => fs.writeFileSync(map(p), JSON.stringify(tbl));
@@ -100,21 +115,32 @@ describe('Fuel Emissions Editor removal', () => {
       const read = jsonReadFile(emPath);
       Object.assign(data, read);
       uiState.emissions = {};
+      const factor = liquidUnit === 'gal' ? L_PER_GAL : 1;
       Object.keys(read).forEach(k => {
+        let co2 = read[k].CO2;
+        let nox = read[k].NOx;
+        if (k !== 'Electricity') {
+          co2 *= factor;
+          nox *= factor;
+        }
         uiState.emissions[k] = {
-          CO2: { 0: read[k].CO2 },
-          NOx: { 0: read[k].NOx }
+          CO2: { 0: co2 },
+          NOx: { 0: nox }
         };
       });
     }
 
     function saveEmissions() {
+      const factor = liquidUnit === 'gal' ? L_PER_GAL : 1;
       const out = {};
       Object.keys(uiState.emissions).forEach(k => {
-        out[k] = {
-          CO2: uiState.emissions[k].CO2[0],
-          NOx: uiState.emissions[k].NOx[0]
-        };
+        let co2 = uiState.emissions[k].CO2[0];
+        let nox = uiState.emissions[k].NOx[0];
+        if (k !== 'Electricity') {
+          co2 = co2 / factor;
+          nox = nox / factor;
+        }
+        out[k] = { CO2: co2, NOx: nox };
       });
       for (const k of Object.keys(data)) delete data[k];
       Object.assign(data, out);
@@ -136,6 +162,71 @@ describe('Fuel Emissions Editor removal', () => {
       Gasoline: { CO2: 1, NOx: 2 },
       Electricity: { CO2: 0, NOx: 0 }
     });
+  });
+});
+
+describe('Fuel Emissions Editor unit conversion', () => {
+  it('converts values when switching between liters and gallons', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'emedit-'));
+    const map = p => path.join(tmp, p.replace(/^\//, ''));
+
+    const emPath = '/settings/krtektm_fuelEconomy/fuelEmissions.json';
+    fs.mkdirSync(path.dirname(map(emPath)), { recursive: true });
+    fs.writeFileSync(
+      map(emPath),
+      JSON.stringify({ Gasoline: { CO2: 100, NOx: 10 }, Electricity: { CO2: 0, NOx: 0 } })
+    );
+
+    const L_PER_GAL = 3.78541;
+    const data = {};
+    let liquidUnit = 'L';
+    const uiState = { emissions: {} };
+
+    const jsonWriteFile = (p, tbl) => fs.writeFileSync(map(p), JSON.stringify(tbl));
+    const jsonReadFile = p => JSON.parse(fs.readFileSync(map(p), 'utf8'));
+
+    function loadEmissions() {
+      const read = jsonReadFile(emPath);
+      Object.assign(data, read);
+      uiState.emissions = {};
+      const factor = liquidUnit === 'gal' ? L_PER_GAL : 1;
+      Object.keys(read).forEach(k => {
+        let co2 = read[k].CO2;
+        let nox = read[k].NOx;
+        if (k !== 'Electricity') {
+          co2 *= factor;
+          nox *= factor;
+        }
+        uiState.emissions[k] = { CO2: { 0: co2 }, NOx: { 0: nox } };
+      });
+    }
+
+    function saveEmissions() {
+      const factor = liquidUnit === 'gal' ? L_PER_GAL : 1;
+      const out = {};
+      Object.keys(uiState.emissions).forEach(k => {
+        let co2 = uiState.emissions[k].CO2[0];
+        let nox = uiState.emissions[k].NOx[0];
+        if (k !== 'Electricity') {
+          co2 = co2 / factor;
+          nox = nox / factor;
+        }
+        out[k] = { CO2: co2, NOx: nox };
+      });
+      for (const k of Object.keys(data)) delete data[k];
+      Object.assign(data, out);
+      jsonWriteFile(emPath, data);
+      loadEmissions();
+    }
+
+    loadEmissions();
+    liquidUnit = 'gal';
+    loadEmissions();
+    assert.strictEqual(uiState.emissions.Gasoline.CO2[0], 100 * L_PER_GAL);
+    uiState.emissions.Gasoline.CO2[0] = 200 * L_PER_GAL;
+    saveEmissions();
+    const saved = jsonReadFile(emPath);
+    assert.strictEqual(saved.Gasoline.CO2, 200);
   });
 });
 

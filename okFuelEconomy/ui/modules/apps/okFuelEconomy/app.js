@@ -1063,8 +1063,10 @@ angular.module('beamng.apps')
       };
       $scope.openFuelEmissionsEditor = function ($event) {
         $event.preventDefault();
+        var liquid = preferredLiquidUnit === 'imperial' ? 'gal' : 'L';
+        fuelEmissionsEditorLoaded = true;
         bngApi.engineLua(
-          'extensions.load("fuelEmissionsEditor") extensions.fuelEmissionsEditor.open()'
+          'extensions.load("fuelEmissionsEditor") extensions.fuelEmissionsEditor.setLiquidUnit("' + liquid + '") extensions.fuelEmissionsEditor.open()'
         );
       };
       $scope.unitModeLabels = {
@@ -1084,6 +1086,7 @@ angular.module('beamng.apps')
           localStorage.getItem(PREFERRED_UNIT_KEY) ||
           ($scope.unitMode === 'imperial' ? 'imperial' : 'metric');
         var fuelPriceEditorLoaded = false;
+        var fuelEmissionsEditorLoaded = false;
         var manualUnit = false;
         var lastFuelType = '';
 
@@ -1095,10 +1098,15 @@ angular.module('beamng.apps')
           if (mode !== 'electric') {
             preferredLiquidUnit = mode;
             try { localStorage.setItem(PREFERRED_UNIT_KEY, preferredLiquidUnit); } catch (e) {}
+            var liquid = preferredLiquidUnit === 'imperial' ? 'gal' : 'L';
             if (fuelPriceEditorLoaded) {
-              var liquid = preferredLiquidUnit === 'imperial' ? 'gal' : 'L';
               bngApi.engineLua(
                 'extensions.fuelPriceEditor.setLiquidUnit("' + liquid + '")'
+              );
+            }
+            if (fuelEmissionsEditorLoaded) {
+              bngApi.engineLua(
+                'extensions.fuelEmissionsEditor.setLiquidUnit("' + liquid + '")'
               );
             }
           }
