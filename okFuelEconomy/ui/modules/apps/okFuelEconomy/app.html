@@ -718,6 +718,12 @@
          ng-click="openFuelPriceEditor($event)"
          ng-attr-style="{{ useCustomStyles ? ' color:#aeeaff;' : '' }}">Open Fuel Price Editor</a>
     </p>
+    <p id="fuelEmissionsNotice"
+       ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
+      <a href=""
+         ng-click="openFuelEmissionsEditor($event)"
+         ng-attr-style="{{ useCustomStyles ? ' color:#aeeaff;' : '' }}">Open Fuel Emissions Editor</a>
+    </p>
     <div ng-attr-style="{{ 'position:relative;' + (useCustomStyles ? '' : '') }}">
       <label>Units:
         <span ng-click="unitMenuOpen = !unitMenuOpen"
