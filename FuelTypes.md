@@ -12,7 +12,7 @@ This document lists all fuel types recognized by the mod together with their CO�
 | Ethanol | Biomass-derived alcohol fuel. | 1510 | 3 |
 | Hydrogen | CO₂-free fuel. Fuel cells emit no NOₓ, while combustion engines produce small amounts (~1 g/L). | 0 | 1 |
 | Nitromethane / Nitromethan | High-performance drag racing fuel. | 820 | 12 |
-| Food | Human metabolic energy used for novelty vehicles. | 0.001 | 0 |
+| Food | Human metabolic energy. | 0.001 | 0 |
 | Kerosene / Jet Fuel | Used by turbines and jet engines in aircraft-style or experimental cars. | 2500 | 15 |
 | Methanol | Motorsport fuel with high octane but lower energy per liter; distinct from ethanol. | 1100 | 4 |
 | Biodiesel | Cleaner diesel alternative with different consumption and emissions. | 2500 | 18 |
