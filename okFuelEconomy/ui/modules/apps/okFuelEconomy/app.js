@@ -20,75 +20,25 @@ var foodBaseRate;
 var EU_SPEED_WINDOW_MS = 10000; // retain EU speed samples for 10 s
 var EMISSIONS_BASE_TEMP_C = 90; // baseline engine temp for emissions calculations
 
-var DEFAULT_CO2_FACTORS_G_PER_L = {
-  Gasoline: 2392,
-  Diesel: 2640,
-  'LPG/CNG': 1660,
-  Electricity: 0,
-  Air: 0,
-  Ethanol: 1510,
-  Hydrogen: 0,
-  Nitromethane: 820,
-  Nitromethan: 820,
-  Food: 0.001, // approx. CO2 from human flatulence per kcal
-  Kerosene: 2500,
-  'Jet Fuel': 2500,
-  Methanol: 1100,
-  Biodiesel: 2500,
-  Synthetic: 2392,
-  'Coal Gas': 2000,
-  Steam: 0,
-  Ammonia: 0,
-  Hybrid: 2392,
-  'Plug-in Hybrid': 2392,
-  'Fuel Oil': 3100,
-  'Heavy Oil': 3100,
-  Hydrazine: 0,
-  Hypergolic: 0,
-  'Solid Rocket': 1900,
-  'Black Powder': 1900,
-  ACPC: 1900
-};
+var CO2_FACTORS_G_PER_L = {};
+var NOX_FACTORS_G_PER_L = {};
 
-var DEFAULT_NOX_FACTORS_G_PER_L = {
-  Gasoline: 10,
-  Diesel: 20,
-  'LPG/CNG': 7,
-  Electricity: 0,
-  Air: 0,
-  Ethanol: 3,
-  Hydrogen: 1,
-  Nitromethane: 12,
-  Nitromethan: 12,
-  Food: 0,
-  Kerosene: 15,
-  'Jet Fuel': 15,
-  Methanol: 4,
-  Biodiesel: 18,
-  Synthetic: 10,
-  'Coal Gas': 15,
-  Steam: 0,
-  Ammonia: 6,
-  Hybrid: 10,
-  'Plug-in Hybrid': 10,
-  'Fuel Oil': 25,
-  'Heavy Oil': 25,
-  Hydrazine: 30,
-  Hypergolic: 30,
-  'Solid Rocket': 20,
-  'Black Powder': 20,
-  ACPC: 20
-};
+function loadFuelEmissionsConfig(callback) {
+  var defaults = { CO2: {}, NOx: {} };
 
-var CO2_FACTORS_G_PER_L = Object.assign({}, DEFAULT_CO2_FACTORS_G_PER_L);
-var NOX_FACTORS_G_PER_L = Object.assign({}, DEFAULT_NOX_FACTORS_G_PER_L);
+  if (typeof require === 'function') {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      defaults = JSON.parse(
+        fs.readFileSync(path.join(__dirname, 'fuelEmissions.json'), 'utf8')
+      );
+    } catch (e) {
+      /* ignore */
+    }
+  }
 
-function loadFuelEmissionsConfig() {
-  var defaults = {
-    CO2: DEFAULT_CO2_FACTORS_G_PER_L,
-    NOx: DEFAULT_NOX_FACTORS_G_PER_L
-  };
-
+  loadFuelEmissionsConfig.defaults = defaults;
   CO2_FACTORS_G_PER_L = Object.assign({}, defaults.CO2);
   NOX_FACTORS_G_PER_L = Object.assign({}, defaults.NOx);
 
@@ -96,12 +46,6 @@ function loadFuelEmissionsConfig() {
     try {
       const fs = require('fs');
       const path = require('path');
-      const cfg = JSON.parse(
-        fs.readFileSync(path.join(__dirname, 'fuelEmissions.json'), 'utf8')
-      );
-      defaults = cfg;
-      CO2_FACTORS_G_PER_L = Object.assign({}, defaults.CO2);
-      NOX_FACTORS_G_PER_L = Object.assign({}, defaults.NOx);
 
       const baseDir =
         process.env.KRTEKTM_BNG_USER_DIR ||
@@ -118,7 +62,10 @@ function loadFuelEmissionsConfig() {
         .map(d => d.name)
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       const latest = versions[versions.length - 1];
-      if (!latest) return defaults;
+      if (!latest) {
+        if (typeof callback === 'function') callback(defaults);
+        return defaults;
+      }
 
       const settingsDir = path.join(
         baseDir,
@@ -130,7 +77,7 @@ function loadFuelEmissionsConfig() {
       const userFile = path.join(settingsDir, 'fuelEmissions.json');
       loadFuelEmissionsConfig.userFile = userFile;
       if (!fs.existsSync(userFile)) {
-        fs.writeFileSync(userFile, JSON.stringify(defaults));
+        fs.copyFileSync(path.join(__dirname, 'fuelEmissions.json'), userFile);
       }
       var data = {};
       try {
@@ -146,40 +93,81 @@ function loadFuelEmissionsConfig() {
         userFile,
         JSON.stringify({ CO2: CO2_FACTORS_G_PER_L, NOx: NOX_FACTORS_G_PER_L })
       );
-      return { CO2: CO2_FACTORS_G_PER_L, NOx: NOX_FACTORS_G_PER_L };
+      var cfg = { CO2: CO2_FACTORS_G_PER_L, NOx: NOX_FACTORS_G_PER_L };
+      if (typeof callback === 'function') callback(cfg);
+      return cfg;
     } catch (e) {
+      if (typeof callback === 'function') callback(defaults);
       return defaults;
     }
   }
 
+  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    try {
+      var json = JSON.stringify(defaults)
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n');
+      var lua = [
+        '(function()',
+        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
+        "local dir=user..'settings/krtektm_fuelEconomy/'",
+        'FS:directoryCreate(dir)',
+        "local p=dir..'fuelEmissions.json'",
+        'local cfg=jsonReadFile(p)',
+        'local def=jsonDecode("' + json + '")',
+        'if not cfg then cfg=def jsonWriteFile(p,cfg) end',
+        'cfg.CO2=cfg.CO2 or {}',
+        'cfg.NOx=cfg.NOx or {}',
+        'for k,v in pairs(def.CO2) do if cfg.CO2[k]==nil then cfg.CO2[k]=v end end',
+        'for k,v in pairs(def.NOx) do if cfg.NOx[k]==nil then cfg.NOx[k]=v end end',
+        'jsonWriteFile(p,cfg)',
+        'return jsonEncode(cfg)',
+        'end)()'
+      ].join('\n');
+      bngApi.engineLua(lua, function (res) {
+        var cfg = defaults;
+        try { cfg = JSON.parse(res); } catch (e) {}
+        CO2_FACTORS_G_PER_L = Object.assign({}, cfg.CO2 || {});
+        NOX_FACTORS_G_PER_L = Object.assign({}, cfg.NOx || {});
+        if (typeof callback === 'function') callback(cfg);
+      });
+    } catch (e) {
+      if (typeof callback === 'function') callback(defaults);
+    }
+    return defaults;
+  }
+
+  if (typeof callback === 'function') callback(defaults);
   return defaults;
 }
 
 function ensureEmissionConfig() {
-  if (typeof require !== 'function' || typeof process === 'undefined') return;
-  if (!loadFuelEmissionsConfig.userFile) {
-    loadFuelEmissionsConfig();
+  if (typeof require === 'function' && typeof process !== 'undefined') {
+    if (!loadFuelEmissionsConfig.userFile) {
+      loadFuelEmissionsConfig();
+      return;
+    }
+    try {
+      const fs = require('fs');
+      const data = JSON.parse(
+        fs.readFileSync(loadFuelEmissionsConfig.userFile, 'utf8')
+      );
+      data.CO2 = data.CO2 || {};
+      data.NOx = data.NOx || {};
+      const defaults = loadFuelEmissionsConfig.defaults || { CO2: {}, NOx: {} };
+      CO2_FACTORS_G_PER_L = Object.assign({}, defaults.CO2, data.CO2);
+      NOX_FACTORS_G_PER_L = Object.assign({}, defaults.NOx, data.NOx);
+    } catch (e) {
+      loadFuelEmissionsConfig();
+    }
     return;
   }
-  try {
-    const fs = require('fs');
-    const data = JSON.parse(
-      fs.readFileSync(loadFuelEmissionsConfig.userFile, 'utf8')
-    );
-    data.CO2 = data.CO2 || {};
-    data.NOx = data.NOx || {};
-    CO2_FACTORS_G_PER_L = Object.assign(
-      {},
-      DEFAULT_CO2_FACTORS_G_PER_L,
-      data.CO2
-    );
-    NOX_FACTORS_G_PER_L = Object.assign(
-      {},
-      DEFAULT_NOX_FACTORS_G_PER_L,
-      data.NOx
-    );
-  } catch (e) {
-    loadFuelEmissionsConfig();
+  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    loadFuelEmissionsConfig(function (cfg) {
+      CO2_FACTORS_G_PER_L = Object.assign({}, (cfg && cfg.CO2) || {});
+      NOX_FACTORS_G_PER_L = Object.assign({}, (cfg && cfg.NOx) || {});
+    });
   }
 }
 
@@ -211,6 +199,22 @@ function ensureEmissionFuelType(label) {
     } catch (e) {
       /* ignore */
     }
+  } else if (
+    typeof bngApi !== 'undefined' &&
+    typeof bngApi.engineLua === 'function'
+  ) {
+    var lua = [
+      '(function()',
+      "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
+      "local dir=user..'settings/krtektm_fuelEconomy/'",
+      "local p=dir..'fuelEmissions.json'",
+      'local cfg=jsonReadFile(p) or {CO2={},NOx={}}',
+      'if cfg.CO2[' + JSON.stringify(label) + "]==nil then cfg.CO2[" + JSON.stringify(label) + ']=0 end',
+      'if cfg.NOx[' + JSON.stringify(label) + "]==nil then cfg.NOx[" + JSON.stringify(label) + ']=0 end',
+      'jsonWriteFile(p,cfg)',
+      'end)()'
+    ].join('\n');
+    bngApi.engineLua(lua);
   }
 }
 
