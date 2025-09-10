@@ -20,7 +20,7 @@ var foodBaseRate;
 var EU_SPEED_WINDOW_MS = 10000; // retain EU speed samples for 10 s
 var EMISSIONS_BASE_TEMP_C = 90; // baseline engine temp for emissions calculations
 
-var CO2_FACTORS_G_PER_L = {
+var DEFAULT_CO2_FACTORS_G_PER_L = {
   Gasoline: 2392,
   Diesel: 2640,
   'LPG/CNG': 1660,
@@ -50,7 +50,7 @@ var CO2_FACTORS_G_PER_L = {
   ACPC: 1900
 };
 
-var NOX_FACTORS_G_PER_L = {
+var DEFAULT_NOX_FACTORS_G_PER_L = {
   Gasoline: 10,
   Diesel: 20,
   'LPG/CNG': 7,
@@ -79,6 +79,142 @@ var NOX_FACTORS_G_PER_L = {
   'Black Powder': 20,
   ACPC: 20
 };
+
+var CO2_FACTORS_G_PER_L = Object.assign({}, DEFAULT_CO2_FACTORS_G_PER_L);
+var NOX_FACTORS_G_PER_L = Object.assign({}, DEFAULT_NOX_FACTORS_G_PER_L);
+
+function loadFuelEmissionsConfig() {
+  var defaults = {
+    CO2: DEFAULT_CO2_FACTORS_G_PER_L,
+    NOx: DEFAULT_NOX_FACTORS_G_PER_L
+  };
+
+  CO2_FACTORS_G_PER_L = Object.assign({}, defaults.CO2);
+  NOX_FACTORS_G_PER_L = Object.assign({}, defaults.NOx);
+
+  if (typeof require === 'function' && typeof process !== 'undefined') {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const cfg = JSON.parse(
+        fs.readFileSync(path.join(__dirname, 'fuelEmissions.json'), 'utf8')
+      );
+      defaults = cfg;
+      CO2_FACTORS_G_PER_L = Object.assign({}, defaults.CO2);
+      NOX_FACTORS_G_PER_L = Object.assign({}, defaults.NOx);
+
+      const baseDir =
+        process.env.KRTEKTM_BNG_USER_DIR ||
+        path.join(
+          process.platform === 'win32'
+            ? process.env.LOCALAPPDATA || ''
+            : path.join(process.env.HOME || '', '.local', 'share'),
+          'BeamNG.drive'
+        );
+
+      const versions = fs
+        .readdirSync(baseDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const latest = versions[versions.length - 1];
+      if (!latest) return defaults;
+
+      const settingsDir = path.join(
+        baseDir,
+        latest,
+        'settings',
+        'krtektm_fuelEconomy'
+      );
+      fs.mkdirSync(settingsDir, { recursive: true });
+      const userFile = path.join(settingsDir, 'fuelEmissions.json');
+      loadFuelEmissionsConfig.userFile = userFile;
+      if (!fs.existsSync(userFile)) {
+        fs.writeFileSync(userFile, JSON.stringify(defaults));
+      }
+      var data = {};
+      try {
+        data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+      } catch (e) {
+        data = {};
+      }
+      data.CO2 = data.CO2 || {};
+      data.NOx = data.NOx || {};
+      CO2_FACTORS_G_PER_L = Object.assign({}, defaults.CO2, data.CO2);
+      NOX_FACTORS_G_PER_L = Object.assign({}, defaults.NOx, data.NOx);
+      fs.writeFileSync(
+        userFile,
+        JSON.stringify({ CO2: CO2_FACTORS_G_PER_L, NOx: NOX_FACTORS_G_PER_L })
+      );
+      return { CO2: CO2_FACTORS_G_PER_L, NOx: NOX_FACTORS_G_PER_L };
+    } catch (e) {
+      return defaults;
+    }
+  }
+
+  return defaults;
+}
+
+function ensureEmissionConfig() {
+  if (typeof require !== 'function' || typeof process === 'undefined') return;
+  if (!loadFuelEmissionsConfig.userFile) {
+    loadFuelEmissionsConfig();
+    return;
+  }
+  try {
+    const fs = require('fs');
+    const data = JSON.parse(
+      fs.readFileSync(loadFuelEmissionsConfig.userFile, 'utf8')
+    );
+    data.CO2 = data.CO2 || {};
+    data.NOx = data.NOx || {};
+    CO2_FACTORS_G_PER_L = Object.assign(
+      {},
+      DEFAULT_CO2_FACTORS_G_PER_L,
+      data.CO2
+    );
+    NOX_FACTORS_G_PER_L = Object.assign(
+      {},
+      DEFAULT_NOX_FACTORS_G_PER_L,
+      data.NOx
+    );
+  } catch (e) {
+    loadFuelEmissionsConfig();
+  }
+}
+
+function ensureEmissionFuelType(label) {
+  if (!label) return;
+  ensureEmissionConfig();
+  if (
+    CO2_FACTORS_G_PER_L[label] !== undefined &&
+    NOX_FACTORS_G_PER_L[label] !== undefined
+  )
+    return;
+  CO2_FACTORS_G_PER_L[label] = CO2_FACTORS_G_PER_L[label] || 0;
+  NOX_FACTORS_G_PER_L[label] = NOX_FACTORS_G_PER_L[label] || 0;
+  if (
+    typeof require === 'function' &&
+    typeof process !== 'undefined' &&
+    loadFuelEmissionsConfig.userFile
+  ) {
+    try {
+      const fs = require('fs');
+      const data = JSON.parse(
+        fs.readFileSync(loadFuelEmissionsConfig.userFile, 'utf8')
+      );
+      data.CO2 = data.CO2 || {};
+      data.NOx = data.NOx || {};
+      if (data.CO2[label] === undefined) data.CO2[label] = 0;
+      if (data.NOx[label] === undefined) data.NOx[label] = 0;
+      fs.writeFileSync(loadFuelEmissionsConfig.userFile, JSON.stringify(data));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+}
+
+loadFuelEmissionsConfig();
 
 function resetFoodSimulation() {
   foodBaseRate = undefined;
@@ -482,6 +618,7 @@ function extractValueUnit(str) {
 
 function calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric) {
   if (isElectric) return 0;
+  ensureEmissionFuelType(fuelType);
   var base = CO2_FACTORS_G_PER_L[fuelType] != null
     ? CO2_FACTORS_G_PER_L[fuelType]
     : CO2_FACTORS_G_PER_L.Gasoline;
@@ -505,6 +642,7 @@ function calculateCO2gPerKm(lPer100km, fuelType, engineTempC, n2oActive, isElect
 
 function calculateNOxFactor(fuelType, engineTempC, n2oActive, isElectric) {
   if (isElectric) return 0;
+  ensureEmissionFuelType(fuelType);
   var base = NOX_FACTORS_G_PER_L[fuelType] != null
     ? NOX_FACTORS_G_PER_L[fuelType]
     : NOX_FACTORS_G_PER_L.Gasoline;
@@ -622,6 +760,7 @@ if (typeof module !== 'undefined') {
     calculateCO2Factor,
     calculateCO2gPerKm,
     calculateNOxFactor,
+    loadFuelEmissionsConfig,
     formatCO2,
     classifyCO2,
     meetsEuCo2Limit,
