@@ -19,8 +19,8 @@ describe('fuel emissions config', () => {
     assert.ok(fs.existsSync(file));
     const saved1 = JSON.parse(fs.readFileSync(file, 'utf8'));
     assert.deepStrictEqual(saved1, cfg1);
-    assert.strictEqual(cfg1.CO2.Diesel, 2640);
-    assert.strictEqual(cfg1.NOx.Diesel, 20);
+    assert.strictEqual(cfg1.Diesel.CO2, 2640);
+    assert.strictEqual(cfg1.Diesel.NOx, 20);
 
     fs.unlinkSync(file);
     const cfg2 = loadFuelEmissionsConfig();
@@ -29,7 +29,7 @@ describe('fuel emissions config', () => {
 
     ensureFuelEmissionType('Unobtanium');
     const saved3 = JSON.parse(fs.readFileSync(file, 'utf8'));
-    assert.strictEqual(saved3.CO2.Unobtanium, 0);
-    assert.strictEqual(saved3.NOx.Unobtanium, 0);
+    assert.strictEqual(saved3.Unobtanium.CO2, 0);
+    assert.strictEqual(saved3.Unobtanium.NOx, 0);
   });
 });

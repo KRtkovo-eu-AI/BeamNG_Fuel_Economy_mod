@@ -80,6 +80,20 @@ var DEFAULT_NOX_FACTORS_G_PER_L = {
   ACPC: 20
 };
 
+var DEFAULT_FUEL_EMISSIONS = Object.keys(DEFAULT_CO2_FACTORS_G_PER_L).reduce(
+  function (acc, key) {
+    acc[key] = {
+      CO2: DEFAULT_CO2_FACTORS_G_PER_L[key],
+      NOx:
+        DEFAULT_NOX_FACTORS_G_PER_L[key] != null
+          ? DEFAULT_NOX_FACTORS_G_PER_L[key]
+          : 0
+    };
+    return acc;
+  },
+  {}
+);
+
 var CO2_FACTORS_G_PER_L = Object.assign({}, DEFAULT_CO2_FACTORS_G_PER_L);
 var NOX_FACTORS_G_PER_L = Object.assign({}, DEFAULT_NOX_FACTORS_G_PER_L);
 
@@ -643,10 +657,17 @@ if (typeof module !== 'undefined') {
 }
 
 function loadFuelEmissionsConfig(callback) {
-  var defaults = {
-    CO2: Object.assign({}, DEFAULT_CO2_FACTORS_G_PER_L),
-    NOx: Object.assign({}, DEFAULT_NOX_FACTORS_G_PER_L)
-  };
+  var defaults = JSON.parse(JSON.stringify(DEFAULT_FUEL_EMISSIONS));
+
+  function applyCfg(cfg) {
+    CO2_FACTORS_G_PER_L = {};
+    NOX_FACTORS_G_PER_L = {};
+    Object.keys(cfg).forEach(function (k) {
+      var vals = cfg[k] || {};
+      CO2_FACTORS_G_PER_L[k] = typeof vals.CO2 === 'number' ? vals.CO2 : 0;
+      NOX_FACTORS_G_PER_L[k] = typeof vals.NOx === 'number' ? vals.NOx : 0;
+    });
+  }
 
   if (typeof require === 'function' && typeof process !== 'undefined') {
     try {
@@ -667,8 +688,7 @@ function loadFuelEmissionsConfig(callback) {
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       const latest = versions[versions.length - 1];
       if (!latest) {
-        CO2_FACTORS_G_PER_L = defaults.CO2;
-        NOX_FACTORS_G_PER_L = defaults.NOx;
+        applyCfg(defaults);
         if (typeof callback === 'function') callback(defaults);
         return defaults;
       }
@@ -685,17 +705,18 @@ function loadFuelEmissionsConfig(callback) {
       if (fs.existsSync(userFile)) {
         try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
       }
-      const co2 = Object.assign({}, DEFAULT_CO2_FACTORS_G_PER_L, data.CO2 || {});
-      const nox = Object.assign({}, DEFAULT_NOX_FACTORS_G_PER_L, data.NOx || {});
-      const cfgObj = { CO2: co2, NOx: nox };
-      fs.writeFileSync(userFile, JSON.stringify(cfgObj, null, 2));
-      CO2_FACTORS_G_PER_L = co2;
-      NOX_FACTORS_G_PER_L = nox;
-      if (typeof callback === 'function') callback(cfgObj);
-      return cfgObj;
+      const merged = JSON.parse(JSON.stringify(defaults));
+      Object.keys(data).forEach(function (k) {
+        if (!merged[k]) merged[k] = { CO2: 0, NOx: 0 };
+        if (typeof data[k].CO2 === 'number') merged[k].CO2 = data[k].CO2;
+        if (typeof data[k].NOx === 'number') merged[k].NOx = data[k].NOx;
+      });
+      fs.writeFileSync(userFile, JSON.stringify(merged, null, 2));
+      applyCfg(merged);
+      if (typeof callback === 'function') callback(merged);
+      return merged;
     } catch (e) {
-      CO2_FACTORS_G_PER_L = defaults.CO2;
-      NOX_FACTORS_G_PER_L = defaults.NOx;
+      applyCfg(defaults);
       if (typeof callback === 'function') callback(defaults);
       return defaults;
     }
@@ -703,10 +724,7 @@ function loadFuelEmissionsConfig(callback) {
 
   if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
     try {
-      var defaultsJson = JSON.stringify({
-        CO2: DEFAULT_CO2_FACTORS_G_PER_L,
-        NOx: DEFAULT_NOX_FACTORS_G_PER_L
-      });
+      var defaultsJson = JSON.stringify(DEFAULT_FUEL_EMISSIONS);
       var lua = [
         '(function()',
         "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
@@ -716,8 +734,11 @@ function loadFuelEmissionsConfig(callback) {
         'local cfg=jsonReadFile(p)',
         'local defaults=jsonDecode(' + JSON.stringify(defaultsJson) + ')',
         'if not cfg then cfg=defaults jsonWriteFile(p,cfg) end',
-        'if not cfg.CO2 then cfg.CO2=defaults.CO2 end',
-        'if not cfg.NOx then cfg.NOx=defaults.NOx end',
+        'for fuel,vals in pairs(defaults) do',
+        "  if type(cfg[fuel])~='table' then cfg[fuel]={CO2=vals.CO2,NOx=vals.NOx} end",
+        '  if cfg[fuel].CO2==nil then cfg[fuel].CO2=vals.CO2 end',
+        '  if cfg[fuel].NOx==nil then cfg[fuel].NOx=vals.NOx end',
+        'end',
         'jsonWriteFile(p,cfg)',
         'return jsonEncode(cfg)',
         'end)()'
@@ -725,20 +746,17 @@ function loadFuelEmissionsConfig(callback) {
       bngApi.engineLua(lua, function (res) {
         var cfg = defaults;
         try { cfg = JSON.parse(res); } catch (e) {}
-        CO2_FACTORS_G_PER_L = cfg.CO2 || {};
-        NOX_FACTORS_G_PER_L = cfg.NOx || {};
+        applyCfg(cfg);
         if (typeof callback === 'function') callback(cfg);
       });
     } catch (e) {
-      CO2_FACTORS_G_PER_L = defaults.CO2;
-      NOX_FACTORS_G_PER_L = defaults.NOx;
+      applyCfg(defaults);
       if (typeof callback === 'function') callback(defaults);
     }
     return defaults;
   }
 
-  CO2_FACTORS_G_PER_L = defaults.CO2;
-  NOX_FACTORS_G_PER_L = defaults.NOx;
+  applyCfg(defaults);
   if (typeof callback === 'function') callback(defaults);
   return defaults;
 }
@@ -750,14 +768,20 @@ function ensureFuelEmissionType(name) {
   if (typeof require === 'function' && loadFuelEmissionsConfig.userFile) {
     try {
       const fs = require('fs');
-      const data = { CO2: CO2_FACTORS_G_PER_L, NOx: NOX_FACTORS_G_PER_L };
-      fs.writeFileSync(loadFuelEmissionsConfig.userFile, JSON.stringify(data, null, 2));
+      const data = {};
+      Object.keys(CO2_FACTORS_G_PER_L).forEach(function (k) {
+        data[k] = {
+          CO2: CO2_FACTORS_G_PER_L[k],
+          NOx: NOX_FACTORS_G_PER_L[k]
+        };
+      });
+      fs.writeFileSync(
+        loadFuelEmissionsConfig.userFile,
+        JSON.stringify(data, null, 2)
+      );
     } catch (e) {}
   } else if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
-    var defaultsJson = JSON.stringify({
-      CO2: DEFAULT_CO2_FACTORS_G_PER_L,
-      NOx: DEFAULT_NOX_FACTORS_G_PER_L
-    });
+    var defaultsJson = JSON.stringify(DEFAULT_FUEL_EMISSIONS);
     var lua = [
       "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
       "local dir=user..'settings/krtektm_fuelEconomy/'",
@@ -766,10 +790,7 @@ function ensureFuelEmissionType(name) {
       'local cfg=jsonReadFile(p)',
       'local defaults=jsonDecode(' + JSON.stringify(defaultsJson) + ')',
       'if not cfg then cfg=defaults end',
-      'if not cfg.CO2 then cfg.CO2=defaults.CO2 end',
-      'if not cfg.NOx then cfg.NOx=defaults.NOx end',
-      'if cfg.CO2[' + JSON.stringify(name) + ']==nil then cfg.CO2[' + JSON.stringify(name) + ']=0 end',
-      'if cfg.NOx[' + JSON.stringify(name) + ']==nil then cfg.NOx[' + JSON.stringify(name) + ']=0 end',
+      'if cfg[' + JSON.stringify(name) + ']==nil then cfg[' + JSON.stringify(name) + ']={CO2=0,NOx=0} end',
       'jsonWriteFile(p,cfg)'
     ].join('\n');
     try { bngApi.engineLua(lua); } catch (e) {}
