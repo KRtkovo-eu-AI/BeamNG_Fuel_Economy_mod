@@ -652,7 +652,8 @@ if (typeof module !== 'undefined') {
     shouldResetOnFoot,
     updateFoodHistories,
     loadFuelEmissionsConfig,
-    ensureFuelEmissionType
+    ensureFuelEmissionType,
+    loadFuelPriceConfig
   };
 }
 
@@ -711,7 +712,9 @@ function loadFuelEmissionsConfig(callback) {
         if (typeof data[k].CO2 === 'number') merged[k].CO2 = data[k].CO2;
         if (typeof data[k].NOx === 'number') merged[k].NOx = data[k].NOx;
       });
-      fs.writeFileSync(userFile, JSON.stringify(merged, null, 2));
+      const changed = JSON.stringify(merged) !== JSON.stringify(data);
+      if (changed)
+        fs.writeFileSync(userFile, JSON.stringify(merged, null, 2));
       applyCfg(merged);
       if (typeof callback === 'function') callback(merged);
       return merged;
@@ -731,15 +734,17 @@ function loadFuelEmissionsConfig(callback) {
         "local dir=user..'settings/krtektm_fuelEconomy/'",
         'FS:directoryCreate(dir)',
         "local p=dir..'fuelEmissions.json'",
-        'local cfg=jsonReadFile(p)',
+        'local cfg=jsonReadFile(p) or {}',
         'local defaults=jsonDecode(' + JSON.stringify(defaultsJson) + ')',
-        'if not cfg then cfg=defaults jsonWriteFile(p,cfg) end',
+        'local changed=false',
         'for fuel,vals in pairs(defaults) do',
-        "  if type(cfg[fuel])~='table' then cfg[fuel]={CO2=vals.CO2,NOx=vals.NOx} end",
-        '  if cfg[fuel].CO2==nil then cfg[fuel].CO2=vals.CO2 end',
-        '  if cfg[fuel].NOx==nil then cfg[fuel].NOx=vals.NOx end',
+        "  if type(cfg[fuel])~='table' then cfg[fuel]={CO2=vals.CO2,NOx=vals.NOx}; changed=true",
+        '  else',
+        '    if cfg[fuel].CO2==nil then cfg[fuel].CO2=vals.CO2; changed=true end',
+        '    if cfg[fuel].NOx==nil then cfg[fuel].NOx=vals.NOx; changed=true end',
+        '  end',
         'end',
-        'jsonWriteFile(p,cfg)',
+        'if changed then jsonWriteFile(p,cfg) end',
         'return jsonEncode(cfg)',
         'end)()'
       ].join('\n');
@@ -763,6 +768,7 @@ function loadFuelEmissionsConfig(callback) {
 
 function ensureFuelEmissionType(name) {
   if (!name || name === 'None') return;
+  if (CO2_FACTORS_G_PER_L[name] != null && NOX_FACTORS_G_PER_L[name] != null) return;
   if (CO2_FACTORS_G_PER_L[name] == null) CO2_FACTORS_G_PER_L[name] = 0;
   if (NOX_FACTORS_G_PER_L[name] == null) NOX_FACTORS_G_PER_L[name] = 0;
   if (typeof require === 'function' && loadFuelEmissionsConfig.userFile) {
@@ -781,17 +787,14 @@ function ensureFuelEmissionType(name) {
       );
     } catch (e) {}
   } else if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
-    var defaultsJson = JSON.stringify(DEFAULT_FUEL_EMISSIONS);
     var lua = [
       "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
       "local dir=user..'settings/krtektm_fuelEconomy/'",
       'FS:directoryCreate(dir)',
       "local p=dir..'fuelEmissions.json'",
       'local cfg=jsonReadFile(p)',
-      'local defaults=jsonDecode(' + JSON.stringify(defaultsJson) + ')',
-      'if not cfg then cfg=defaults end',
-      'if cfg[' + JSON.stringify(name) + ']==nil then cfg[' + JSON.stringify(name) + ']={CO2=0,NOx=0} end',
-      'jsonWriteFile(p,cfg)'
+      'if not cfg then cfg={} end',
+      'if cfg[' + JSON.stringify(name) + ']==nil then cfg[' + JSON.stringify(name) + ']={CO2=0,NOx=0} jsonWriteFile(p,cfg) end'
     ].join('\n');
     try { bngApi.engineLua(lua); } catch (e) {}
   }
@@ -845,7 +848,8 @@ function loadFuelPriceConfig(callback) {
         if (typeof callback === 'function') callback(defaults);
         return defaults;
       }
-      const data = JSON.parse(fs.readFileSync(userFile, 'utf8'));
+      let data = {};
+      try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
       var prices = {};
       if (data.prices && typeof data.prices === 'object') {
         Object.keys(data.prices).forEach(k => {
@@ -861,7 +865,8 @@ function loadFuelPriceConfig(callback) {
         prices,
         currency: data.currency || 'money'
       };
-      fs.writeFileSync(userFile, JSON.stringify(cfgObj));
+      const changed = JSON.stringify(cfgObj) !== JSON.stringify(data);
+      if (changed) fs.writeFileSync(userFile, JSON.stringify(cfgObj, null, 2));
       if (typeof callback === 'function') callback(cfgObj);
       return cfgObj;
     } catch (e) {
@@ -878,15 +883,16 @@ function loadFuelPriceConfig(callback) {
         "local dir=user..'settings/krtektm_fuelEconomy/'",
         'FS:directoryCreate(dir)',
         "local p=dir..'fuelPrice.json'",
-        'local cfg=jsonReadFile(p)',
-        "if not cfg then cfg={prices={Gasoline=0,Electricity=0},currency='money'} jsonWriteFile(p,cfg) end",
-        "if not cfg.prices then cfg.prices={Gasoline=0,Electricity=0} end",
-        "if cfg.liquidFuelPrice then cfg.prices.Gasoline=cfg.liquidFuelPrice cfg.liquidFuelPrice=nil end",
-        "if cfg.electricityPrice then cfg.prices.Electricity=cfg.electricityPrice cfg.electricityPrice=nil end",
-        "if cfg.prices.Gasoline==nil then cfg.prices.Gasoline=0 end",
-        "if cfg.prices.Electricity==nil then cfg.prices.Electricity=0 end",
-        'jsonWriteFile(p,cfg)',
-        "return jsonEncode({prices=cfg.prices,currency=cfg.currency or 'money'})",
+        'local cfg=jsonReadFile(p) or {}',
+        'local changed=false',
+        "if cfg.prices==nil then cfg.prices={Gasoline=0,Electricity=0}; changed=true end",
+        "if cfg.liquidFuelPrice~=nil then cfg.prices.Gasoline=cfg.liquidFuelPrice; cfg.liquidFuelPrice=nil; changed=true end",
+        "if cfg.electricityPrice~=nil then cfg.prices.Electricity=cfg.electricityPrice; cfg.electricityPrice=nil; changed=true end",
+        "if cfg.prices.Gasoline==nil then cfg.prices.Gasoline=0; changed=true end",
+        "if cfg.prices.Electricity==nil then cfg.prices.Electricity=0; changed=true end",
+        "if cfg.currency==nil then cfg.currency='money'; changed=true end",
+        'if changed then jsonWriteFile(p,cfg) end',
+        "return jsonEncode({prices=cfg.prices,currency=cfg.currency})",
         'end)()'
       ].join('\n');
       bngApi.engineLua(lua, function (res) {
@@ -1174,7 +1180,10 @@ angular.module('beamng.apps')
                   });
                 }
               }
-              if ($scope.fuelType !== 'None') {
+              if (
+                $scope.fuelType !== 'None' &&
+                CO2_FACTORS_G_PER_L[$scope.fuelType] == null
+              ) {
                 ensureFuelEmissionType($scope.fuelType);
               }
               if ($scope.fuelType !== 'None') {
