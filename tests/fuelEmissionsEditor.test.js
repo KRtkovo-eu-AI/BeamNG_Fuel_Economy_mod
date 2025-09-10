@@ -143,7 +143,9 @@ describe('Fuel Emissions Editor ordering', () => {
   it('lists fuel types alphabetically', () => {
     const order = [];
     const im = {
-      InputFloat: name => order.push(name),
+      Text: () => {},
+      SetNextItemWidth: () => {},
+      InputFloat: label => order.push(label),
       SameLine: () => {},
       BeginDisabled: () => {},
       EndDisabled: () => {},
@@ -160,9 +162,17 @@ describe('Fuel Emissions Editor ordering', () => {
     function onUpdate() {
       const names = Object.keys(uiState.emissions).sort();
       names.forEach(name => {
-        im.InputFloat(name + ' CO2', uiState.emissions[name].CO2);
+        im.Text(name + ':');
         im.SameLine();
-        im.InputFloat(name + ' NOx', uiState.emissions[name].NOx);
+        im.SetNextItemWidth();
+        im.InputFloat('##' + name + 'CO2', uiState.emissions[name].CO2);
+        im.SameLine();
+        im.Text('CO2 g/L;');
+        im.SameLine();
+        im.SetNextItemWidth();
+        im.InputFloat('##' + name + 'NOx', uiState.emissions[name].NOx);
+        im.SameLine();
+        im.Text('NOx g/L');
         im.SameLine();
         const disabled = name === 'Gasoline' || name === 'Electricity';
         if (disabled) im.BeginDisabled();
@@ -173,12 +183,12 @@ describe('Fuel Emissions Editor ordering', () => {
 
     onUpdate();
     assert.deepStrictEqual(order, [
-      'Diesel CO2',
-      'Diesel NOx',
-      'Electricity CO2',
-      'Electricity NOx',
-      'Gasoline CO2',
-      'Gasoline NOx'
+      '##DieselCO2',
+      '##DieselNOx',
+      '##ElectricityCO2',
+      '##ElectricityNOx',
+      '##GasolineCO2',
+      '##GasolineNOx'
     ]);
   });
 });

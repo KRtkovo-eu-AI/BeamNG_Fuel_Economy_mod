@@ -40,6 +40,7 @@ local uiState = { emissions = {} }
 
 local isOpen = false
 local openPtr = im.BoolPtr(false)
+local FIELD_WIDTH = 80
 
 local function ensureFile()
   if not FS:directoryExists(emissionsDir) then
@@ -90,9 +91,17 @@ local function onUpdate()
   end
   table.sort(names)
   for _, name in ipairs(names) do
-    im.InputFloat(string.format('%s CO2 (g/L)##%sCO2', name, name), uiState.emissions[name].CO2)
+    im.Text(name .. ':')
     im.SameLine()
-    im.InputFloat(string.format('%s NOx (g/L)##%sNOx', name, name), uiState.emissions[name].NOx)
+    im.SetNextItemWidth(FIELD_WIDTH)
+    im.InputFloat('##' .. name .. 'CO2', uiState.emissions[name].CO2)
+    im.SameLine()
+    im.Text('CO2 g/L;')
+    im.SameLine()
+    im.SetNextItemWidth(FIELD_WIDTH)
+    im.InputFloat('##' .. name .. 'NOx', uiState.emissions[name].NOx)
+    im.SameLine()
+    im.Text('NOx g/L')
     im.SameLine()
     local disabled = name == 'Gasoline' or name == 'Electricity'
     if disabled then im.BeginDisabled() end
