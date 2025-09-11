@@ -1310,19 +1310,17 @@ angular.module('beamng.apps')
       $scope.webEndpointRunning = false;
       $scope.webEndpointPort = 23512;
       if ($scope.visible.webEndpoint && bngApi && typeof bngApi.engineLua === 'function') {
-        bngApi.engineLua(
-          'extensions.load("okWebServer"); return extensions.okWebServer.start()',
-          function (portInit) {
-            if (portInit) {
-              var update = function () {
-                $scope.webEndpointPort =
-                  parseInt(portInit, 10) || $scope.webEndpointPort;
-              };
-              if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(update);
-              else update();
-            }
+        bngApi.engineLua('extensions.load("okWebServer")');
+        bngApi.engineLua('return extensions.okWebServer.start()', function (portInit) {
+          if (portInit) {
+            var update = function () {
+              $scope.webEndpointPort =
+                parseInt(portInit, 10) || $scope.webEndpointPort;
+            };
+            if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(update);
+            else update();
           }
-        );
+        });
         $scope.webEndpointRunning = true;
       }
 
@@ -1337,20 +1335,17 @@ angular.module('beamng.apps')
 
         if ($scope.visible.webEndpoint) {
           if (bngApi && typeof bngApi.engineLua === 'function') {
-            bngApi.engineLua(
-              'extensions.load("okWebServer"); return extensions.okWebServer.start()',
-              function (port) {
-                if (port) {
-                  var update = function () {
-                    $scope.webEndpointPort =
-                      parseInt(port, 10) || $scope.webEndpointPort;
-                  };
-                  if (typeof $scope.$evalAsync === 'function')
-                    $scope.$evalAsync(update);
-                  else update();
-                }
+            bngApi.engineLua('extensions.load("okWebServer")');
+            bngApi.engineLua('return extensions.okWebServer.start()', function (port) {
+              if (port) {
+                var update = function () {
+                  $scope.webEndpointPort =
+                    parseInt(port, 10) || $scope.webEndpointPort;
+                };
+                if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(update);
+                else update();
               }
-            );
+            });
           }
           $scope.webEndpointRunning = true;
         } else if ($scope.webEndpointRunning) {

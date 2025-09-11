@@ -9,6 +9,7 @@ local running = false
 local dataStr = '{}'
 local defaultPort = 23512
 local listenPort = defaultPort
+local stop -- forward declaration
 
 local settingsDir = '/settings/krtektm_fuelEconomy/'
 local settingsPath = settingsDir .. 'settings.json'
@@ -121,9 +122,8 @@ refresh();setInterval(refresh,1000);
 ]]
 
 local function start()
-  if running then return listenPort end
-
   loadPort()
+  if running then stop() end
 
   server = socket.tcp()
   if not server then
@@ -150,7 +150,7 @@ local function start()
   return listenPort
 end
 
-local function stop()
+stop = function()
   if not running then return end
   for _, c in ipairs(clients) do c:close() end
   clients = {}
