@@ -1612,6 +1612,7 @@ angular.module('beamng.apps')
 
       var distance_m = 0;
       var lastDistance_m = 0;
+      var lastTrip_m = 0;
       var lastTime_ms = performance.now();
       var startFuel_l = null;
       var previousFuel_l = null;
@@ -1854,6 +1855,7 @@ angular.module('beamng.apps')
       function hardReset(preserveTripFuel) {
         distance_m = 0;
         lastDistance_m = 0;
+        lastTrip_m = 0;
         startFuel_l = null;
         previousFuel_l = null;
         lastCapacity_l = null;
@@ -2171,6 +2173,10 @@ angular.module('beamng.apps')
             speedAvg.queue.shift();
           }
           var trip_m = streams.electrics.trip || 0;
+          if (trip_m < lastTrip_m) {
+            hardReset(false);
+          }
+          lastTrip_m = trip_m;
 
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
@@ -2213,6 +2219,7 @@ angular.module('beamng.apps')
 
           var fuel_used_l = startFuel_l - currentFuel_l;
           if (fuel_used_l >= capacity_l || fuel_used_l < 0) {
+            hardReset(false);
             startFuel_l = currentFuel_l;
             previousFuel_l = currentFuel_l;
             fuel_used_l = 0;
@@ -2412,10 +2419,8 @@ angular.module('beamng.apps')
           var avg_l_per_100km_ok;
           if (avgConsumptionAlgorithm === 'direct') {
             avg_l_per_100km_ok = calculateAverageConsumption(
-              (overall.fuelUsedLiquid || 0) +
-                (overall.fuelUsedElectric || 0),
-              (overall.distance || 0) +
-                (speed_mps > EPS_SPEED ? deltaDistance : 0)
+              fuel_used_l,
+              distance_m
             );
           } else {
             avg_l_per_100km_ok = resolveAverageConsumption(
@@ -2466,16 +2471,14 @@ angular.module('beamng.apps')
           var overall_median = calculateMedian(overall.queue);
           if (avgConsumptionAlgorithm === 'direct') {
             overall_median = calculateAverageConsumption(
-              (overall.fuelUsedLiquid || 0) + (overall.fuelUsedElectric || 0),
-              overall.distance || 0
+              fuel_used_l,
+              distance_m
             );
           }
           var tripAvgCo2Val = calculateMedian(overall.co2Queue);
           if (avgConsumptionAlgorithm === 'direct') {
             tripAvgCo2Val =
-              overall.distance > 0
-                ? overall.tripCo2 / (overall.distance / 1000)
-                : 0;
+              distance_m > 0 ? tripCo2_g / (distance_m / 1000) : 0;
           }
           $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
           $scope.tripAvgKmLHistory = buildQueueGraphPoints(

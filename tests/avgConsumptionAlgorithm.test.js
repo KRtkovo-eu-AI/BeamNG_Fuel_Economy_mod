@@ -105,7 +105,7 @@ describe('average consumption algorithm config', () => {
     assert.strictEqual($scope.avgL100km, '100.0 L/100km');
   });
 
-  it('resets cumulative totals for direct algorithm', async () => {
+  it('auto resets cumulative totals for direct algorithm', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
     global.StreamsManager = { add: () => {}, remove: () => {} };
@@ -128,14 +128,14 @@ describe('average consumption algorithm config', () => {
 
     $scope.setAvgConsumptionAlgorithm('direct');
 
-    const base = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0.5, rpmTacho: 2000 } };
+    const base = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0.5, rpmTacho: 2000, trip: 0 } };
     base.engineInfo[11] = 50;
     base.engineInfo[12] = 60;
     base.engineInfo[13] = 90;
     handlers['streamsUpdate'](null, base);
     await new Promise(r => setTimeout(r, 0));
 
-    const run1 = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 2000 } };
+    const run1 = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 2000, trip: 1000 } };
     run1.engineInfo[11] = 49;
     run1.engineInfo[12] = 60;
     run1.engineInfo[13] = 90;
@@ -143,22 +143,23 @@ describe('average consumption algorithm config', () => {
     handlers['streamsUpdate'](null, run1);
     await new Promise(r => setTimeout(r, 0));
 
-    $scope.reset();
+    assert.strictEqual($scope.avgL100km, '100.0 L/100km');
+
+    const reset = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
+    reset.engineInfo[11] = 50;
+    reset.engineInfo[12] = 60;
+    reset.engineInfo[13] = 90;
+    now = 100100;
+    handlers['streamsUpdate'](null, reset);
     await new Promise(r => setTimeout(r, 0));
+
     assert.strictEqual($scope.avgL100km, '0.0 L/100km');
 
-    const base2 = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0.5, rpmTacho: 2000 } };
-    base2.engineInfo[11] = 20;
-    base2.engineInfo[12] = 60;
-    base2.engineInfo[13] = 90;
-    handlers['streamsUpdate'](null, base2);
-    await new Promise(r => setTimeout(r, 0));
-
-    const run2 = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 2000 } };
-    run2.engineInfo[11] = 19.91;
+    const run2 = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 2000, trip: 115.3 } };
+    run2.engineInfo[11] = 49.91;
     run2.engineInfo[12] = 60;
     run2.engineInfo[13] = 90;
-    now = 111530;
+    now = 111630;
     handlers['streamsUpdate'](null, run2);
     await new Promise(r => setTimeout(r, 0));
 
