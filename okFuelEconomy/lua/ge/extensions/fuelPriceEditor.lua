@@ -15,6 +15,7 @@ local isOpen = false
 local openPtr = im.BoolPtr(false)
 
 local liquidUnit = 'L'
+local FIELD_WIDTH = 80
 
 local function unitLabel(name)
   if name == 'Electricity' then return 'kWh' end
@@ -113,6 +114,7 @@ local function onUpdate()
   table.sort(names)
   for _, name in ipairs(names) do
     local unit = unitLabel(name)
+    im.SetNextItemWidth(FIELD_WIDTH)
     im.InputFloat(string.format('%s (%s)##%s', name, unit, name), uiState.prices[name])
     im.SameLine()
     local disabled = name == 'Gasoline' or name == 'Electricity'

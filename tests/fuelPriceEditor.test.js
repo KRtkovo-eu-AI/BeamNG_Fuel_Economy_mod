@@ -191,6 +191,7 @@ describe('Fuel Price Editor ordering', () => {
     const order = [];
     const im = {
       InputFloat: name => order.push(name),
+      SetNextItemWidth: () => {},
       SameLine: () => {},
       BeginDisabled: () => {},
       EndDisabled: () => {},
