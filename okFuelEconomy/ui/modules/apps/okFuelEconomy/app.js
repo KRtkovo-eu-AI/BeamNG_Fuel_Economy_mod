@@ -1236,6 +1236,21 @@ angular.module('beamng.apps')
         var manualUnit = false;
         var lastFuelType = '';
 
+        $scope.avgConsumptionAlgorithmLabels = {
+          optimized: 'Optimized',
+          direct: 'Direct'
+        };
+        $scope.avgConsumptionAlgorithmOptions = {
+          optimized: $scope.avgConsumptionAlgorithmLabels.optimized,
+          direct: $scope.avgConsumptionAlgorithmLabels.direct
+        };
+        $scope.avgConsumptionAlgorithmMenuOpen = false;
+        $scope.setAvgConsumptionAlgorithm = function (algo) {
+          $scope.avgConsumptionAlgorithm = algo;
+          avgConsumptionAlgorithm = algo === 'direct' ? 'direct' : 'optimized';
+          $scope.avgConsumptionAlgorithmMenuOpen = false;
+        };
+
         function getActiveUnitMode() {
           return resolveUnitModeForFuelType(lastFuelType, $scope.unitMode);
         }
