@@ -144,6 +144,7 @@ describe('average consumption algorithm config', () => {
     await new Promise(r => setTimeout(r, 0));
 
     assert.strictEqual($scope.avgL100km, '100.0 L/100km');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '1.00 L');
 
     const reset = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
     reset.engineInfo[11] = 50;
@@ -154,6 +155,7 @@ describe('average consumption algorithm config', () => {
     await new Promise(r => setTimeout(r, 0));
 
     assert.strictEqual($scope.avgL100km, '0.0 L/100km');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '1.00 L');
 
     const run2 = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 2000, trip: 115.3 } };
     run2.engineInfo[11] = 49.91;
@@ -164,5 +166,6 @@ describe('average consumption algorithm config', () => {
     await new Promise(r => setTimeout(r, 0));
 
     assert.strictEqual($scope.avgL100km, '78.1 L/100km');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '1.09 L');
   });
 });

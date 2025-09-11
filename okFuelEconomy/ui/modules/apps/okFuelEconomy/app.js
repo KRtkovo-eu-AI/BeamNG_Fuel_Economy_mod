@@ -2174,7 +2174,10 @@ angular.module('beamng.apps')
           }
           var trip_m = streams.electrics.trip || 0;
           if (trip_m < lastTrip_m) {
-            hardReset(false);
+            // A lower trip meter indicates the vehicle was reset. Preserve
+            // existing trip statistics and only clear the cumulative values
+            // used for the current run.
+            hardReset(true);
           }
           lastTrip_m = trip_m;
 
@@ -2219,7 +2222,9 @@ angular.module('beamng.apps')
 
           var fuel_used_l = startFuel_l - currentFuel_l;
           if (fuel_used_l >= capacity_l || fuel_used_l < 0) {
-            hardReset(false);
+            // Fuel level jumped (vehicle reset or refuel). Preserve trip totals
+            // and only reset the per-run accumulators.
+            hardReset(true);
             startFuel_l = currentFuel_l;
             previousFuel_l = currentFuel_l;
             fuel_used_l = 0;
