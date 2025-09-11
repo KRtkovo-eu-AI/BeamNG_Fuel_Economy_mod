@@ -1312,11 +1312,14 @@ angular.module('beamng.apps')
       if ($scope.visible.webEndpoint && bngApi && typeof bngApi.engineLua === 'function') {
         bngApi.engineLua('extensions.load("okWebServer")');
         bngApi.engineLua('extensions.okWebServer.start()');
-        var portInit = bngApi.engineLua('return extensions.okWebServer.getPort()');
-        if (portInit) {
-          $scope.webEndpointPort = parseInt(portInit, 10) || $scope.webEndpointPort;
-        }
-        $scope.webEndpointRunning = true;
+        bngApi.engineLua('return extensions.okWebServer.getPort()', function (portInit) {
+          $scope.$evalAsync(function () {
+            if (portInit) {
+              $scope.webEndpointPort = parseInt(portInit, 10) || $scope.webEndpointPort;
+            }
+            $scope.webEndpointRunning = true;
+          });
+        });
       }
 
       $scope.saveSettings = function () {
@@ -1332,12 +1335,15 @@ angular.module('beamng.apps')
           if (bngApi && typeof bngApi.engineLua === 'function') {
             bngApi.engineLua('extensions.load("okWebServer")');
             bngApi.engineLua('extensions.okWebServer.start()');
-            var port = bngApi.engineLua('return extensions.okWebServer.getPort()');
-            if (port) {
-              $scope.webEndpointPort = parseInt(port, 10) || $scope.webEndpointPort;
-            }
+            bngApi.engineLua('return extensions.okWebServer.getPort()', function (port) {
+              $scope.$evalAsync(function () {
+                if (port) {
+                  $scope.webEndpointPort = parseInt(port, 10) || $scope.webEndpointPort;
+                }
+                $scope.webEndpointRunning = true;
+              });
+            });
           }
-          $scope.webEndpointRunning = true;
         } else if (!$scope.visible.webEndpoint && $scope.webEndpointRunning) {
           if (bngApi && typeof bngApi.engineLua === 'function') {
             bngApi.engineLua('extensions.okWebServer.stop()');

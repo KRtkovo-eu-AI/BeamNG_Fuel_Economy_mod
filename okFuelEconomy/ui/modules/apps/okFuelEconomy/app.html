@@ -997,7 +997,7 @@
           <label>
             <input type="checkbox" ng-model="visible.webEndpoint"> Enable localhost endpoint
             <span class="material-icons" ng-attr-style="{{ 'font-size:16px; margin-left:4px; vertical-align:middle; color:' + (webEndpointRunning ? '#00c853' : '#f44336') }}">{{ webEndpointRunning ? 'play_arrow' : 'stop' }}</span>
-            <span ng-if="webEndpointRunning" ng-attr-style="{{ 'margin-left:4px; vertical-align:middle;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">port {{ webEndpointPort }}</span>
+            <span ng-if="webEndpointRunning" ng-attr-style="{{ 'margin-left:4px; font-size:0.8em; display:inline-block; vertical-align:middle;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">port {{ webEndpointPort }}</span>
           </label>
         </div>
       </div>

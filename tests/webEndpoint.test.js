@@ -9,7 +9,12 @@ function setup(store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: tru
   global.StreamsManager = { add: () => {}, remove: () => {} };
   global.UiUnits = { buildString: () => '' };
   const calls = [];
-  global.bngApi = { engineLua: (cmd) => { calls.push(cmd); if (cmd.includes('getPort')) return 23512; return ''; } };
+  global.bngApi = { engineLua: (cmd, cb) => {
+    calls.push(cmd);
+    const res = cmd.includes('getPort') ? 23512 : '';
+    if (typeof cb === 'function') cb(res);
+    return res;
+  } };
   global.localStorage = { getItem: (k) => store[k] || null, setItem: (k,v) => { store[k]=v; } };
   global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
 
