@@ -2401,17 +2401,21 @@ angular.module('beamng.apps')
             resetInstantHistory();
           }
 
-          var avg_l_per_100km_ok = resolveAverageConsumption(
-            sampleValid,
-            inst_l_per_100km,
-            avgRecent,
-            AVG_MAX_ENTRIES,
-            $scope.unitMode === 'electric'
-          );
+          var avg_l_per_100km_ok;
           if (avgConsumptionAlgorithm === 'direct') {
             avg_l_per_100km_ok = calculateAverageConsumption(
-              fuel_used_l,
-              distance_m
+              (overall.fuelUsedLiquid || 0) +
+                (overall.fuelUsedElectric || 0),
+              (overall.distance || 0) +
+                (speed_mps > EPS_SPEED ? deltaDistance : 0)
+            );
+          } else {
+            avg_l_per_100km_ok = resolveAverageConsumption(
+              sampleValid,
+              inst_l_per_100km,
+              avgRecent,
+              AVG_MAX_ENTRIES,
+              $scope.unitMode === 'electric'
             );
           }
           if (

@@ -56,4 +56,52 @@ describe('average consumption algorithm config', () => {
 
     if (prev === undefined) delete process.env.KRTEKTM_BNG_USER_DIR; else process.env.KRTEKTM_BNG_USER_DIR = prev;
   });
+
+  it('computes average consumption directly', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Gasoline' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (name, fn) => { handlers[name] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 0));
+
+    $scope.setAvgConsumptionAlgorithm('direct');
+
+    const streams1 = {
+      engineInfo: Array(14).fill(0),
+      electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0.5, rpmTacho: 2000 }
+    };
+    streams1.engineInfo[11] = 50;
+    streams1.engineInfo[12] = 60;
+    streams1.engineInfo[13] = 90;
+
+    handlers['streamsUpdate'](null, streams1);
+    await new Promise(r => setTimeout(r, 0));
+
+    const streams2 = {
+      engineInfo: Array(14).fill(0),
+      electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 2000 }
+    };
+    streams2.engineInfo[11] = 49;
+    streams2.engineInfo[12] = 60;
+    streams2.engineInfo[13] = 90;
+    now = 100000;
+    handlers['streamsUpdate'](null, streams2);
+    await new Promise(r => setTimeout(r, 0));
+
+    assert.strictEqual($scope.avgL100km, '100.0 L/100km');
+  });
 });
