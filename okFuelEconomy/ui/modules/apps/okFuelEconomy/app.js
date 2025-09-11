@@ -1310,11 +1310,19 @@ angular.module('beamng.apps')
       $scope.webEndpointRunning = false;
       $scope.webEndpointPort = 23512;
       if ($scope.visible.webEndpoint && bngApi && typeof bngApi.engineLua === 'function') {
-        bngApi.engineLua('extensions.load("okWebServer")');
-        var portInit = bngApi.engineLua('return extensions.okWebServer.start()');
-        if (portInit) {
-          $scope.webEndpointPort = parseInt(portInit, 10) || $scope.webEndpointPort;
-        }
+        bngApi.engineLua(
+          'extensions.load("okWebServer"); return extensions.okWebServer.start()',
+          function (portInit) {
+            if (portInit) {
+              var update = function () {
+                $scope.webEndpointPort =
+                  parseInt(portInit, 10) || $scope.webEndpointPort;
+              };
+              if (typeof $scope.$evalAsync === 'function') $scope.$evalAsync(update);
+              else update();
+            }
+          }
+        );
         $scope.webEndpointRunning = true;
       }
 
@@ -1327,16 +1335,25 @@ angular.module('beamng.apps')
           }
         } catch (e) { /* ignore */ }
 
-        if ($scope.visible.webEndpoint && !$scope.webEndpointRunning) {
+        if ($scope.visible.webEndpoint) {
           if (bngApi && typeof bngApi.engineLua === 'function') {
-            bngApi.engineLua('extensions.load("okWebServer")');
-            var port = bngApi.engineLua('return extensions.okWebServer.start()');
-            if (port) {
-              $scope.webEndpointPort = parseInt(port, 10) || $scope.webEndpointPort;
-            }
+            bngApi.engineLua(
+              'extensions.load("okWebServer"); return extensions.okWebServer.start()',
+              function (port) {
+                if (port) {
+                  var update = function () {
+                    $scope.webEndpointPort =
+                      parseInt(port, 10) || $scope.webEndpointPort;
+                  };
+                  if (typeof $scope.$evalAsync === 'function')
+                    $scope.$evalAsync(update);
+                  else update();
+                }
+              }
+            );
           }
           $scope.webEndpointRunning = true;
-        } else if (!$scope.visible.webEndpoint && $scope.webEndpointRunning) {
+        } else if ($scope.webEndpointRunning) {
           if (bngApi && typeof bngApi.engineLua === 'function') {
             bngApi.engineLua('extensions.okWebServer.stop()');
           }
