@@ -911,7 +911,7 @@ function loadFuelPriceConfig(callback) {
 }
 
 function loadAvgConsumptionAlgorithm(callback) {
-  var algo = 'queue';
+  var algo = 'optimized';
   if (typeof require === 'function' && typeof process !== 'undefined') {
     try {
       const fs = require('fs');
@@ -943,8 +943,8 @@ function loadAvgConsumptionAlgorithm(callback) {
         if (fs.existsSync(userFile)) {
           try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
         }
-        if (data.AvgConsumptionAlgorithm !== 'direct' && data.AvgConsumptionAlgorithm !== 'queue') {
-          data.AvgConsumptionAlgorithm = 'queue';
+        if (data.AvgConsumptionAlgorithm !== 'direct' && data.AvgConsumptionAlgorithm !== 'optimized') {
+          data.AvgConsumptionAlgorithm = 'optimized';
           fs.writeFileSync(userFile, JSON.stringify(data, null, 2));
         }
         algo = data.AvgConsumptionAlgorithm;
@@ -962,12 +962,12 @@ function loadAvgConsumptionAlgorithm(callback) {
         'FS:directoryCreate(dir)',
         "local p=dir..'settings.json'",
         'local cfg=jsonReadFile(p) or {}',
-        "if cfg.AvgConsumptionAlgorithm==nil then cfg.AvgConsumptionAlgorithm='queue'; jsonWriteFile(p,cfg,true) end",
-        "return cfg.AvgConsumptionAlgorithm or 'queue'",
+        "if cfg.AvgConsumptionAlgorithm==nil then cfg.AvgConsumptionAlgorithm='optimized'; jsonWriteFile(p,cfg,true) end",
+        "return cfg.AvgConsumptionAlgorithm or 'optimized'",
         'end)()'
       ].join('\n');
       bngApi.engineLua(lua, function (res) {
-        var val = res === 'direct' ? 'direct' : 'queue';
+        var val = res === 'direct' ? 'direct' : 'optimized';
         if (typeof callback === 'function') callback(val);
       });
     } catch (e) {
@@ -1033,9 +1033,9 @@ angular.module('beamng.apps')
         $scope.liquidFuelPriceValue = 0;
         $scope.electricityPriceValue = 0;
         $scope.currency = 'money';
-        var avgConsumptionAlgorithm = 'queue';
+        var avgConsumptionAlgorithm = 'optimized';
         loadAvgConsumptionAlgorithm(function (val) {
-          avgConsumptionAlgorithm = val === 'direct' ? 'direct' : 'queue';
+          avgConsumptionAlgorithm = val === 'direct' ? 'direct' : 'optimized';
         });
 
         function updateCostPrice(unitLabels, priceForMode) {

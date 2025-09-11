@@ -25,7 +25,7 @@ local function loadPort()
     changed = true
   end
   if cfg.AvgConsumptionAlgorithm == nil then
-    cfg.AvgConsumptionAlgorithm = 'queue'
+    cfg.AvgConsumptionAlgorithm = 'optimized'
     changed = true
   end
   if changed then
