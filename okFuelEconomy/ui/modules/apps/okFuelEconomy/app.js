@@ -1311,8 +1311,7 @@ angular.module('beamng.apps')
       $scope.webEndpointPort = 23512;
       if ($scope.visible.webEndpoint && bngApi && typeof bngApi.engineLua === 'function') {
         bngApi.engineLua('extensions.load("okWebServer")');
-        bngApi.engineLua('extensions.okWebServer.start()');
-        var portInit = bngApi.engineLua('return extensions.okWebServer.getPort()');
+        var portInit = bngApi.engineLua('return extensions.okWebServer.start()');
         if (portInit) {
           $scope.webEndpointPort = parseInt(portInit, 10) || $scope.webEndpointPort;
         }
@@ -1331,8 +1330,7 @@ angular.module('beamng.apps')
         if ($scope.visible.webEndpoint && !$scope.webEndpointRunning) {
           if (bngApi && typeof bngApi.engineLua === 'function') {
             bngApi.engineLua('extensions.load("okWebServer")');
-            bngApi.engineLua('extensions.okWebServer.start()');
-            var port = bngApi.engineLua('return extensions.okWebServer.getPort()');
+            var port = bngApi.engineLua('return extensions.okWebServer.start()');
             if (port) {
               $scope.webEndpointPort = parseInt(port, 10) || $scope.webEndpointPort;
             }

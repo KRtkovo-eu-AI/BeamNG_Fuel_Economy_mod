@@ -121,14 +121,14 @@ refresh();setInterval(refresh,1000);
 ]]
 
 local function start()
-  if running then return end
+  if running then return listenPort end
 
   loadPort()
 
   server = socket.tcp()
   if not server then
     log('E', 'okWebServer', 'failed to create tcp socket')
-    return
+    return nil
   end
 
   server:setoption('reuseaddr', true)
@@ -140,13 +140,14 @@ local function start()
     log('E', 'okWebServer', 'bind failed on port ' .. listenPort .. ': ' .. tostring(err))
     server:close()
     server = nil
-    return
+    return nil
   end
 
   server:listen()
   server:settimeout(0)
   running = true
   log('I', 'okWebServer', 'listening on http://127.0.0.1:' .. listenPort)
+  return listenPort
 end
 
 local function stop()

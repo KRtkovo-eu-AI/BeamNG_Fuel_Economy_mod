@@ -9,7 +9,7 @@ function setup(store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: tru
   global.StreamsManager = { add: () => {}, remove: () => {} };
   global.UiUnits = { buildString: () => '' };
   const calls = [];
-  global.bngApi = { engineLua: (cmd) => { calls.push(cmd); if (cmd.includes('getPort')) return 23512; return ''; } };
+  global.bngApi = { engineLua: (cmd) => { calls.push(cmd); if (cmd.includes('start')) return 23512; return ''; } };
   global.localStorage = { getItem: (k) => store[k] || null, setItem: (k,v) => { store[k]=v; } };
   global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
 
@@ -24,14 +24,14 @@ function setup(store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: tru
 test('starts web server when enabled', () => {
   const { calls, $scope } = setup();
   assert.ok(calls.includes('extensions.load("okWebServer")'));
-  assert.ok(calls.includes('extensions.okWebServer.start()'));
+  assert.ok(calls.includes('return extensions.okWebServer.start()'));
   assert.strictEqual($scope.webEndpointRunning, true);
 });
 
 test('exposes server port', () => {
   const { calls, $scope } = setup();
   assert.strictEqual($scope.webEndpointPort, 23512);
-  assert.ok(calls.includes('return extensions.okWebServer.getPort()'));
+  assert.ok(calls.includes('return extensions.okWebServer.start()'));
 });
 
 test('updates web server with latest data', () => {
