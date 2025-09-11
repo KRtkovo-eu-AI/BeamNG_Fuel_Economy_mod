@@ -206,6 +206,7 @@ describe('Fuel Price Editor ordering', () => {
     function onUpdate() {
       const names = Object.keys(uiState.prices).sort();
       names.forEach(name => {
+        im.SetNextItemWidth(80);
         im.InputFloat(name, uiState.prices[name]);
         im.SameLine();
         const disabled = name === 'Gasoline' || name === 'Electricity';
@@ -214,6 +215,7 @@ describe('Fuel Price Editor ordering', () => {
         im.Button(label);
         if (disabled) im.EndDisabled();
       });
+      im.SetNextItemWidth(80);
       im.InputText('Currency', uiState.currency);
     }
 

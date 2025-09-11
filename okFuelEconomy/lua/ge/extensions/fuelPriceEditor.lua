@@ -124,6 +124,7 @@ local function onUpdate()
     end
     if disabled then im.EndDisabled() end
   end
+  im.SetNextItemWidth(FIELD_WIDTH)
   im.InputText('Currency', uiState.currency)
 
   if im.Button('Save') then
