@@ -5,7 +5,10 @@ const path = require('path');
 const os = require('os');
 
 global.angular = { module: () => ({ directive: () => ({}) }) };
-const { loadAvgConsumptionAlgorithm } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+const {
+  loadAvgConsumptionAlgorithm,
+  saveAvgConsumptionAlgorithm,
+} = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 describe('average consumption algorithm config', () => {
   it('defaults to optimized and persists setting', () => {
@@ -35,6 +38,21 @@ describe('average consumption algorithm config', () => {
 
     const algo = loadAvgConsumptionAlgorithm();
     assert.strictEqual(algo, 'direct');
+
+    if (prev === undefined) delete process.env.KRTEKTM_BNG_USER_DIR; else process.env.KRTEKTM_BNG_USER_DIR = prev;
+  });
+
+  it('saves selected algorithm to settings.json', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'alg-'));
+    const verDir = path.join(tmp, '1.0');
+    fs.mkdirSync(verDir, { recursive: true });
+    const prev = process.env.KRTEKTM_BNG_USER_DIR;
+    process.env.KRTEKTM_BNG_USER_DIR = tmp;
+
+    saveAvgConsumptionAlgorithm('direct');
+    const file = path.join(verDir, 'settings', 'krtektm_fuelEconomy', 'settings.json');
+    const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.strictEqual(data.AvgConsumptionAlgorithm, 'direct');
 
     if (prev === undefined) delete process.env.KRTEKTM_BNG_USER_DIR; else process.env.KRTEKTM_BNG_USER_DIR = prev;
   });

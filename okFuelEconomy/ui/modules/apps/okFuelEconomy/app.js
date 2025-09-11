@@ -979,8 +979,69 @@ function loadAvgConsumptionAlgorithm(callback) {
   return algo;
 }
 
+function saveAvgConsumptionAlgorithm(algo) {
+  algo = algo === 'direct' ? 'direct' : 'optimized';
+  if (typeof require === 'function' && typeof process !== 'undefined') {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const baseDir =
+        process.env.KRTEKTM_BNG_USER_DIR ||
+        path.join(
+          process.platform === 'win32'
+            ? process.env.LOCALAPPDATA || ''
+            : path.join(process.env.HOME || '', '.local', 'share'),
+          'BeamNG.drive'
+        );
+      const versions = fs
+        .readdirSync(baseDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const latest = versions[versions.length - 1];
+      if (latest) {
+        const settingsDir = path.join(
+          baseDir,
+          latest,
+          'settings',
+          'krtektm_fuelEconomy'
+        );
+        fs.mkdirSync(settingsDir, { recursive: true });
+        const userFile = path.join(settingsDir, 'settings.json');
+        let data = {};
+        if (fs.existsSync(userFile)) {
+          try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
+        }
+        if (data.AvgConsumptionAlgorithm !== algo) {
+          data.AvgConsumptionAlgorithm = algo;
+          fs.writeFileSync(userFile, JSON.stringify(data, null, 2));
+        }
+      }
+    } catch (e) { /* ignore */ }
+    return algo;
+  }
+  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    try {
+      var lua = [
+        '(function()',
+        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
+        "local dir=user..'settings/krtektm_fuelEconomy/'",
+        'FS:directoryCreate(dir)',
+        "local p=dir..'settings.json'",
+        'local cfg=jsonReadFile(p) or {}',
+        "cfg.AvgConsumptionAlgorithm='" + (algo === 'direct' ? "direct" : "optimized") + "'",
+        'jsonWriteFile(p,cfg,true)',
+        'end)()'
+      ].join('\n');
+      bngApi.engineLua(lua);
+    } catch (e) { /* ignore */ }
+  }
+  return algo;
+}
+
 if (typeof module !== 'undefined') {
   module.exports.loadAvgConsumptionAlgorithm = loadAvgConsumptionAlgorithm;
+  module.exports.saveAvgConsumptionAlgorithm = saveAvgConsumptionAlgorithm;
 }
 
 angular.module('beamng.apps')
@@ -1034,8 +1095,16 @@ angular.module('beamng.apps')
         $scope.electricityPriceValue = 0;
         $scope.currency = 'money';
         var avgConsumptionAlgorithm = 'optimized';
+        $scope.avgConsumptionAlgorithm = 'optimized';
         loadAvgConsumptionAlgorithm(function (val) {
           avgConsumptionAlgorithm = val === 'direct' ? 'direct' : 'optimized';
+          if (typeof $scope.$evalAsync === 'function') {
+            $scope.$evalAsync(function () {
+              $scope.avgConsumptionAlgorithm = avgConsumptionAlgorithm;
+            });
+          } else {
+            $scope.avgConsumptionAlgorithm = avgConsumptionAlgorithm;
+          }
         });
 
         function updateCostPrice(unitLabels, priceForMode) {
@@ -1409,6 +1478,10 @@ angular.module('beamng.apps')
             localStorage.setItem(PREFERRED_UNIT_KEY, $scope.unitMode);
           }
         } catch (e) { /* ignore */ }
+
+        avgConsumptionAlgorithm =
+          $scope.avgConsumptionAlgorithm === 'direct' ? 'direct' : 'optimized';
+        saveAvgConsumptionAlgorithm(avgConsumptionAlgorithm);
 
         if ($scope.visible.webEndpoint) {
           if (bngApi && typeof bngApi.engineLua === 'function') {
