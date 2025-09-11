@@ -1861,6 +1861,11 @@ angular.module('beamng.apps')
         idleFuelFlow_lps = 0;
         idleRpm = 0;
         lastThrottle = 0;
+        overall.previousAvg = 0;
+        overall.previousAvgTrip = 0;
+        var resetMode = getActiveUnitMode();
+        $scope.avgL100km = formatConsumptionRate(0, resetMode, 1);
+        $scope.avgKmL = formatEfficiency(0, resetMode, 2);
         if (!preserveTripFuel) {
           tripFuelUsedLiquid_l = 0;
           tripFuelUsedElectric_l = 0;
@@ -1868,6 +1873,9 @@ angular.module('beamng.apps')
           tripCostElectric = 0;
           tripDistanceLiquid_m = 0;
           tripDistanceElectric_m = 0;
+          overall.queue = [];
+          overall.co2Queue = [];
+          overall.distance = 0;
           overall.fuelUsedLiquid = 0;
           overall.fuelUsedElectric = 0;
           overall.tripCostLiquid = 0;
