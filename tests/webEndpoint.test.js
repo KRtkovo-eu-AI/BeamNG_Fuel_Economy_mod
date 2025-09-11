@@ -9,7 +9,7 @@ function setup(store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: tru
   global.StreamsManager = { add: () => {}, remove: () => {} };
   global.UiUnits = { buildString: () => '' };
   const calls = [];
-  global.bngApi = { engineLua: (cmd) => { calls.push(cmd); return ''; } };
+  global.bngApi = { engineLua: (cmd) => { calls.push(cmd); if (cmd.includes('getPort')) return 23512; return ''; } };
   global.localStorage = { getItem: (k) => store[k] || null, setItem: (k,v) => { store[k]=v; } };
   global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
 
@@ -26,6 +26,12 @@ test('starts web server when enabled', () => {
   assert.ok(calls.includes('extensions.load("okWebServer")'));
   assert.ok(calls.includes('extensions.okWebServer.start()'));
   assert.strictEqual($scope.webEndpointRunning, true);
+});
+
+test('exposes server port', () => {
+  const { calls, $scope } = setup();
+  assert.strictEqual($scope.webEndpointPort, 23512);
+  assert.ok(calls.includes('return extensions.okWebServer.getPort()'));
 });
 
 test('updates web server with latest data', () => {
@@ -150,6 +156,8 @@ test('lua web server exposes ui.html', () => {
   assert.ok(content.includes('Trip average CO₂ emissions'));
   assert.ok(content.includes('avgCo2Class'));
   assert.ok(content.includes('tripCo2Class'));
+  assert.ok(content.includes('settings.json'));
+  assert.ok(content.includes('webEndpointPort'));
 });
 
 test('ui.html respects row order', () => {

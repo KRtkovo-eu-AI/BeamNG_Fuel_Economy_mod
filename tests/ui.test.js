@@ -81,6 +81,10 @@ describe('UI template styling', () => {
     assert.ok(html.includes('ng-repeat="(value,label) in unitModeOptions"'));
   });
 
+  it('shows web endpoint port when running', () => {
+    assert.ok(html.includes('{{ webEndpointPort }}'));
+  });
+
   it('hides food unit mode from selection options', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

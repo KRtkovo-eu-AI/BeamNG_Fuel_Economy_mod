@@ -7,7 +7,23 @@ local server = nil
 local clients = {}
 local running = false
 local dataStr = '{}'
-local listenPort = 23512
+local defaultPort = 23512
+local listenPort = defaultPort
+
+local settingsDir = '/settings/krtektm_fuelEconomy/'
+local settingsPath = settingsDir .. 'settings.json'
+
+local function loadPort()
+  if not FS:directoryExists(settingsDir) then
+    FS:directoryCreate(settingsDir)
+  end
+  local cfg = jsonReadFile(settingsPath) or {}
+  if cfg.webEndpointPort == nil then
+    cfg.webEndpointPort = defaultPort
+    jsonWriteFile(settingsPath, cfg, true)
+  end
+  listenPort = tonumber(cfg.webEndpointPort) or defaultPort
+end
 
 local uiHtml = [[
 <!DOCTYPE html>
@@ -106,6 +122,8 @@ refresh();setInterval(refresh,1000);
 
 local function start()
   if running then return end
+
+  loadPort()
 
   server = socket.tcp()
   if not server then

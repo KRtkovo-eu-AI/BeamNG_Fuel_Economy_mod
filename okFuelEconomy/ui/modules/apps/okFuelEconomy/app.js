@@ -1308,9 +1308,14 @@ angular.module('beamng.apps')
       } catch (e) { /* ignore */ }
 
       $scope.webEndpointRunning = false;
+      $scope.webEndpointPort = 23512;
       if ($scope.visible.webEndpoint && bngApi && typeof bngApi.engineLua === 'function') {
         bngApi.engineLua('extensions.load("okWebServer")');
         bngApi.engineLua('extensions.okWebServer.start()');
+        var portInit = bngApi.engineLua('return extensions.okWebServer.getPort()');
+        if (portInit) {
+          $scope.webEndpointPort = parseInt(portInit, 10) || $scope.webEndpointPort;
+        }
         $scope.webEndpointRunning = true;
       }
 
@@ -1327,6 +1332,10 @@ angular.module('beamng.apps')
           if (bngApi && typeof bngApi.engineLua === 'function') {
             bngApi.engineLua('extensions.load("okWebServer")');
             bngApi.engineLua('extensions.okWebServer.start()');
+            var port = bngApi.engineLua('return extensions.okWebServer.getPort()');
+            if (port) {
+              $scope.webEndpointPort = parseInt(port, 10) || $scope.webEndpointPort;
+            }
           }
           $scope.webEndpointRunning = true;
         } else if (!$scope.visible.webEndpoint && $scope.webEndpointRunning) {
