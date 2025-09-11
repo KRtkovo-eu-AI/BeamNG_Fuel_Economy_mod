@@ -32,7 +32,7 @@ function setup(store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: tru
 test('starts web server when enabled', () => {
   const { calls, $scope } = setup();
   assert.ok(calls.includes('extensions.load("okWebServer")'));
-  assert.ok(calls.includes('return extensions.okWebServer.start()'));
+  assert.ok(calls.includes('extensions.okWebServer.start()'));
   assert.strictEqual($scope.webEndpointRunning, true);
 });
 
@@ -40,7 +40,7 @@ test('exposes server port', () => {
   const { calls, $scope } = setup();
   assert.strictEqual($scope.webEndpointPort, 23512);
   assert.ok(calls.includes('extensions.load("okWebServer")'));
-  assert.ok(calls.includes('return extensions.okWebServer.start()'));
+  assert.ok(calls.includes('extensions.okWebServer.start()'));
 });
 
 test('updates web server with latest data', () => {
