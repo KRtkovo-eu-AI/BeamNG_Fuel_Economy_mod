@@ -2401,17 +2401,19 @@ angular.module('beamng.apps')
             resetInstantHistory();
           }
 
-          var avg_l_per_100km_ok = resolveAverageConsumption(
-            sampleValid,
-            inst_l_per_100km,
-            avgRecent,
-            AVG_MAX_ENTRIES,
-            $scope.unitMode === 'electric'
-          );
+          var avg_l_per_100km_ok;
           if (avgConsumptionAlgorithm === 'direct') {
             avg_l_per_100km_ok = calculateAverageConsumption(
               fuel_used_l,
               distance_m
+            );
+          } else {
+            avg_l_per_100km_ok = resolveAverageConsumption(
+              sampleValid,
+              inst_l_per_100km,
+              avgRecent,
+              AVG_MAX_ENTRIES,
+              $scope.unitMode === 'electric'
             );
           }
           if (
@@ -2430,10 +2432,15 @@ angular.module('beamng.apps')
 
           // ---------- Overall update (NEW) ----------
           if (sampleValid) {
-            overall.queue.push(avg_l_per_100km_ok);
-            trimQueue(overall.queue, MAX_ENTRIES);
-            overall.co2Queue.push(avgCo2Val);
-            trimQueue(overall.co2Queue, MAX_ENTRIES);
+            if (avgConsumptionAlgorithm !== 'direct') {
+              overall.queue.push(avg_l_per_100km_ok);
+              trimQueue(overall.queue, MAX_ENTRIES);
+              overall.co2Queue.push(avgCo2Val);
+              trimQueue(overall.co2Queue, MAX_ENTRIES);
+            } else {
+              overall.queue = [];
+              overall.co2Queue = [];
+            }
 
             if (speed_mps > EPS_SPEED) {
               overall.distance = (overall.distance || 0) + deltaDistance;
@@ -2450,48 +2457,61 @@ angular.module('beamng.apps')
           }
 
 
-          // Use the median of the recorded averages for trip stats and graphs
-          var overall_median = calculateMedian(overall.queue);
+          // Use recorded samples when optimized; otherwise derive from totals
+          var overall_median;
+          var tripAvgCo2Val;
           if (avgConsumptionAlgorithm === 'direct') {
             overall_median = calculateAverageConsumption(
               (overall.fuelUsedLiquid || 0) + (overall.fuelUsedElectric || 0),
               overall.distance || 0
             );
-          }
-          var tripAvgCo2Val = calculateMedian(overall.co2Queue);
-          if (avgConsumptionAlgorithm === 'direct') {
             tripAvgCo2Val =
               overall.distance > 0
                 ? overall.tripCo2 / (overall.distance / 1000)
                 : 0;
+          } else {
+            overall_median = calculateMedian(overall.queue);
+            tripAvgCo2Val = calculateMedian(overall.co2Queue);
           }
-          $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
-          $scope.tripAvgKmLHistory = buildQueueGraphPoints(
-            overall.queue.map(function (v) {
-              return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
-            }),
-            100,
-            40
-          );
 
-          // ---------- Average Consumption ----------
-          if (sampleValid) {
-            overall.previousAvgTrip = avg_l_per_100km_ok;
-
-            avgHistory.queue.push(avg_l_per_100km_ok);
-            trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
-            $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
-            $scope.avgKmLHistory = buildQueueGraphPoints(
-              avgHistory.queue.map(function (v) {
+          if (avgConsumptionAlgorithm !== 'direct') {
+            $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
+            $scope.tripAvgKmLHistory = buildQueueGraphPoints(
+              overall.queue.map(function (v) {
                 return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
               }),
               100,
               40
             );
-            if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
-            if (now_ms - avgHistory.lastSaveTime >= 100) {
-              saveAvgHistory();
-              avgHistory.lastSaveTime = now_ms;
+          } else {
+            $scope.tripAvgHistory = '';
+            $scope.tripAvgKmLHistory = '';
+          }
+
+          // ---------- Average Consumption ----------
+          if (sampleValid) {
+            overall.previousAvgTrip = avg_l_per_100km_ok;
+
+            if (avgConsumptionAlgorithm !== 'direct') {
+              avgHistory.queue.push(avg_l_per_100km_ok);
+              trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
+              $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
+              $scope.avgKmLHistory = buildQueueGraphPoints(
+                avgHistory.queue.map(function (v) {
+                  return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
+                }),
+                100,
+                40
+              );
+              if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
+              if (now_ms - avgHistory.lastSaveTime >= 100) {
+                saveAvgHistory();
+                avgHistory.lastSaveTime = now_ms;
+              }
+            } else {
+              avgHistory = { queue: [] };
+              $scope.avgHistory = '';
+              $scope.avgKmLHistory = '';
             }
             // Record the resolved speed (airspeed or wheelspeed) for EU compliance checks.
             // (handled globally above)
