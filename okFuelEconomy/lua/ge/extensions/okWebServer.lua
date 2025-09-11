@@ -7,7 +7,24 @@ local server = nil
 local clients = {}
 local running = false
 local dataStr = '{}'
-local listenPort = 23512
+local defaultPort = 23512
+local listenPort = defaultPort
+local stop -- forward declaration
+
+local settingsDir = '/settings/krtektm_fuelEconomy/'
+local settingsPath = settingsDir .. 'settings.json'
+
+local function loadPort()
+  if not FS:directoryExists(settingsDir) then
+    FS:directoryCreate(settingsDir)
+  end
+  local cfg = jsonReadFile(settingsPath) or {}
+  if cfg.webEndpointPort == nil then
+    cfg.webEndpointPort = defaultPort
+    jsonWriteFile(settingsPath, cfg, true)
+  end
+  listenPort = tonumber(cfg.webEndpointPort) or defaultPort
+end
 
 local uiHtml = [[
 <!DOCTYPE html>
@@ -105,12 +122,13 @@ refresh();setInterval(refresh,1000);
 ]]
 
 local function start()
-  if running then return end
+  loadPort()
+  if running then stop() end
 
   server = socket.tcp()
   if not server then
     log('E', 'okWebServer', 'failed to create tcp socket')
-    return
+    return nil
   end
 
   server:setoption('reuseaddr', true)
@@ -122,16 +140,17 @@ local function start()
     log('E', 'okWebServer', 'bind failed on port ' .. listenPort .. ': ' .. tostring(err))
     server:close()
     server = nil
-    return
+    return nil
   end
 
   server:listen()
   server:settimeout(0)
   running = true
   log('I', 'okWebServer', 'listening on http://127.0.0.1:' .. listenPort)
+  return listenPort
 end
 
-local function stop()
+stop = function()
   if not running then return end
   for _, c in ipairs(clients) do c:close() end
   clients = {}

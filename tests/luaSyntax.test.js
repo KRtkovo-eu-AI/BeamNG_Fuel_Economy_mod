@@ -67,7 +67,8 @@ test('engineLua snippets have valid syntax', (t) => {
   ensureFuelEmissionType('Dummy');
   delete global.bngApi;
   for (const code of scripts) {
-    fs.writeFileSync(tmp, code);
+    const wrapped = `guihooks.trigger("onBNGAPICallback",0,${code})`;
+    fs.writeFileSync(tmp, wrapped);
     const res = spawnSync(luacCmd, ['-p', tmp], { encoding: 'utf8' });
     assert.equal(res.status, 0, `engineLua snippet has syntax errors:\n${res.stderr}`);
   }
