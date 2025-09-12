@@ -2343,6 +2343,7 @@ describe('controller integration', () => {
       $scope.on_streamsUpdate(null, streams);
     }
 
+    assert.strictEqual($scope.instantKmL, '0.00 km/kWh');
     assert.strictEqual($scope.instantHistory, '');
   });
 

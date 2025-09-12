@@ -2406,6 +2406,8 @@ angular.module('beamng.apps')
           var eff =
             Number.isFinite(inst_l_per_100km) && inst_l_per_100km > 0
               ? 100 / inst_l_per_100km
+              : Math.abs(speed_mps) <= EPS_SPEED
+              ? 0
               : MAX_EFFICIENCY;
           eff = Math.min(eff, MAX_EFFICIENCY);
           if (now_ms - lastInstantUpdate_ms >= INSTANT_UPDATE_INTERVAL) {
