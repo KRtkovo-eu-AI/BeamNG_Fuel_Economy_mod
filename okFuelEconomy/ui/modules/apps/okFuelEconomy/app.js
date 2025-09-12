@@ -9,7 +9,8 @@ var DEFAULT_IDLE_FLOW_LPS = 0.0002; // ~0.72 L/h fallback when idle flow unknown
 var DEFAULT_IDLE_RPM = 800; // assume typical idle speed when unknown
 // Limit extreme instantaneous consumption figures to keep the display
 // within a realistic range even when flooring the throttle from a stop.
-var MAX_CONSUMPTION = 100; // [L/100km] ignore unrealistic spikes
+var MAX_CONSUMPTION = 100; // [L/100km] ignore unrealistic spikes for liquid fuels
+var MAX_ELECTRIC_CONSUMPTION = 4000; // [kWh/100km] allow higher spikes for EVs
 var MAX_EFFICIENCY = 100; // [km/L] cap unrealistic efficiency
 var RADPS_TO_RPM = 60 / (2 * Math.PI); // convert rad/s telemetry to rpm
 var FOOD_CAPACITY_KCAL = 2000;
@@ -112,7 +113,7 @@ function normalizeRpm(rpm, engineRunning) {
   return rpm < 300 ? rpm * RADPS_TO_RPM : rpm;
 }
 
-function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
+function calculateInstantConsumption(fuelFlow_lps, speed_mps, isElectric) {
   var speed = Math.abs(speed_mps);
   var l_per_100km;
   if (speed <= MIN_VALID_SPEED_MPS) {
@@ -122,7 +123,8 @@ function calculateInstantConsumption(fuelFlow_lps, speed_mps) {
   } else {
     l_per_100km = (fuelFlow_lps / speed) * 100000;
   }
-  if (l_per_100km > MAX_CONSUMPTION) l_per_100km = MAX_CONSUMPTION;
+  var max = isElectric ? MAX_ELECTRIC_CONSUMPTION : MAX_CONSUMPTION;
+  if (l_per_100km > max) l_per_100km = max;
   return l_per_100km;
 }
 
@@ -613,6 +615,7 @@ if (typeof module !== 'undefined') {
     MIN_VALID_SPEED_MPS,
     MIN_RPM_RUNNING,
     MAX_CONSUMPTION,
+    MAX_ELECTRIC_CONSUMPTION,
     MAX_EFFICIENCY,
     calculateFuelFlow,
     calculateInstantConsumption,
@@ -2415,7 +2418,11 @@ angular.module('beamng.apps')
 
           var inst_l_per_h = sampleValid ? fuelFlow_lps * 3600 : 0;
           var inst_l_per_100km = sampleValid
-            ? calculateInstantConsumption(fuelFlow_lps, speed_mps)
+            ? calculateInstantConsumption(
+                fuelFlow_lps,
+                speed_mps,
+                $scope.unitMode === 'electric'
+              )
             : 0;
           var eff =
             Number.isFinite(inst_l_per_100km) && inst_l_per_100km > 0

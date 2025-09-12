@@ -30,6 +30,7 @@ const {
   meetsEuCo2Limit,
   MIN_VALID_SPEED_MPS,
   MAX_CONSUMPTION,
+  MAX_ELECTRIC_CONSUMPTION,
   resolveUnitModeForFuelType,
   formatFuelTypeLabel,
   getUnitLabels
@@ -82,6 +83,12 @@ describe('app.js utility functions', () => {
       assert.strictEqual(
         calculateInstantConsumption(2, 0),
         MAX_CONSUMPTION
+      );
+    });
+    it('caps unrealistic values for electric vehicles', () => {
+      assert.strictEqual(
+        calculateInstantConsumption(50, 0, true),
+        MAX_ELECTRIC_CONSUMPTION
       );
     });
   });
