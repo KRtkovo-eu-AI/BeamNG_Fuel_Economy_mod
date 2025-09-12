@@ -173,7 +173,7 @@ function M.setData(jsonStr)
   local ok = pcall(json.decode, jsonStr)
   if ok then
     dataStr = jsonStr
-    log('D', 'okWebServer', 'data updated')
+    --log('D', 'okWebServer', 'data updated')
   end
 end
 
