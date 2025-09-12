@@ -47,7 +47,7 @@ test('updates web server with latest data', () => {
   const { calls, $scope } = setup();
   calls.length = 0;
   $scope.fuelType = 'Gasoline';
-  const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
+  const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 1000, trip: 0 } };
   streams.engineInfo[11] = 50;
   streams.engineInfo[12] = 60;
   $scope.on_streamsUpdate(null, streams);
@@ -83,7 +83,7 @@ test('payload marks paused state', () => {
   const { calls, $scope } = setup();
   calls.length = 0;
   $scope.gamePaused = true;
-  const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
+  const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 1000, trip: 0 } };
   streams.engineInfo[11] = 50;
   streams.engineInfo[12] = 60;
   $scope.on_streamsUpdate(null, streams);
@@ -114,7 +114,7 @@ test('payload honors unit preferences', () => {
   const { calls, $scope } = setup(store);
   calls.length = 0;
   $scope.fuelType = 'Gasoline';
-  const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
+  const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 1000, trip: 0 } };
   streams.engineInfo[11] = 50;
   streams.engineInfo[12] = 60;
   $scope.on_streamsUpdate(null, streams);

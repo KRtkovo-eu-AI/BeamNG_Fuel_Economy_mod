@@ -168,4 +168,58 @@ describe('average consumption algorithm config', () => {
     assert.strictEqual($scope.avgL100km, '78.1 L/100km');
     assert.strictEqual($scope.tripFuelUsedLiquid, '1.09 L');
   });
+
+  it('clears per-run stats when engine stops without resetting trip', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Gasoline' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (name, fn) => { handlers[name] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 0));
+
+    $scope.setAvgConsumptionAlgorithm('direct');
+
+    const base = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0.5, rpmTacho: 2000, trip: 0 } };
+    base.engineInfo[11] = 50;
+    base.engineInfo[12] = 60;
+    base.engineInfo[13] = 90;
+    handlers['streamsUpdate'](null, base);
+    await new Promise(r => setTimeout(r, 0));
+
+    const run = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 2000, trip: 1000 } };
+    run.engineInfo[11] = 49;
+    run.engineInfo[12] = 60;
+    run.engineInfo[13] = 90;
+    now = 100000;
+    handlers['streamsUpdate'](null, run);
+    await new Promise(r => setTimeout(r, 0));
+
+    assert.strictEqual($scope.avgL100km, '100.0 L/100km');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '1.00 L');
+
+    const engineOff = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 1000 } };
+    engineOff.engineInfo[11] = 49;
+    engineOff.engineInfo[12] = 60;
+    engineOff.engineInfo[13] = 90;
+    now = 100100;
+    handlers['streamsUpdate'](null, engineOff);
+    await new Promise(r => setTimeout(r, 0));
+
+    assert.strictEqual($scope.avgL100km, '0.0 L/100km');
+    assert.strictEqual($scope.fuelUsed, '0.00 L');
+    assert.strictEqual($scope.tripFuelUsedLiquid, '1.00 L');
+  });
 });

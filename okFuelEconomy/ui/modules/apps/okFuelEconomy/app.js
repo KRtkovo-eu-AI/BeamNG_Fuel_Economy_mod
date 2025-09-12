@@ -1928,6 +1928,7 @@ angular.module('beamng.apps')
       function resetVehicleOutputs(mode) {
         hardReset(true);
         var labels = getUnitLabels(mode);
+        $scope.data1 = formatDistance(0, mode, 1);
         $scope.fuelUsed = formatVolume(0, mode, 2);
         $scope.fuelLeft = formatVolume(0, mode, 2);
         $scope.fuelCap = formatVolume(0, mode, 1);
@@ -1945,6 +1946,30 @@ angular.module('beamng.apps')
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
+        var tripAvg =
+          overall.queue && overall.queue.length > 0
+            ? calculateMedian(overall.queue)
+            : 0;
+        $scope.tripAvgL100km = formatConsumptionRate(tripAvg, mode, 1);
+        $scope.tripAvgKmL = formatEfficiency(
+          tripAvg > 0 ? 100 / tripAvg : Infinity,
+          mode,
+          2
+        );
+        var tripAvgCo2 =
+          overall.co2Queue && overall.co2Queue.length > 0
+            ? calculateMedian(overall.co2Queue)
+            : 0;
+        $scope.tripAvgCO2 = formatCO2(tripAvgCo2, 0, mode);
+        $scope.tripCo2Class = classifyCO2(tripAvgCo2);
+        $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue || [], 100, 40);
+        $scope.tripAvgKmLHistory = buildQueueGraphPoints(
+          (overall.queue || []).map(function (v) {
+            return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
+          }),
+          100,
+          40
+        );
       }
 
       $scope.reset = function () {
@@ -1992,7 +2017,7 @@ angular.module('beamng.apps')
 
       $scope.$on('VehicleFocusChanged', function () {
         $log.debug('<ok-fuel-economy> vehicle changed -> reset trip');
-        hardReset(true);
+        resetVehicleOutputs(getActiveUnitMode());
         manualUnit = false;
         lastFuelType = '';
         $scope.fuelType = 'None';
@@ -2174,10 +2199,8 @@ angular.module('beamng.apps')
           }
           var trip_m = streams.electrics.trip || 0;
           if (trip_m < lastTrip_m) {
-            // A lower trip meter indicates the vehicle was reset. Preserve
-            // existing trip statistics and only clear the cumulative values
-            // used for the current run.
-            hardReset(true);
+            // Vehicle reset – clear per-run accumulators but keep trip stats.
+            resetVehicleOutputs(getActiveUnitMode());
           }
           lastTrip_m = trip_m;
 
@@ -2187,23 +2210,29 @@ angular.module('beamng.apps')
           var engineTemp_c = streams.engineInfo[13] || 0;
           var n2oActive = !!(streams.electrics && streams.electrics.n2oActive);
           var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
+          var rpmTacho = normalizeRpm(
+            streams.electrics.rpmTacho || 0,
+            engineRunning
+          );
           if (!engineRunning && engineWasRunning) {
-            // Engine was just turned off – clear instant and average
-            // histories so subsequent runs start fresh.
-            resetInstantHistory();
-            resetAvgHistory();
+            resetVehicleOutputs(getActiveUnitMode());
           }
           engineWasRunning = engineRunning;
-          if (!engineRunning) {
+          if (!engineRunning && rpmTacho < MIN_RPM_RUNNING) {
+            resetVehicleOutputs(getActiveUnitMode());
             idleFuelFlow_lps = 0;
             idleRpm = 0;
+            lastFuelFlow_lps = 0;
+            startFuel_l = currentFuel_l;
+            previousFuel_l = currentFuel_l;
+            return;
           }
 
           if (!Number.isFinite(currentFuel_l) || !Number.isFinite(capacity_l)) return;
 
           if (lastCapacity_l !== null && capacity_l !== lastCapacity_l) {
             $log.debug('<ok-fuel-economy> capacity changed -> reset trip');
-            hardReset(true);
+            resetVehicleOutputs(getActiveUnitMode());
           }
           lastCapacity_l = capacity_l;
 
@@ -2224,7 +2253,7 @@ angular.module('beamng.apps')
           if (fuel_used_l >= capacity_l || fuel_used_l < 0) {
             // Fuel level jumped (vehicle reset or refuel). Preserve trip totals
             // and only reset the per-run accumulators.
-            hardReset(true);
+            resetVehicleOutputs(getActiveUnitMode());
             startFuel_l = currentFuel_l;
             previousFuel_l = currentFuel_l;
             fuel_used_l = 0;
@@ -2303,7 +2332,7 @@ angular.module('beamng.apps')
             previousFuel_l = currentFuel_l;
           }
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
-          var rpmTacho = normalizeRpm(
+          rpmTacho = normalizeRpm(
             streams.electrics.rpmTacho || 0,
             engineRunning
           );
