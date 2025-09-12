@@ -237,7 +237,7 @@ test('restart and manual reset cycle', () => {
   assert.strictEqual(sess3.$scope.tripTotalCostElectric, '5.00 money');
 
   // Manual trip reset clears stored values
-  sess3.$scope.reset();
+  sess3.$scope.resetOverall();
   assert.strictEqual(sess3.$scope.tripFuelUsedLiquid, '');
   assert.strictEqual(sess3.$scope.tripTotalCostLiquid, '');
   assert.strictEqual(sess3.$scope.tripFuelUsedElectric, '');

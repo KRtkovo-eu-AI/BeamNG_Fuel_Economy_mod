@@ -1927,6 +1927,8 @@ angular.module('beamng.apps')
         var resetMode = getActiveUnitMode();
         $scope.avgL100km = formatConsumptionRate(0, resetMode, 1);
         $scope.avgKmL = formatEfficiency(0, resetMode, 2);
+        resetInstantHistory();
+        resetAvgHistory();
         if (!preserveTripFuel) {
           overall.previousAvg = 0;
           overall.previousAvgTrip = 0;
@@ -1945,16 +1947,12 @@ angular.module('beamng.apps')
           overall.tripCostElectric = 0;
           overall.tripDistanceLiquid = 0;
           overall.tripDistanceElectric = 0;
-          saveOverall();
           $scope.tripFuelUsedLiquid = '';
           $scope.tripFuelUsedElectric = '';
           $scope.tripTotalCostLiquid = '';
           $scope.tripTotalCostElectric = '';
-          resetInstantHistory();
-          resetAvgHistory();
-        } else {
-          saveOverall();
         }
+        saveOverall();
         lastTime_ms = performance.now();
         $scope.vehicleNameStr = "";
         engineWasRunning = false;
@@ -2017,7 +2015,9 @@ angular.module('beamng.apps')
 
       $scope.reset = function () {
         $log.debug('<ok-fuel-economy> manual reset');
-        hardReset(false);
+        hardReset(true);
+        applyTripTotals(getActiveUnitMode());
+        refreshCostOutputs();
       };
 
       // reset overall včetně vzdálenosti
