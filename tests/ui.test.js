@@ -722,6 +722,81 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.avgCo2Class, 'A');
   });
 
+  it('reverts to liquid units when leaving Food mode with manual unit set', async () => {
+    let directiveDef, call = 0;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => {
+        call++;
+        if (call === 1) cb(JSON.stringify({ t: 'Gasoline' }));
+        else if (call === 2) cb(JSON.stringify({ t: 'Food' }));
+        else cb(JSON.stringify({ t: 'Gasoline' }));
+      }
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (name, fn) => { handlers[name] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 50));
+
+    assert.strictEqual($scope.fuelType, 'Gasoline');
+    $scope.setUnit('imperial');
+    assert.strictEqual($scope.unitFlowUnit, 'gal/h');
+
+    $scope.fuelType = 'Food';
+    handlers['streamsUpdate'](null, { engineInfo: {}, electrics: {} });
+    await new Promise(r => setTimeout(r, 50));
+    assert.strictEqual($scope.unitFlowUnit, 'kcal/h');
+
+    handlers['streamsUpdate'](null, { engineInfo: {}, electrics: {} });
+    await new Promise(r => setTimeout(r, 50));
+    assert.strictEqual($scope.fuelType, 'Gasoline');
+    assert.strictEqual($scope.unitFlowUnit, 'gal/h');
+  });
+
+  it('resets to liquid units when loading Food preference with liquid fuel', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    const store = {
+      okFuelEconomyUnitMode: 'food',
+      okFuelEconomyPreferredUnit: 'food'
+    };
+    global.localStorage = {
+      getItem: key => store[key],
+      setItem: (key, val) => {
+        store[key] = val;
+      }
+    };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Gasoline' }))
+    };
+    global.performance = { now: () => 0 };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (name, fn) => { handlers[name] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    handlers['streamsUpdate'](null, { engineInfo: {}, electrics: {} });
+    await new Promise(r => setTimeout(r, 50));
+
+    assert.strictEqual($scope.unitMode, 'metric');
+    assert.strictEqual($scope.unitFlowUnit, 'L/h');
+    assert.strictEqual(store.okFuelEconomyPreferredUnit, 'metric');
+  });
+
   it('preserves trip values when switching to Food fuel type', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
