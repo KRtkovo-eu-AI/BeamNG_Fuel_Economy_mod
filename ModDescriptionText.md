@@ -14,9 +14,10 @@ This mod adds a custom UI app for BeamNG.drive that lets you monitor fuel consum
 - **Consumption Rates** – Displays both instantaneous and average fuel consumption.  
 - **Configurable Units** – Choose your preferred units (MPG, km/L, L/100 km, kWh, etc.).  
 - **Range Estimation** – Predicts driving range based on both current and long-term consumption.  
-- **Trip Statistics** – Tracks average consumption, trip distance, and range, with reset support.  
-- **Long-Term Overview** – Provides extended consumption history with a reset option.  
-- **Efficiency History Graphs** – Visualize instant, average, and trip consumption trends, with toggleable visibility and custom styling.  
+- **Trip Statistics** – Tracks average consumption, trip distance, and range, with reset support.
+- **Long-Term Overview** – Provides extended consumption history with a reset option.
+- **Algorithm Choice** – Select how average consumption is calculated: use the default optimized method or a direct calculation.
+- **Efficiency History Graphs** – Visualize instant, average, and trip consumption trends, with toggleable visibility and custom styling.
 - **Fuel Cost Calculator** – Optional feature that calculates:  
   - Average and trip average cost per distance  
   - Total fuel cost and trip total fuel cost  
@@ -27,8 +28,15 @@ This mod adds a custom UI app for BeamNG.drive that lets you monitor fuel consum
 - **Editable Fuel Prices In-Game** – Adjust prices through unit-aware fields and add/remove fuel types directly.  
 - **Local Web Endpoint** – Enable the localhost endpoint in settings to start a lightweight server that mirrors the widget’s data.  
   - Visit [http://127.0.0.1:23512](http://127.0.0.1:23512) → Receive a live JSON snapshot of all stats.  
-  - Visit [http://127.0.0.1:23512/ui.html](http://127.0.0.1:23512/ui.html) → View a browser-based dashboard mirroring the in-game widget.  
-  Perfect for logging data externally or integrating with third-party tools.  
+  - Visit [http://127.0.0.1:23512/ui.html](http://127.0.0.1:23512/ui.html) → View a browser-based dashboard mirroring the in-game widget.
+  Perfect for logging data externally or integrating with third-party tools.
+
+## Average Consumption Algorithms
+
+Choose how the app computes average fuel consumption in the settings dialog:
+
+- **Optimized** (default) – averages recent instantaneous consumption samples and uses the median of recorded values to provide a smooth reading that reacts quickly while ignoring outliers.
+- **Direct** – calculates consumption directly from total fuel used over distance travelled. Per-run totals reset automatically when the engine stops, yielding raw but precise figures.
 
 ---
 
