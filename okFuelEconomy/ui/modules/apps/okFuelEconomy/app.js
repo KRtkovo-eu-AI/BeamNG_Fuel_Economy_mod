@@ -910,6 +910,140 @@ function loadFuelPriceConfig(callback) {
   return defaults;
 }
 
+function loadAvgConsumptionAlgorithm(callback) {
+  var algo = 'optimized';
+  if (typeof require === 'function' && typeof process !== 'undefined') {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const baseDir =
+        process.env.KRTEKTM_BNG_USER_DIR ||
+        path.join(
+          process.platform === 'win32'
+            ? process.env.LOCALAPPDATA || ''
+            : path.join(process.env.HOME || '', '.local', 'share'),
+          'BeamNG.drive'
+        );
+      const versions = fs
+        .readdirSync(baseDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const latest = versions[versions.length - 1];
+      if (latest) {
+        const settingsDir = path.join(
+          baseDir,
+          latest,
+          'settings',
+          'krtektm_fuelEconomy'
+        );
+        fs.mkdirSync(settingsDir, { recursive: true });
+        const userFile = path.join(settingsDir, 'settings.json');
+        let data = {};
+        if (fs.existsSync(userFile)) {
+          try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
+        }
+        if (data.AvgConsumptionAlgorithm !== 'direct' && data.AvgConsumptionAlgorithm !== 'optimized') {
+          data.AvgConsumptionAlgorithm = 'optimized';
+          fs.writeFileSync(userFile, JSON.stringify(data, null, 2));
+        }
+        algo = data.AvgConsumptionAlgorithm;
+      }
+    } catch (e) { /* ignore */ }
+    if (typeof callback === 'function') callback(algo);
+    return algo;
+  }
+  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    try {
+      var lua = [
+        '(function()',
+        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
+        "local dir=user..'settings/krtektm_fuelEconomy/'",
+        'FS:directoryCreate(dir)',
+        "local p=dir..'settings.json'",
+        'local cfg=jsonReadFile(p) or {}',
+        "if cfg.AvgConsumptionAlgorithm==nil then cfg.AvgConsumptionAlgorithm='optimized'; jsonWriteFile(p,cfg,true) end",
+        "return cfg.AvgConsumptionAlgorithm or 'optimized'",
+        'end)()'
+      ].join('\n');
+      bngApi.engineLua(lua, function (res) {
+        var val = res === 'direct' ? 'direct' : 'optimized';
+        if (typeof callback === 'function') callback(val);
+      });
+    } catch (e) {
+      if (typeof callback === 'function') callback(algo);
+    }
+    return algo;
+  }
+  if (typeof callback === 'function') callback(algo);
+  return algo;
+}
+
+function saveAvgConsumptionAlgorithm(algo) {
+  algo = algo === 'direct' ? 'direct' : 'optimized';
+  if (typeof require === 'function' && typeof process !== 'undefined') {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const baseDir =
+        process.env.KRTEKTM_BNG_USER_DIR ||
+        path.join(
+          process.platform === 'win32'
+            ? process.env.LOCALAPPDATA || ''
+            : path.join(process.env.HOME || '', '.local', 'share'),
+          'BeamNG.drive'
+        );
+      const versions = fs
+        .readdirSync(baseDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const latest = versions[versions.length - 1];
+      if (latest) {
+        const settingsDir = path.join(
+          baseDir,
+          latest,
+          'settings',
+          'krtektm_fuelEconomy'
+        );
+        fs.mkdirSync(settingsDir, { recursive: true });
+        const userFile = path.join(settingsDir, 'settings.json');
+        let data = {};
+        if (fs.existsSync(userFile)) {
+          try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
+        }
+        if (data.AvgConsumptionAlgorithm !== algo) {
+          data.AvgConsumptionAlgorithm = algo;
+          fs.writeFileSync(userFile, JSON.stringify(data, null, 2));
+        }
+      }
+    } catch (e) { /* ignore */ }
+    return algo;
+  }
+  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
+    try {
+      var lua = [
+        '(function()',
+        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
+        "local dir=user..'settings/krtektm_fuelEconomy/'",
+        'FS:directoryCreate(dir)',
+        "local p=dir..'settings.json'",
+        'local cfg=jsonReadFile(p) or {}',
+        "cfg.AvgConsumptionAlgorithm='" + (algo === 'direct' ? "direct" : "optimized") + "'",
+        'jsonWriteFile(p,cfg,true)',
+        'end)()'
+      ].join('\n');
+      bngApi.engineLua(lua);
+    } catch (e) { /* ignore */ }
+  }
+  return algo;
+}
+
+if (typeof module !== 'undefined') {
+  module.exports.loadAvgConsumptionAlgorithm = loadAvgConsumptionAlgorithm;
+  module.exports.saveAvgConsumptionAlgorithm = saveAvgConsumptionAlgorithm;
+}
+
 angular.module('beamng.apps')
 .directive('okFuelEconomy', [function () {
   return {
@@ -960,6 +1094,18 @@ angular.module('beamng.apps')
         $scope.liquidFuelPriceValue = 0;
         $scope.electricityPriceValue = 0;
         $scope.currency = 'money';
+        var avgConsumptionAlgorithm = 'optimized';
+        $scope.avgConsumptionAlgorithm = 'optimized';
+        loadAvgConsumptionAlgorithm(function (val) {
+          avgConsumptionAlgorithm = val === 'direct' ? 'direct' : 'optimized';
+          if (typeof $scope.$evalAsync === 'function') {
+            $scope.$evalAsync(function () {
+              $scope.avgConsumptionAlgorithm = avgConsumptionAlgorithm;
+            });
+          } else {
+            $scope.avgConsumptionAlgorithm = avgConsumptionAlgorithm;
+          }
+        });
 
         function updateCostPrice(unitLabels, priceForMode) {
           var mode = getActiveUnitMode() || 'metric';
@@ -1089,6 +1235,21 @@ angular.module('beamng.apps')
         var fuelEmissionsEditorLoaded = false;
         var manualUnit = false;
         var lastFuelType = '';
+
+        $scope.avgConsumptionAlgorithmLabels = {
+          optimized: 'Optimized',
+          direct: 'Direct'
+        };
+        $scope.avgConsumptionAlgorithmOptions = {
+          optimized: $scope.avgConsumptionAlgorithmLabels.optimized,
+          direct: $scope.avgConsumptionAlgorithmLabels.direct
+        };
+        $scope.avgConsumptionAlgorithmMenuOpen = false;
+        $scope.setAvgConsumptionAlgorithm = function (algo) {
+          $scope.avgConsumptionAlgorithm = algo;
+          avgConsumptionAlgorithm = algo === 'direct' ? 'direct' : 'optimized';
+          $scope.avgConsumptionAlgorithmMenuOpen = false;
+        };
 
         function getActiveUnitMode() {
           return resolveUnitModeForFuelType(lastFuelType, $scope.unitMode);
@@ -1333,6 +1494,10 @@ angular.module('beamng.apps')
           }
         } catch (e) { /* ignore */ }
 
+        avgConsumptionAlgorithm =
+          $scope.avgConsumptionAlgorithm === 'direct' ? 'direct' : 'optimized';
+        saveAvgConsumptionAlgorithm(avgConsumptionAlgorithm);
+
         if ($scope.visible.webEndpoint) {
           if (bngApi && typeof bngApi.engineLua === 'function') {
             bngApi.engineLua('extensions.load("okWebServer")');
@@ -1447,6 +1612,7 @@ angular.module('beamng.apps')
 
       var distance_m = 0;
       var lastDistance_m = 0;
+      var lastTrip_m = 0;
       var lastTime_ms = performance.now();
       var startFuel_l = null;
       var previousFuel_l = null;
@@ -1689,6 +1855,7 @@ angular.module('beamng.apps')
       function hardReset(preserveTripFuel) {
         distance_m = 0;
         lastDistance_m = 0;
+        lastTrip_m = 0;
         startFuel_l = null;
         previousFuel_l = null;
         lastCapacity_l = null;
@@ -1696,6 +1863,11 @@ angular.module('beamng.apps')
         idleFuelFlow_lps = 0;
         idleRpm = 0;
         lastThrottle = 0;
+        overall.previousAvg = 0;
+        overall.previousAvgTrip = 0;
+        var resetMode = getActiveUnitMode();
+        $scope.avgL100km = formatConsumptionRate(0, resetMode, 1);
+        $scope.avgKmL = formatEfficiency(0, resetMode, 2);
         if (!preserveTripFuel) {
           tripFuelUsedLiquid_l = 0;
           tripFuelUsedElectric_l = 0;
@@ -1703,6 +1875,9 @@ angular.module('beamng.apps')
           tripCostElectric = 0;
           tripDistanceLiquid_m = 0;
           tripDistanceElectric_m = 0;
+          overall.queue = [];
+          overall.co2Queue = [];
+          overall.distance = 0;
           overall.fuelUsedLiquid = 0;
           overall.fuelUsedElectric = 0;
           overall.tripCostLiquid = 0;
@@ -1753,6 +1928,7 @@ angular.module('beamng.apps')
       function resetVehicleOutputs(mode) {
         hardReset(true);
         var labels = getUnitLabels(mode);
+        $scope.data1 = formatDistance(0, mode, 1);
         $scope.fuelUsed = formatVolume(0, mode, 2);
         $scope.fuelLeft = formatVolume(0, mode, 2);
         $scope.fuelCap = formatVolume(0, mode, 1);
@@ -1770,6 +1946,42 @@ angular.module('beamng.apps')
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
+        var totalTripFuel = (overall.fuelUsedLiquid || 0) + (overall.fuelUsedElectric || 0);
+        var totalTripDistance = overall.distance || 0;
+        var tripAvg;
+        var tripAvgCo2;
+        if (avgConsumptionAlgorithm === 'direct') {
+          tripAvg = calculateAverageConsumption(totalTripFuel, totalTripDistance);
+          tripAvgCo2 =
+            totalTripDistance > 0
+              ? (overall.tripCo2 || 0) / (totalTripDistance / 1000)
+              : 0;
+        } else {
+          tripAvg =
+            overall.queue && overall.queue.length > 0
+              ? calculateMedian(overall.queue)
+              : 0;
+          tripAvgCo2 =
+            overall.co2Queue && overall.co2Queue.length > 0
+              ? calculateMedian(overall.co2Queue)
+              : 0;
+        }
+        $scope.tripAvgL100km = formatConsumptionRate(tripAvg, mode, 1);
+        $scope.tripAvgKmL = formatEfficiency(
+          tripAvg > 0 ? 100 / tripAvg : Infinity,
+          mode,
+          2
+        );
+        $scope.tripAvgCO2 = formatCO2(tripAvgCo2, 0, mode);
+        $scope.tripCo2Class = classifyCO2(tripAvgCo2);
+        $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue || [], 100, 40);
+        $scope.tripAvgKmLHistory = buildQueueGraphPoints(
+          (overall.queue || []).map(function (v) {
+            return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
+          }),
+          100,
+          40
+        );
       }
 
       $scope.reset = function () {
@@ -1817,7 +2029,7 @@ angular.module('beamng.apps')
 
       $scope.$on('VehicleFocusChanged', function () {
         $log.debug('<ok-fuel-economy> vehicle changed -> reset trip');
-        hardReset(true);
+        resetVehicleOutputs(getActiveUnitMode());
         manualUnit = false;
         lastFuelType = '';
         $scope.fuelType = 'None';
@@ -1998,6 +2210,11 @@ angular.module('beamng.apps')
             speedAvg.queue.shift();
           }
           var trip_m = streams.electrics.trip || 0;
+          if (trip_m < lastTrip_m) {
+            // Vehicle reset – clear per-run accumulators but keep trip stats.
+            resetVehicleOutputs(getActiveUnitMode());
+          }
+          lastTrip_m = trip_m;
 
           var currentFuel_l = streams.engineInfo[11];
           var capacity_l = streams.engineInfo[12];
@@ -2005,23 +2222,29 @@ angular.module('beamng.apps')
           var engineTemp_c = streams.engineInfo[13] || 0;
           var n2oActive = !!(streams.electrics && streams.electrics.n2oActive);
           var engineRunning = isEngineRunning(streams.electrics, streams.engineInfo);
+          var rpmTacho = normalizeRpm(
+            streams.electrics.rpmTacho || 0,
+            engineRunning
+          );
           if (!engineRunning && engineWasRunning) {
-            // Engine was just turned off – clear instant and average
-            // histories so subsequent runs start fresh.
-            resetInstantHistory();
-            resetAvgHistory();
+            resetVehicleOutputs(getActiveUnitMode());
           }
           engineWasRunning = engineRunning;
-          if (!engineRunning) {
+          if (!engineRunning && rpmTacho < MIN_RPM_RUNNING) {
+            resetVehicleOutputs(getActiveUnitMode());
             idleFuelFlow_lps = 0;
             idleRpm = 0;
+            lastFuelFlow_lps = 0;
+            startFuel_l = currentFuel_l;
+            previousFuel_l = currentFuel_l;
+            return;
           }
 
           if (!Number.isFinite(currentFuel_l) || !Number.isFinite(capacity_l)) return;
 
           if (lastCapacity_l !== null && capacity_l !== lastCapacity_l) {
             $log.debug('<ok-fuel-economy> capacity changed -> reset trip');
-            hardReset(true);
+            resetVehicleOutputs(getActiveUnitMode());
           }
           lastCapacity_l = capacity_l;
 
@@ -2040,6 +2263,9 @@ angular.module('beamng.apps')
 
           var fuel_used_l = startFuel_l - currentFuel_l;
           if (fuel_used_l >= capacity_l || fuel_used_l < 0) {
+            // Fuel level jumped (vehicle reset or refuel). Preserve trip totals
+            // and only reset the per-run accumulators.
+            resetVehicleOutputs(getActiveUnitMode());
             startFuel_l = currentFuel_l;
             previousFuel_l = currentFuel_l;
             fuel_used_l = 0;
@@ -2118,7 +2344,7 @@ angular.module('beamng.apps')
             previousFuel_l = currentFuel_l;
           }
           var rawFuelFlow_lps = calculateFuelFlow(currentFuel_l, previousFuel_l, dt);
-          var rpmTacho = normalizeRpm(
+          rpmTacho = normalizeRpm(
             streams.electrics.rpmTacho || 0,
             engineRunning
           );
@@ -2236,18 +2462,28 @@ angular.module('beamng.apps')
             resetInstantHistory();
           }
 
-          var avg_l_per_100km_ok = resolveAverageConsumption(
-            sampleValid,
-            inst_l_per_100km,
-            avgRecent,
-            AVG_MAX_ENTRIES,
-            $scope.unitMode === 'electric'
-          );
-          if (
-            !Number.isFinite(avg_l_per_100km_ok) ||
-            avg_l_per_100km_ok > MAX_CONSUMPTION
-          ) {
+          var avg_l_per_100km_ok;
+          if (avgConsumptionAlgorithm === 'direct') {
+            avg_l_per_100km_ok = calculateAverageConsumption(
+              fuel_used_l,
+              distance_m
+            );
+          } else {
+            avg_l_per_100km_ok = resolveAverageConsumption(
+              sampleValid,
+              inst_l_per_100km,
+              avgRecent,
+              AVG_MAX_ENTRIES,
+              $scope.unitMode === 'electric'
+            );
+          }
+          if (!Number.isFinite(avg_l_per_100km_ok)) {
             avg_l_per_100km_ok = 0;
+          } else if (avg_l_per_100km_ok > MAX_CONSUMPTION) {
+            avg_l_per_100km_ok =
+              avgConsumptionAlgorithm === 'direct'
+                ? MAX_CONSUMPTION
+                : 0;
           }
           var avgCo2Val = calculateCO2gPerKm(
             avg_l_per_100km_ok,
@@ -2269,6 +2505,16 @@ angular.module('beamng.apps')
             }
 
             overall.previousAvg = avg_l_per_100km_ok;
+            var totalTripFuelNow =
+              (overall.fuelUsedLiquid || 0) + (overall.fuelUsedElectric || 0);
+            var totalTripDistanceNow = overall.distance || 0;
+            overall.previousAvgTrip =
+              avgConsumptionAlgorithm === 'direct'
+                ? calculateAverageConsumption(
+                    totalTripFuelNow,
+                    totalTripDistanceNow
+                  )
+                : avg_l_per_100km_ok;
 
             if (!overall.lastSaveTime) overall.lastSaveTime = 0;
             var now = performance.now();
@@ -2278,10 +2524,21 @@ angular.module('beamng.apps')
             }
           }
 
+          var totalTripFuel =
+            (overall.fuelUsedLiquid || 0) + (overall.fuelUsedElectric || 0);
+          var totalTripDistance = overall.distance || 0;
 
           // Use the median of the recorded averages for trip stats and graphs
-          var overall_median = calculateMedian(overall.queue);
-          var tripAvgCo2Val = calculateMedian(overall.co2Queue);
+          var overall_median =
+            avgConsumptionAlgorithm === 'direct'
+              ? calculateAverageConsumption(totalTripFuel, totalTripDistance)
+              : calculateMedian(overall.queue);
+          var tripAvgCo2Val =
+            avgConsumptionAlgorithm === 'direct'
+              ? totalTripDistance > 0
+                ? (overall.tripCo2 || 0) / (totalTripDistance / 1000)
+                : 0
+              : calculateMedian(overall.co2Queue);
           $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
           $scope.tripAvgKmLHistory = buildQueueGraphPoints(
             overall.queue.map(function (v) {
@@ -2293,8 +2550,6 @@ angular.module('beamng.apps')
 
           // ---------- Average Consumption ----------
           if (sampleValid) {
-            overall.previousAvgTrip = avg_l_per_100km_ok;
-
             avgHistory.queue.push(avg_l_per_100km_ok);
             trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
             $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);

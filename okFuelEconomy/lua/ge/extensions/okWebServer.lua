@@ -19,8 +19,16 @@ local function loadPort()
     FS:directoryCreate(settingsDir)
   end
   local cfg = jsonReadFile(settingsPath) or {}
+  local changed = false
   if cfg.webEndpointPort == nil then
     cfg.webEndpointPort = defaultPort
+    changed = true
+  end
+  if cfg.AvgConsumptionAlgorithm == nil then
+    cfg.AvgConsumptionAlgorithm = 'optimized'
+    changed = true
+  end
+  if changed then
     jsonWriteFile(settingsPath, cfg, true)
   end
   listenPort = tonumber(cfg.webEndpointPort) or defaultPort

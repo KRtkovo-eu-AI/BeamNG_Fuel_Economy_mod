@@ -93,7 +93,7 @@ describe('UI template styling', () => {
     global.window = {};
     global.bngApi = { engineLua: () => {} };
     global.localStorage = { getItem: () => null, setItem: () => {} };
-    global.performance = { now: () => 0 };
+    global.performance = { now: (() => { let t = 0; return () => { t += 1000; return t; }; })() };
     delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
     require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
     const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
@@ -353,13 +353,18 @@ describe('UI template styling', () => {
     const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
     controllerFn({ debug: () => {} }, $scope);
 
-    $scope.tripAvgHistory = 'persist';
-    $scope.tripAvgKmLHistory = 'persist';
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, trip: 100, throttle_input: 0.5, rpmTacho: 2000 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+    $scope.on_streamsUpdate(null, streams);
+    streams.electrics.trip = 200;
+    streams.engineInfo[11] = 49;
+    global.performance.now();
+    $scope.on_streamsUpdate(null, streams);
 
     $scope.on_VehicleFocusChanged();
 
-    assert.strictEqual($scope.tripAvgHistory, 'persist');
-    assert.strictEqual($scope.tripAvgKmLHistory, 'persist');
+    assert.strictEqual($scope.tripAvgHistory, '');
   });
 
   it('migrates legacy fuelPrice.json via app.js', async () => {
@@ -1837,7 +1842,7 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.instantLph, '0.0 L/h');
     assert.strictEqual($scope.instantL100km, '0.0 L/100km');
-    assert.strictEqual($scope.instantKmL, '100.00 km/L');
+    assert.strictEqual($scope.instantKmL, '0.00 km/L');
     assert.strictEqual($scope.instantHistory, '');
     assert.strictEqual($scope.instantKmLHistory, '');
     assert.strictEqual($scope.instantCO2, '0 g/km');
