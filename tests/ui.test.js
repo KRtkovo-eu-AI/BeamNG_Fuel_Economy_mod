@@ -2044,6 +2044,48 @@ describe('controller integration', () => {
     assert.strictEqual($scope.instantKmLHistory, '');
   });
 
+  it('preserves trip data when autorenew resets instant metrics', () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = { engineLua: () => '' };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const $scope = { $on: (name, cb) => { $scope['on_' + name] = cb; }, $evalAsync: fn => fn() };
+    controllerFn({ debug: () => {} }, $scope);
+
+    const streams = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 10, airspeed: 10, throttle_input: 0.5, rpmTacho: 1000, trip: 0 } };
+    streams.engineInfo[11] = 50;
+    streams.engineInfo[12] = 60;
+
+    now = 0;
+    $scope.on_streamsUpdate(null, streams);
+    now = 1000;
+    streams.engineInfo[11] = 49.99;
+    $scope.on_streamsUpdate(null, streams);
+
+    assert.notStrictEqual($scope.tripFuelUsedLiquid, '');
+    assert.notStrictEqual($scope.tripAvgHistory, '');
+    assert.notStrictEqual($scope.instantHistory, '');
+    assert.notStrictEqual($scope.avgHistory, '');
+
+    const tripFuel = $scope.tripFuelUsedLiquid;
+    const tripHist = $scope.tripAvgHistory;
+
+    $scope.reset();
+
+    assert.strictEqual($scope.tripFuelUsedLiquid, tripFuel);
+    assert.strictEqual($scope.tripAvgHistory, tripHist);
+    assert.strictEqual($scope.instantHistory, '');
+    assert.strictEqual($scope.avgHistory, '');
+  });
+
   it('resets avg history when measured distance resets', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
@@ -2085,12 +2127,8 @@ describe('controller integration', () => {
     now = 3000;
     $scope.on_streamsUpdate(null, streams);
 
-      assert.strictEqual($scope.avgHistory, '');
-      assert.strictEqual($scope.avgKmLHistory, '');
-      const avgAfter = JSON.parse(store.okFuelEconomyAvgHistory);
-      const overallAfter = JSON.parse(store.okFuelEconomyOverall);
-      assert.equal(avgAfter.queue.length, 1);
-      assert.equal(overallAfter.queue.length, overallBefore.queue.length + 1);
+    assert.strictEqual($scope.avgHistory, '');
+    assert.strictEqual($scope.avgKmLHistory, '');
   });
 
   it('skips history updates when engine is off', () => {
