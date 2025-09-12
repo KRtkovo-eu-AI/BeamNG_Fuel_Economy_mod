@@ -1946,20 +1946,32 @@ angular.module('beamng.apps')
         $scope.totalCost = '0.00 ' + $scope.currency;
         $scope.avgCost =
           '0.00 ' + $scope.currency + '/' + labels.distance;
-        var tripAvg =
-          overall.queue && overall.queue.length > 0
-            ? calculateMedian(overall.queue)
-            : 0;
+        var totalTripFuel = (overall.fuelUsedLiquid || 0) + (overall.fuelUsedElectric || 0);
+        var totalTripDistance = overall.distance || 0;
+        var tripAvg;
+        var tripAvgCo2;
+        if (avgConsumptionAlgorithm === 'direct') {
+          tripAvg = calculateAverageConsumption(totalTripFuel, totalTripDistance);
+          tripAvgCo2 =
+            totalTripDistance > 0
+              ? (overall.tripCo2 || 0) / (totalTripDistance / 1000)
+              : 0;
+        } else {
+          tripAvg =
+            overall.queue && overall.queue.length > 0
+              ? calculateMedian(overall.queue)
+              : 0;
+          tripAvgCo2 =
+            overall.co2Queue && overall.co2Queue.length > 0
+              ? calculateMedian(overall.co2Queue)
+              : 0;
+        }
         $scope.tripAvgL100km = formatConsumptionRate(tripAvg, mode, 1);
         $scope.tripAvgKmL = formatEfficiency(
           tripAvg > 0 ? 100 / tripAvg : Infinity,
           mode,
           2
         );
-        var tripAvgCo2 =
-          overall.co2Queue && overall.co2Queue.length > 0
-            ? calculateMedian(overall.co2Queue)
-            : 0;
         $scope.tripAvgCO2 = formatCO2(tripAvgCo2, 0, mode);
         $scope.tripCo2Class = classifyCO2(tripAvgCo2);
         $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue || [], 100, 40);
@@ -2493,6 +2505,16 @@ angular.module('beamng.apps')
             }
 
             overall.previousAvg = avg_l_per_100km_ok;
+            var totalTripFuelNow =
+              (overall.fuelUsedLiquid || 0) + (overall.fuelUsedElectric || 0);
+            var totalTripDistanceNow = overall.distance || 0;
+            overall.previousAvgTrip =
+              avgConsumptionAlgorithm === 'direct'
+                ? calculateAverageConsumption(
+                    totalTripFuelNow,
+                    totalTripDistanceNow
+                  )
+                : avg_l_per_100km_ok;
 
             if (!overall.lastSaveTime) overall.lastSaveTime = 0;
             var now = performance.now();
@@ -2502,20 +2524,21 @@ angular.module('beamng.apps')
             }
           }
 
+          var totalTripFuel =
+            (overall.fuelUsedLiquid || 0) + (overall.fuelUsedElectric || 0);
+          var totalTripDistance = overall.distance || 0;
 
           // Use the median of the recorded averages for trip stats and graphs
-          var overall_median = calculateMedian(overall.queue);
-          if (avgConsumptionAlgorithm === 'direct') {
-            overall_median = calculateAverageConsumption(
-              fuel_used_l,
-              distance_m
-            );
-          }
-          var tripAvgCo2Val = calculateMedian(overall.co2Queue);
-          if (avgConsumptionAlgorithm === 'direct') {
-            tripAvgCo2Val =
-              distance_m > 0 ? tripCo2_g / (distance_m / 1000) : 0;
-          }
+          var overall_median =
+            avgConsumptionAlgorithm === 'direct'
+              ? calculateAverageConsumption(totalTripFuel, totalTripDistance)
+              : calculateMedian(overall.queue);
+          var tripAvgCo2Val =
+            avgConsumptionAlgorithm === 'direct'
+              ? totalTripDistance > 0
+                ? (overall.tripCo2 || 0) / (totalTripDistance / 1000)
+                : 0
+              : calculateMedian(overall.co2Queue);
           $scope.tripAvgHistory = buildQueueGraphPoints(overall.queue, 100, 40);
           $scope.tripAvgKmLHistory = buildQueueGraphPoints(
             overall.queue.map(function (v) {
@@ -2527,8 +2550,6 @@ angular.module('beamng.apps')
 
           // ---------- Average Consumption ----------
           if (sampleValid) {
-            overall.previousAvgTrip = avg_l_per_100km_ok;
-
             avgHistory.queue.push(avg_l_per_100km_ok);
             trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
             $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
