@@ -222,4 +222,45 @@ describe('average consumption algorithm config', () => {
     assert.strictEqual($scope.fuelUsed, '0.00 L');
     assert.strictEqual($scope.tripFuelUsedLiquid, '1.00 L');
   });
+
+  it('starts calculating immediately after reset for direct algorithm', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Gasoline' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (name, fn) => { handlers[name] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 0));
+
+    $scope.setAvgConsumptionAlgorithm('direct');
+
+    const reset = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, trip: 0 } };
+    reset.engineInfo[11] = 50;
+    reset.engineInfo[12] = 60;
+    reset.engineInfo[13] = 90;
+    handlers['streamsUpdate'](null, reset);
+    await new Promise(r => setTimeout(r, 0));
+
+    const run = { engineInfo: Array(14).fill(0), electrics: { wheelspeed: 1, airspeed: 1, throttle_input: 0.5, rpmTacho: 2000, trip: 1 } };
+    run.engineInfo[11] = 49.9;
+    run.engineInfo[12] = 60;
+    run.engineInfo[13] = 90;
+    now = 1000;
+    handlers['streamsUpdate'](null, run);
+    await new Promise(r => setTimeout(r, 0));
+
+    assert.strictEqual($scope.avgL100km, '100.0 L/100km');
+  });
 });

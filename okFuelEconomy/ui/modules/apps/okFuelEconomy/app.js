@@ -2465,11 +2465,13 @@ angular.module('beamng.apps')
               $scope.unitMode === 'electric'
             );
           }
-          if (
-            !Number.isFinite(avg_l_per_100km_ok) ||
-            avg_l_per_100km_ok > MAX_CONSUMPTION
-          ) {
+          if (!Number.isFinite(avg_l_per_100km_ok)) {
             avg_l_per_100km_ok = 0;
+          } else if (avg_l_per_100km_ok > MAX_CONSUMPTION) {
+            avg_l_per_100km_ok =
+              avgConsumptionAlgorithm === 'direct'
+                ? MAX_CONSUMPTION
+                : 0;
           }
           var avgCo2Val = calculateCO2gPerKm(
             avg_l_per_100km_ok,
