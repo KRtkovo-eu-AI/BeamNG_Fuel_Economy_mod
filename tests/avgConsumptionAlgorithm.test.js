@@ -330,4 +330,58 @@ describe('average consumption algorithm config', () => {
 
     assert.strictEqual($scope.avgL100km, '100.0 L/100km');
   });
+
+  it('tracks zero trip CO₂ for electric vehicles', async () => {
+    let directiveDef;
+    global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+    global.StreamsManager = { add: () => {}, remove: () => {} };
+    global.UiUnits = { buildString: () => '' };
+    global.bngApi = {
+      engineLua: () => {},
+      activeObjectLua: (code, cb) => cb(JSON.stringify({ t: 'Electricity' }))
+    };
+    global.localStorage = { getItem: () => null, setItem: () => {} };
+    let now = 0;
+    global.performance = { now: () => now };
+
+    delete require.cache[require.resolve('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js')];
+    require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
+    const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+    const handlers = {};
+    const $scope = { $on: (n, fn) => { handlers[n] = fn; }, $evalAsync: fn => setImmediate(fn) };
+    controllerFn({ debug: () => {} }, $scope);
+    await new Promise(r => setTimeout(r, 0));
+
+    $scope.setUnit('electric');
+    await new Promise(r => setTimeout(r, 0));
+    $scope.fuelType = 'Electricity';
+
+    const base = { engineInfo: Array(15).fill(0), electrics: { wheelspeed: 0, airspeed: 0, throttle_input: 0, rpmTacho: 0, engineRunning: false, trip: 0 } };
+    base.engineInfo[11] = 50;
+    base.engineInfo[12] = 60;
+    base.engineInfo[13] = 90;
+    handlers['streamsUpdate'](null, base);
+    await new Promise(r => setTimeout(r, 0));
+
+    const streams = {
+      engineInfo: Array(15).fill(0),
+      electrics: {
+        wheelspeed: 10,
+        airspeed: 10,
+        throttle_input: 0,
+        rpmTacho: 0,
+        engineRunning: false,
+        trip: 100
+      }
+    };
+    streams.engineInfo[11] = 49.9;
+    streams.engineInfo[12] = 60;
+    streams.engineInfo[13] = 90;
+    now = 1000;
+    handlers['streamsUpdate'](null, streams);
+    await new Promise(r => setTimeout(r, 0));
+
+    assert.strictEqual($scope.avgCO2, '0 g/km');
+    assert.strictEqual($scope.tripAvgCO2, '0 g/km');
+  });
 });

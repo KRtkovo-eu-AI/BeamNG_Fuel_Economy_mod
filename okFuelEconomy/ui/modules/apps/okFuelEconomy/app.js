@@ -2406,7 +2406,9 @@ angular.module('beamng.apps')
             $scope.unitMode === 'electric'
           );
           var sampleValid =
-            (engineRunning || rpmTacho >= MIN_RPM_RUNNING) &&
+            (engineRunning ||
+              rpmTacho >= MIN_RPM_RUNNING ||
+              ($scope.unitMode === 'electric' && Math.abs(speed_mps) > EPS_SPEED)) &&
             ($scope.unitMode === 'electric' || fuelFlow_lps >= 0);
           if (!sampleValid) {
             fuelFlow_lps = 0;
@@ -2476,7 +2478,7 @@ angular.module('beamng.apps')
             avgSpeed_kph <= 65 &&
             topSpeedValid;
 
-          if (!engineRunning && initialized) {
+          if (!engineRunning && initialized && $scope.unitMode !== 'electric') {
             previousFuel_l = currentFuel_l;
             lastThrottle = throttle;
             return;
