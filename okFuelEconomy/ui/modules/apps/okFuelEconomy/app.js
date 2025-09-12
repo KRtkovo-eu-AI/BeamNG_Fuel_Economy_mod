@@ -1228,9 +1228,16 @@ angular.module('beamng.apps')
       };
         $scope.unitMenuOpen = false;
         $scope.unitMode = localStorage.getItem(UNIT_MODE_KEY) || 'metric';
-        var preferredLiquidUnit =
-          localStorage.getItem(PREFERRED_UNIT_KEY) ||
-          ($scope.unitMode === 'imperial' ? 'imperial' : 'metric');
+        var preferredLiquidUnit = localStorage.getItem(PREFERRED_UNIT_KEY);
+        if (preferredLiquidUnit !== 'imperial' && preferredLiquidUnit !== 'metric') {
+          preferredLiquidUnit =
+            $scope.unitMode === 'imperial' ? 'imperial' : 'metric';
+          try {
+            localStorage.setItem(PREFERRED_UNIT_KEY, preferredLiquidUnit);
+          } catch (e) {
+            /* ignore */
+          }
+        }
         var fuelPriceEditorLoaded = false;
         var fuelEmissionsEditorLoaded = false;
         var manualUnit = false;
@@ -1495,10 +1502,13 @@ angular.module('beamng.apps')
       $scope.saveSettings = function () {
         try {
           localStorage.setItem(SETTINGS_KEY, JSON.stringify($scope.visible));
-          localStorage.setItem(UNIT_MODE_KEY, $scope.unitMode);
-          if ($scope.unitMode !== 'electric') {
-            localStorage.setItem(PREFERRED_UNIT_KEY, $scope.unitMode);
-          }
+            localStorage.setItem(UNIT_MODE_KEY, $scope.unitMode);
+            if (
+              $scope.unitMode === 'imperial' ||
+              $scope.unitMode === 'metric'
+            ) {
+              localStorage.setItem(PREFERRED_UNIT_KEY, $scope.unitMode);
+            }
         } catch (e) { /* ignore */ }
 
         avgConsumptionAlgorithm =
