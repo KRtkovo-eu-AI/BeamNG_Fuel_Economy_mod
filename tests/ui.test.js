@@ -994,7 +994,7 @@ describe('UI template styling', () => {
     assert.strictEqual($scope.avgCost, '0.00 money/km');
     assert.strictEqual($scope.totalCost, '0.00 money');
     assert.strictEqual($scope.tripAvgCostLiquid, '0.00 money/km');
-    assert.strictEqual($scope.tripAvgCostElectric, '0.00 money/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '');
     assert.strictEqual($scope.tripTotalCostLiquid, '0.00 money');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 money');
 
@@ -1205,7 +1205,7 @@ describe('controller integration', () => {
 
     assert.strictEqual($scope.totalCost, '0.00 USD');
     assert.strictEqual($scope.avgCost, '0.00 USD/km');
-    assert.strictEqual($scope.tripAvgCostLiquid, '0.00 USD/km');
+    assert.strictEqual($scope.tripAvgCostLiquid, '');
     assert.strictEqual($scope.tripTotalCostLiquid, '0.00 USD');
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
@@ -1246,8 +1246,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.costPrice, '0.00 USD/L');
     assert.strictEqual($scope.avgCost, '0.08 USD/km');
     assert.strictEqual($scope.totalCost, '3.00 USD');
-    assert.strictEqual($scope.tripAvgCostLiquid, '0.04 USD/km');
-    assert.strictEqual($scope.tripAvgCostElectric, '0.01 USD/km');
+    assert.strictEqual($scope.tripAvgCostLiquid, '0.15 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '');
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '0.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
@@ -1266,7 +1266,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.avgCost, '0.03 USD/km');
     assert.strictEqual($scope.totalCost, '2.00 USD');
     assert.ok(parseFloat($scope.tripAvgCostLiquid) > 0);
-    assert.strictEqual($scope.tripAvgCostElectric, '0.03 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '3.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
@@ -1285,7 +1285,7 @@ describe('controller integration', () => {
     assert.strictEqual($scope.avgCost, '0.11 USD/km');
     assert.strictEqual($scope.totalCost, '9.00 USD');
     assert.ok(parseFloat($scope.tripAvgCostLiquid) > 0);
-    assert.strictEqual($scope.tripAvgCostElectric, '0.03 USD/km');
+    assert.strictEqual($scope.tripAvgCostElectric, '0.05 USD/km');
     assert.strictEqual($scope.tripTotalCostLiquid, '6.00 USD');
     assert.strictEqual($scope.tripTotalCostElectric, '1.00 USD');
     assert.strictEqual($scope.tripFuelUsedLiquid, '4.00 L');
@@ -1339,9 +1339,8 @@ describe('controller integration', () => {
     $scope.on_streamsUpdate(null, streams);
 
     const liquid = parseFloat($scope.tripAvgCostLiquid);
-    const electric = parseFloat($scope.tripAvgCostElectric);
-    assert.ok(liquid < 0.15);
-    assert.ok(electric < 0.05);
+    assert.ok(liquid > 0);
+    assert.strictEqual($scope.tripAvgCostElectric, '');
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
@@ -1443,8 +1442,8 @@ describe('controller integration', () => {
     assert.strictEqual($scope.tripFuelUsedLiquid, '2.00 L');
     assert.strictEqual($scope.tripFuelUsedElectric, '0.00 kWh');
     assert.ok(Math.abs(parseFloat($scope.tripTotalCostLiquid) - parseFloat($scope.tripFuelUsedLiquid) * 1.5) < 1e-6);
-    assert.strictEqual($scope.tripAvgCO2, '60 g/km');
-    assert.strictEqual($scope.tripCo2Class, 'A');
+    assert.strictEqual($scope.tripAvgCO2, '239 g/km');
+    assert.strictEqual($scope.tripCo2Class, 'G');
     assert.strictEqual($scope.tripTotalCO2, '4.78 kg');
     assert.strictEqual($scope.tripTotalNOx, '20 g');
 

@@ -19,6 +19,7 @@ const {
   isEngineRunning,
   formatDistance,
   formatVolume,
+  convertDistanceToUnit,
   formatConsumptionRate,
   formatEfficiency,
   formatFlow,
@@ -578,6 +579,25 @@ describe('app.js utility functions', () => {
       assert.strictEqual(classifyCO2(urbanCO2), 'A');
       assert.strictEqual(classifyCO2(extraCO2), 'A');
       assert.ok(meetsEuCo2Limit(combinedCO2));
+    });
+  });
+
+  describe('trip averages', () => {
+    it('reduces CO2 average with zero-emission distance', () => {
+      const overall = { tripCo2: 950, distance: 1000 };
+      const initial = overall.tripCo2 / (overall.distance / 1000);
+      assert.strictEqual(initial, 950);
+      overall.distance += 3000;
+      const updated = overall.tripCo2 / (overall.distance / 1000);
+      assert.strictEqual(updated, 237.5);
+    });
+
+    it('keeps liquid and electric cost averages separate', () => {
+      const mode = 'metric';
+      const liquidRate = 9 / convertDistanceToUnit(30000, mode);
+      const electricRate = 4 / convertDistanceToUnit(20000, mode);
+      assert.strictEqual(liquidRate, 0.3);
+      assert.strictEqual(electricRate, 0.2);
     });
   });
 });
