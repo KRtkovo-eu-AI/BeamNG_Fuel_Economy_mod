@@ -17,6 +17,7 @@ This repository contains a UI mod for BeamNG.drive that displays fuel economy in
 - Estimated range based on current and long-term consumption.
 - Long-term consumption overview with reset option.
 - Trip statistics showing average consumption, distance and range, with reset control.
+- Choice of algorithm for average consumption: use the default optimized method or a direct calculation.
 - Efficiency history graphs for instant, average and trip consumption with toggleable visibility and custom style support.
 - Hide or show heading and individual data points through an in-app settings dialog that remembers user choices.
 - Switch between the default BeamNG style and a custom neon-themed look.
@@ -25,6 +26,13 @@ This repository contains a UI mod for BeamNG.drive that displays fuel economy in
 - Support additional fuel types such as hydrogen and an on-foot “Food” mode with dedicated consumption and cost metrics.
 - Edit fuel prices in game with unit-aware fields and add or remove fuel types.
 - Optionally expose all displayed data at `http://127.0.0.1:<port>` as JSON for external apps (default port 23512).
+
+## Average consumption algorithms
+
+The widget can compute average fuel consumption using two algorithms selectable in the settings dialog:
+
+- **Optimized** (default) – averages recent instantaneous consumption samples and uses the median of recorded values to provide a smooth reading that reacts quickly while ignoring outliers.
+- **Direct** – calculates consumption directly from total fuel used over distance travelled. Per-run totals reset automatically when the engine stops, yielding raw but precise figures.
 
 ## Local web endpoint
 
