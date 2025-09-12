@@ -1298,6 +1298,13 @@ angular.module('beamng.apps')
             }
             return;
           }
+          if ($scope.unitMode === 'food' && desired !== 'food') {
+            $scope.unitMode = desired;
+            updateUnitLabels();
+            updateCostPrice();
+            refreshCostOutputs();
+            return;
+          }
           if (!manualUnit && desired !== $scope.unitMode) {
             $scope.unitMode = desired;
             updateUnitLabels();
