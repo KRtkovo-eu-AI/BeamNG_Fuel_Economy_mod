@@ -444,6 +444,16 @@ describe('app.js utility functions', () => {
       const capped = calculateCO2gPerKm(10000, 'Gasoline');
       assert.strictEqual(capped, (MAX_CONSUMPTION / 100) * 2392);
     });
+    it('caps extreme consumption for electric vehicles', () => {
+      const capped = calculateCO2gPerKm(
+        MAX_ELECTRIC_CONSUMPTION * 10,
+        'Gasoline',
+        undefined,
+        undefined,
+        true
+      );
+      assert.strictEqual(capped, 0);
+    });
     it('formats CO2 emissions', () => {
       const val = calculateCO2gPerKm(5, 'Gasoline');
       assert.strictEqual(

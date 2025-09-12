@@ -518,7 +518,8 @@ function calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric) {
 function calculateCO2gPerKm(lPer100km, fuelType, engineTempC, n2oActive, isElectric) {
   var factor = calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric);
   if (!Number.isFinite(lPer100km)) return Infinity;
-  var capped = Math.min(lPer100km, MAX_CONSUMPTION);
+  var max = isElectric ? MAX_ELECTRIC_CONSUMPTION : MAX_CONSUMPTION;
+  var capped = Math.min(lPer100km, max);
   return (capped / 100) * factor;
 }
 
@@ -2517,13 +2518,15 @@ angular.module('beamng.apps')
               $scope.unitMode === 'electric'
             );
           }
+          var avgMax =
+            $scope.unitMode === 'electric'
+              ? MAX_ELECTRIC_CONSUMPTION
+              : MAX_CONSUMPTION;
           if (!Number.isFinite(avg_l_per_100km_ok)) {
             avg_l_per_100km_ok = 0;
-          } else if (avg_l_per_100km_ok > MAX_CONSUMPTION) {
+          } else if (avg_l_per_100km_ok > avgMax) {
             avg_l_per_100km_ok =
-              avgConsumptionAlgorithm === 'direct'
-                ? MAX_CONSUMPTION
-                : 0;
+              avgConsumptionAlgorithm === 'direct' ? avgMax : 0;
           }
           var avgCo2Val = calculateCO2gPerKm(
             avg_l_per_100km_ok,
