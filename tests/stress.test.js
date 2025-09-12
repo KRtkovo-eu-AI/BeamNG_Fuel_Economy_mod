@@ -246,9 +246,9 @@ test('restart and manual reset cycle', () => {
   // After reset, values remain cleared across restart
   const sess4 = startSession();
   assert.strictEqual(sess4.$scope.tripFuelUsedLiquid, '');
-  assert.strictEqual(sess4.$scope.tripTotalCostLiquid, '');
+  assert.strictEqual(sess4.$scope.tripTotalCostLiquid, '0.00 money');
   assert.strictEqual(sess4.$scope.tripFuelUsedElectric, '');
-  assert.strictEqual(sess4.$scope.tripTotalCostElectric, '');
+  assert.strictEqual(sess4.$scope.tripTotalCostElectric, '0.00 money');
 });
 
 // Ensure median calculation recovers after extended idle periods
