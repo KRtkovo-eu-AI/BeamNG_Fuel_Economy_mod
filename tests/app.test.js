@@ -19,6 +19,7 @@ const {
   isEngineRunning,
   formatDistance,
   formatVolume,
+  convertDistanceToUnit,
   formatConsumptionRate,
   formatEfficiency,
   formatFlow,
@@ -30,9 +31,11 @@ const {
   meetsEuCo2Limit,
   MIN_VALID_SPEED_MPS,
   MAX_CONSUMPTION,
+  MAX_ELECTRIC_CONSUMPTION,
   resolveUnitModeForFuelType,
   formatFuelTypeLabel,
-  getUnitLabels
+  getUnitLabels,
+  CO2_FACTORS_G_PER_L
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 const KM_PER_MILE = 1.60934;
@@ -82,6 +85,12 @@ describe('app.js utility functions', () => {
       assert.strictEqual(
         calculateInstantConsumption(2, 0),
         MAX_CONSUMPTION
+      );
+    });
+    it('caps unrealistic values for electric vehicles', () => {
+      assert.strictEqual(
+        calculateInstantConsumption(50, 0, true),
+        MAX_ELECTRIC_CONSUMPTION
       );
     });
   });
@@ -437,6 +446,16 @@ describe('app.js utility functions', () => {
       const capped = calculateCO2gPerKm(10000, 'Gasoline');
       assert.strictEqual(capped, (MAX_CONSUMPTION / 100) * 2392);
     });
+    it('caps extreme consumption for electric vehicles', () => {
+      const capped = calculateCO2gPerKm(
+        MAX_ELECTRIC_CONSUMPTION * 10,
+        'Electricity',
+        undefined,
+        undefined,
+        true
+      );
+      assert.strictEqual(capped, 0);
+    });
     it('formats CO2 emissions', () => {
       const val = calculateCO2gPerKm(5, 'Gasoline');
       assert.strictEqual(
@@ -509,6 +528,18 @@ describe('app.js utility functions', () => {
         0
       );
     });
+    it('uses configured CO2 factor for electricity', () => {
+      const original = CO2_FACTORS_G_PER_L.Electricity;
+      CO2_FACTORS_G_PER_L.Electricity = 100;
+      try {
+        assert.strictEqual(
+          calculateCO2Factor('Electricity', 200, true, true),
+          100
+        );
+      } finally {
+        CO2_FACTORS_G_PER_L.Electricity = original;
+      }
+    });
   });
 
   describe('Canadian 5-cycle fuel economy scenario', () => {
@@ -548,6 +579,25 @@ describe('app.js utility functions', () => {
       assert.strictEqual(classifyCO2(urbanCO2), 'A');
       assert.strictEqual(classifyCO2(extraCO2), 'A');
       assert.ok(meetsEuCo2Limit(combinedCO2));
+    });
+  });
+
+  describe('trip averages', () => {
+    it('reduces CO2 average with zero-emission distance', () => {
+      const overall = { tripCo2: 950, distance: 1000 };
+      const initial = overall.tripCo2 / (overall.distance / 1000);
+      assert.strictEqual(initial, 950);
+      overall.distance += 3000;
+      const updated = overall.tripCo2 / (overall.distance / 1000);
+      assert.strictEqual(updated, 237.5);
+    });
+
+    it('keeps liquid and electric cost averages separate', () => {
+      const mode = 'metric';
+      const liquidRate = 9 / convertDistanceToUnit(30000, mode);
+      const electricRate = 4 / convertDistanceToUnit(20000, mode);
+      assert.strictEqual(liquidRate, 0.3);
+      assert.strictEqual(electricRate, 0.2);
     });
   });
 });
