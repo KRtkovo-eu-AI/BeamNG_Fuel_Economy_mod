@@ -33,7 +33,8 @@ const {
   MAX_ELECTRIC_CONSUMPTION,
   resolveUnitModeForFuelType,
   formatFuelTypeLabel,
-  getUnitLabels
+  getUnitLabels,
+  CO2_FACTORS_G_PER_L
 } = require('../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js');
 
 const KM_PER_MILE = 1.60934;
@@ -447,7 +448,7 @@ describe('app.js utility functions', () => {
     it('caps extreme consumption for electric vehicles', () => {
       const capped = calculateCO2gPerKm(
         MAX_ELECTRIC_CONSUMPTION * 10,
-        'Gasoline',
+        'Electricity',
         undefined,
         undefined,
         true
@@ -525,6 +526,18 @@ describe('app.js utility functions', () => {
         calculateCO2Factor('Electricity', 200, true, true),
         0
       );
+    });
+    it('uses configured CO2 factor for electricity', () => {
+      const original = CO2_FACTORS_G_PER_L.Electricity;
+      CO2_FACTORS_G_PER_L.Electricity = 100;
+      try {
+        assert.strictEqual(
+          calculateCO2Factor('Electricity', 200, true, true),
+          100
+        );
+      } finally {
+        CO2_FACTORS_G_PER_L.Electricity = original;
+      }
     });
   });
 

@@ -500,18 +500,19 @@ function extractValueUnit(str) {
 }
 
 function calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric) {
-  if (isElectric) return 0;
   var base = CO2_FACTORS_G_PER_L[fuelType] != null
     ? CO2_FACTORS_G_PER_L[fuelType]
     : CO2_FACTORS_G_PER_L.Gasoline;
-  var temp =
-    typeof engineTempC === 'number' ? engineTempC : EMISSIONS_BASE_TEMP_C;
   if (base === 0) {
     return base;
   }
-  var delta = Math.abs(temp - EMISSIONS_BASE_TEMP_C);
-  base = base * (1 + delta / 100);
-  if (n2oActive) base *= 1.2;
+  if (!isElectric) {
+    var temp =
+      typeof engineTempC === 'number' ? engineTempC : EMISSIONS_BASE_TEMP_C;
+    var delta = Math.abs(temp - EMISSIONS_BASE_TEMP_C);
+    base = base * (1 + delta / 100);
+    if (n2oActive) base *= 1.2;
+  }
   return base;
 }
 
@@ -657,7 +658,8 @@ if (typeof module !== 'undefined') {
     updateFoodHistories,
     loadFuelEmissionsConfig,
     ensureFuelEmissionType,
-    loadFuelPriceConfig
+    loadFuelPriceConfig,
+    CO2_FACTORS_G_PER_L
   };
 }
 
