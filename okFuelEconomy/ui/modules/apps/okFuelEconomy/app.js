@@ -1,1054 +1,148 @@
-// Treat speeds below EPS_SPEED as stationary for general calculations.
-// MIN_VALID_SPEED_MPS switches instant consumption to an hourly-rate based
-// estimate (hourly fuel rate divided by four) instead of dividing by
-// extremely small speeds, keeping idle or creeping readings realistic.
-var EPS_SPEED = 0.005; // [m/s]
-var MIN_VALID_SPEED_MPS = 1; // ~3.6 km/h
-var MIN_RPM_RUNNING = 100; // below this rpm the engine is considered off
-var DEFAULT_IDLE_FLOW_LPS = 0.0002; // ~0.72 L/h fallback when idle flow unknown
-var DEFAULT_IDLE_RPM = 800; // assume typical idle speed when unknown
-// Limit extreme instantaneous consumption figures to keep the display
-// within a realistic range even when flooring the throttle from a stop.
-var MAX_CONSUMPTION = 100; // [L/100km] ignore unrealistic spikes for liquid fuels
-var MAX_ELECTRIC_CONSUMPTION = 4000; // [kWh/100km] allow higher spikes for EVs
-var MAX_EFFICIENCY = 100; // [km/L] cap unrealistic efficiency
-var RADPS_TO_RPM = 60 / (2 * Math.PI); // convert rad/s telemetry to rpm
-var FOOD_CAPACITY_KCAL = 2000;
-var FOOD_REST_KCAL_PER_H = 80;
-var FOOD_WALK_KCAL_PER_H = 300;
-var FOOD_RUN_KCAL_PER_H = 600;
-var foodBaseRate;
-var EU_SPEED_WINDOW_MS = 10000; // retain EU speed samples for 10 s
-var EMISSIONS_BASE_TEMP_C = 90; // baseline engine temp for emissions calculations
+const constants = require('./constants');
+const calc = require('./calc');
+const format = require('./format');
+const emissions = require('./emissions');
+const fuelType = require('./fuelType');
+const food = require('./food');
+const config = require('./config');
 
-var DEFAULT_CO2_FACTORS_G_PER_L = {
-  Gasoline: 2392,
-  Diesel: 2640,
-  'LPG/CNG': 1660,
-  Electricity: 0,
-  Air: 0,
-  Ethanol: 1510,
-  Hydrogen: 0,
-  Nitromethane: 820,
-  Nitromethan: 820,
-  Food: 0.001, // approx. CO2 from human flatulence per kcal
-  Kerosene: 2500,
-  'Jet Fuel': 2500,
-  Methanol: 1100,
-  Biodiesel: 2500,
-  Synthetic: 2392,
-  'Coal Gas': 2000,
-  Steam: 0,
-  Ammonia: 0,
-  Hybrid: 2392,
-  'Plug-in Hybrid': 2392,
-  'Fuel Oil': 3100,
-  'Heavy Oil': 3100,
-  Hydrazine: 0,
-  Hypergolic: 0,
-  'Solid Rocket': 1900,
-  'Black Powder': 1900,
-  ACPC: 1900
-};
-
-var DEFAULT_NOX_FACTORS_G_PER_L = {
-  Gasoline: 10,
-  Diesel: 20,
-  'LPG/CNG': 7,
-  Electricity: 0,
-  Air: 0,
-  Ethanol: 3,
-  Hydrogen: 1,
-  Nitromethane: 12,
-  Nitromethan: 12,
-  Food: 0,
-  Kerosene: 15,
-  'Jet Fuel': 15,
-  Methanol: 4,
-  Biodiesel: 18,
-  Synthetic: 10,
-  'Coal Gas': 15,
-  Steam: 0,
-  Ammonia: 6,
-  Hybrid: 10,
-  'Plug-in Hybrid': 10,
-  'Fuel Oil': 25,
-  'Heavy Oil': 25,
-  Hydrazine: 30,
-  Hypergolic: 30,
-  'Solid Rocket': 20,
-  'Black Powder': 20,
-  ACPC: 20
-};
-
-var DEFAULT_FUEL_EMISSIONS = Object.keys(DEFAULT_CO2_FACTORS_G_PER_L).reduce(
-  function (acc, key) {
-    acc[key] = {
-      CO2: DEFAULT_CO2_FACTORS_G_PER_L[key],
-      NOx:
-        DEFAULT_NOX_FACTORS_G_PER_L[key] != null
-          ? DEFAULT_NOX_FACTORS_G_PER_L[key]
-          : 0
-    };
-    return acc;
-  },
-  {}
-);
-
-var CO2_FACTORS_G_PER_L = Object.assign({}, DEFAULT_CO2_FACTORS_G_PER_L);
-var NOX_FACTORS_G_PER_L = Object.assign({}, DEFAULT_NOX_FACTORS_G_PER_L);
-
-function resetFoodSimulation() {
-  foodBaseRate = undefined;
-}
-
-function calculateFuelFlow(currentFuel, previousFuel, dtSeconds) {
-  if (dtSeconds <= 0 || previousFuel === null) return 0;
-  return (previousFuel - currentFuel) / dtSeconds; // L/s
-}
-
-function normalizeRpm(rpm, engineRunning) {
-  if (rpm <= 0) return 0;
-  if (engineRunning === false) return rpm * RADPS_TO_RPM;
-  return rpm < 300 ? rpm * RADPS_TO_RPM : rpm;
-}
-
-function calculateInstantConsumption(fuelFlow_lps, speed_mps, isElectric) {
-  var speed = Math.abs(speed_mps);
-  var l_per_100km;
-  if (speed <= MIN_VALID_SPEED_MPS) {
-    // For very low speeds use a quarter of the hourly fuel rate as a
-    // per-distance estimate to avoid extreme L/100km values.
-    l_per_100km = (fuelFlow_lps * 3600) / 4;
-  } else {
-    l_per_100km = (fuelFlow_lps / speed) * 100000;
-  }
-  var max = isElectric ? MAX_ELECTRIC_CONSUMPTION : MAX_CONSUMPTION;
-  if (l_per_100km > max) l_per_100km = max;
-  return l_per_100km;
-}
-
-// Resolve the fuel flow when sensor readings are static.
-// - While accelerating (throttle > 0) keep the last measured flow.
-// - While coasting or idling with zero throttle and no fresh reading,
-//   gradually approach the stored idle flow so the value continues
-//   updating instead of snapping to zero.
-// - Still allow true zero flow for engine-off or fuel-cut situations
-//   when the idle flow is unknown.
-function smoothFuelFlow(
-  fuelFlow_lps,
-  speed_mps,
-  throttle,
-  lastFuelFlow_lps,
-  idleFuelFlow_lps,
-  idleRpm,
-  rpm,
+const {
   EPS_SPEED,
-  isElectric
-) {
-  if (isElectric && speed_mps <= EPS_SPEED && throttle <= 0.05) {
-    // Electric drivetrains consume no power when stationary.
-    return 0;
-  }
-  if (fuelFlow_lps < 0) {
-    // Negative flow means energy is being returned (regen) – use directly.
-    return fuelFlow_lps;
-  }
-  if (fuelFlow_lps > 0) {
-    // Always use fresh positive readings, even with zero throttle.
-    return fuelFlow_lps;
-  }
-  var baseIdle = idleFuelFlow_lps > 0 ? idleFuelFlow_lps : DEFAULT_IDLE_FLOW_LPS;
-  var baseRpm = idleRpm > 0 ? idleRpm : DEFAULT_IDLE_RPM;
-  var currentRpm = rpm;
+  MIN_VALID_SPEED_MPS,
+  MIN_RPM_RUNNING,
+  MAX_CONSUMPTION,
+  MAX_ELECTRIC_CONSUMPTION,
+  MAX_EFFICIENCY,
+  FOOD_CAPACITY_KCAL,
+  FOOD_REST_KCAL_PER_H,
+  EU_SPEED_WINDOW_MS
+} = constants;
 
-  if (throttle <= 0.05) {
-    // Coasting or idling with a stale sensor reading – scale idle by RPM.
-    currentRpm = currentRpm > 0 ? currentRpm : baseRpm;
-    return (baseIdle * currentRpm) / baseRpm;
-  }
+const {
+  calculateFuelFlow,
+  normalizeRpm,
+  calculateInstantConsumption,
+  smoothFuelFlow,
+  trimQueue,
+  calculateMedian,
+  calculateAverage,
+  calculateAverageConsumption,
+  calculateRange,
+  resolveAverageConsumption,
+  buildQueueGraphPoints,
+  resolveSpeed,
+  isEngineRunning
+} = calc;
 
-  if (speed_mps > EPS_SPEED) {
-    // Throttle applied but sensor static – keep the last flow.
-    return lastFuelFlow_lps;
-  }
+const {
+  KM_PER_MILE,
+  LITERS_PER_GALLON,
+  getUnitLabels,
+  formatDistance,
+  formatVolume,
+  formatConsumptionRate,
+  formatEfficiency,
+  formatFlow,
+  convertVolumeToUnit,
+  convertDistanceToUnit,
+  convertVolumePerDistance,
+  extractValueUnit
+} = format;
 
-  // Vehicle stopped with throttle: smoothly approach idle or fallback flow.
-  return lastFuelFlow_lps + (baseIdle - lastFuelFlow_lps) * 0.1;
-}
+const {
+  DEFAULT_CO2_FACTORS_G_PER_L,
+  DEFAULT_NOX_FACTORS_G_PER_L,
+  DEFAULT_FUEL_EMISSIONS,
+  CO2_FACTORS_G_PER_L,
+  calculateCO2Factor,
+  calculateCO2gPerKm,
+  calculateNOxFactor,
+  formatCO2,
+  formatMass,
+  classifyCO2,
+  meetsEuCo2Limit,
+  loadFuelEmissionsConfig,
+  ensureFuelEmissionType
+} = emissions;
 
-function trimQueue(queue, maxEntries) {
-  while (queue.length > maxEntries) {
-    queue.shift();
-  }
-}
+const {
+  formatFuelTypeLabel,
+  resolveUnitModeForFuelType,
+  resolveFuelType,
+  shouldResetOnFoot
+} = fuelType;
 
-// Calculate a median that collapses near-idle minimum values to a single
-// entry so long idling periods do not skew trip averages for an extended
-// time. This assumes the smallest values in the queue correspond to the
-// vehicle's idle consumption and treats any reading within ~5% of that
-// minimum as the same baseline sample.
-function calculateMedian(queue) {
-  if (!Array.isArray(queue) || queue.length === 0) return 0;
+const {
+  simulateFood,
+  resetFoodSimulation,
+  updateFoodHistories
+} = food;
 
-  var sorted = queue.slice().sort(function (a, b) { return a - b; });
-  var min = sorted[0];
-  var threshold = min * 1.05 + 1e-4; // consider values within 5% as idle
+const {
+  loadFuelPriceConfig,
+  loadAvgConsumptionAlgorithm,
+  saveAvgConsumptionAlgorithm
+} = config;
 
-  var deduped = [min];
-  for (var i = 1; i < sorted.length; i++) {
-    if (sorted[i] > threshold) deduped.push(sorted[i]);
-  }
-
-  var mid = Math.floor(deduped.length / 2);
-  if (deduped.length % 2) return deduped[mid];
-  return (deduped[mid - 1] + deduped[mid]) / 2;
-}
-
-function calculateAverage(queue) {
-  if (!Array.isArray(queue) || queue.length === 0) return 0;
-  var sum = 0;
-  for (var i = 0; i < queue.length; i++) {
-    sum += queue[i];
-  }
-  return sum / queue.length;
-}
-
-function calculateAverageConsumption(fuelUsed_l, distance_m) {
-  if (distance_m <= 0) return 0;
-  return (fuelUsed_l / distance_m) * 100000;
-}
-
-function calculateRange(currentFuel_l, avg_l_per_100km_ok, speed_mps, EPS_SPEED) {
-  if (avg_l_per_100km_ok > 0) {
-    return (currentFuel_l / avg_l_per_100km_ok) * 100000;
-  }
-  return speed_mps > EPS_SPEED ? Infinity : 0;
-}
-
-function resolveAverageConsumption(
-  engineRunning,
-  inst_l_per_100km,
-  avgRecent,
-  maxEntries,
-  allowNegative
-) {
-  if (engineRunning && (inst_l_per_100km >= 0 || allowNegative)) {
-    avgRecent.queue.push(inst_l_per_100km);
-    trimQueue(avgRecent.queue, maxEntries);
-  } else {
-    // Reset recent averages when the engine is not running or when an
-    // invalid sample is encountered so stale or refuel events do not
-    // introduce bogus values.
-    avgRecent.queue = [];
-  }
-  return calculateAverage(avgRecent.queue);
-}
-
-// Decide which speed value should be used for distance accumulation.
-// Prefer the airspeed when available as it represents the vehicle's
-// movement relative to the environment. If the airspeed is below the
-// epsilon threshold, treat the vehicle as stationary even if the wheels
-// are spinning. When no airspeed reading is provided fall back to the
-// wheel speed.
-function resolveSpeed(wheelSpeed_mps, airSpeed_mps, EPS_SPEED) {
-  if (Number.isFinite(airSpeed_mps)) {
-    return Math.abs(airSpeed_mps) > EPS_SPEED ? airSpeed_mps : 0;
-  }
-  return Math.abs(wheelSpeed_mps || 0) > EPS_SPEED ? wheelSpeed_mps : 0;
-}
-
-function isEngineRunning(electrics, engineInfo) {
-  if (electrics) {
-    if (typeof electrics.ignitionLevel === 'number') {
-      return electrics.ignitionLevel > 1;
-    }
-    if (typeof electrics.engineRunning === 'boolean') {
-      return electrics.engineRunning;
-    }
-  }
-  if (
-    Array.isArray(engineInfo) &&
-    typeof engineInfo[14] === 'number' &&
-    engineInfo[14] !== 0
-  ) {
-    return engineInfo[14] > 0;
-  }
-  var rpm = normalizeRpm(
-    (electrics && electrics.rpmTacho) || 0,
-    electrics && electrics.engineRunning
-  );
-  return rpm >= MIN_RPM_RUNNING;
-}
-
-function simulateFood(speed_mps, dtSeconds, energy_kcal, timeSeconds) {
-  var state = 'rest';
-  if (speed_mps >= 2.5) state = 'run';
-  else if (speed_mps >= 0.5) state = 'walk';
-  var target =
-    state === 'run'
-      ? FOOD_RUN_KCAL_PER_H
-      : state === 'walk'
-      ? FOOD_WALK_KCAL_PER_H
-      : FOOD_REST_KCAL_PER_H;
-  if (foodBaseRate == null) foodBaseRate = target;
-  var blend = Math.min(dtSeconds / 5, 1);
-  foodBaseRate += (target - foodBaseRate) * blend;
-  var t = timeSeconds || 0;
-  function noise(seed) {
-    var x = Math.sin((t + seed) * 12.9898) * 43758.5453;
-    return x - Math.floor(x);
-  }
-  var freqBase = state === 'run' ? 2.4 : state === 'walk' ? 1.8 : 1.2;
-  var freq = freqBase * (1 + (noise(0) - 0.5) * 0.1);
-  var beat = Math.pow(0.5 + 0.5 * Math.sin(t * freq * 2 * Math.PI), 8);
-  var amp = 0.25 + (noise(1) - 0.5) * 0.05;
-  var jitter = 1 + (noise(2) - 0.5) * 0.02;
-  var rate = foodBaseRate * jitter * (1 + beat * amp); // kcal/h
-  var used = (rate / 3600) * dtSeconds;
-  var remaining = Math.max(0, energy_kcal - used);
-  var speed = Math.abs(speed_mps);
-  var instPer100km;
-  var efficiency = 0;
-  if (speed <= MIN_VALID_SPEED_MPS) {
-    instPer100km = rate / 4;
-  } else {
-    var speed_kmph = speed * 3.6;
-    instPer100km = (rate / speed_kmph) * 10;
-    efficiency = instPer100km > 0 ? 100 / instPer100km : 0; // km per kcal
-  }
-  return {
-    remaining: remaining,
-    rate: rate,
-    instPer100km: instPer100km,
-    efficiency: efficiency
-  };
-}
-
-function buildQueueGraphPoints(queue, width, height) {
-  if (!Array.isArray(queue) || queue.length < 2) return '';
-  var max = Math.max.apply(null, queue);
-  if (max <= 0) return '';
-  return queue
-    .map(function (val, i) {
-      var x = (i / (queue.length - 1)) * width;
-      var y = height - (val / max) * height;
-      return x.toFixed(1) + ',' + y.toFixed(1);
-    })
-    .join(' ');
-}
-
-function updateFoodHistories(
-  $scope,
-  res,
-  now_ms,
-  instantHistory,
-  instantEffHistory,
-  avgHistory,
-  saveInstantHistory,
-  saveInstantEffHistory,
-  saveAvgHistory,
-  INSTANT_MAX_ENTRIES,
-  AVG_MAX_ENTRIES,
-  MAX_EFFICIENCY
-) {
-  instantHistory.queue.push(res.rate);
-  trimQueue(instantHistory.queue, INSTANT_MAX_ENTRIES);
-  $scope.instantHistory = buildQueueGraphPoints(instantHistory.queue, 100, 40);
-  instantEffHistory.queue.push(
-    Number.isFinite(res.efficiency) ? Math.min(res.efficiency, MAX_EFFICIENCY) : MAX_EFFICIENCY
-  );
-  trimQueue(instantEffHistory.queue, INSTANT_MAX_ENTRIES);
-  var effMax = Math.max.apply(null, instantEffHistory.queue);
-  $scope.instantKmLHistory = buildQueueGraphPoints(
-    instantEffHistory.queue.map(function (v) {
-      return effMax - v;
-    }),
-    100,
-    40
-  );
-  if (!instantHistory.lastSaveTime) instantHistory.lastSaveTime = 0;
-  if (now_ms - instantHistory.lastSaveTime >= 100) {
-    saveInstantHistory();
-    instantHistory.lastSaveTime = now_ms;
-  }
-  if (!instantEffHistory.lastSaveTime) instantEffHistory.lastSaveTime = 0;
-  if (now_ms - instantEffHistory.lastSaveTime >= 100) {
-    saveInstantEffHistory();
-    instantEffHistory.lastSaveTime = now_ms;
-  }
-
-  avgHistory.queue.push(res.instPer100km);
-  trimQueue(avgHistory.queue, AVG_MAX_ENTRIES);
-  $scope.avgHistory = buildQueueGraphPoints(avgHistory.queue, 100, 40);
-  $scope.avgKmLHistory = buildQueueGraphPoints(
-    avgHistory.queue.map(function (v) {
-      return v > 0 ? Math.min(100 / v, MAX_EFFICIENCY) : MAX_EFFICIENCY;
-    }),
-    100,
-    40
-  );
-  if (!avgHistory.lastSaveTime) avgHistory.lastSaveTime = 0;
-  if (now_ms - avgHistory.lastSaveTime >= 100) {
-    saveAvgHistory();
-    avgHistory.lastSaveTime = now_ms;
-  }
-}
-
-
-const KM_PER_MILE = 1.60934;
-const LITERS_PER_GALLON = 3.78541;
-
-function getUnitLabels(mode) {
-  switch (mode) {
-    case 'imperial':
-      return {
-        distance: 'mi',
-        volume: 'gal',
-        consumption: 'gal/100mi',
-        efficiency: 'mi/gal',
-        flow: 'gal/h'
-      };
-    case 'electric':
-      return {
-        distance: 'km',
-        volume: 'kWh',
-        consumption: 'kWh/100km',
-        efficiency: 'km/kWh',
-        flow: 'kW'
-      };
-    case 'food':
-      return {
-        distance: 'km',
-        volume: 'kcal',
-        consumption: 'kcal/100km',
-        efficiency: 'km/kcal',
-        flow: 'kcal/h'
-      };
-    default:
-      return {
-        distance: 'km',
-        volume: 'L',
-        consumption: 'L/100km',
-        efficiency: 'km/L',
-        flow: 'L/h'
-      };
-  }
-}
-
-function formatDistance(meters, mode, decimals) {
-  if (!Number.isFinite(meters)) return 'Infinity';
-  const unit = getUnitLabels(mode).distance;
-  let value = meters / 1000;
-  if (mode === 'imperial') value = meters / (KM_PER_MILE * 1000) ;
-  return value.toFixed(decimals) + ' ' + unit;
-}
-
-function formatVolume(liters, mode, decimals) {
-  if (!Number.isFinite(liters)) return 'Infinity';
-  const unit = getUnitLabels(mode).volume;
-  let value = liters;
-  if (mode === 'imperial') value = liters / LITERS_PER_GALLON;
-  return value.toFixed(decimals) + ' ' + unit;
-}
-
-function formatConsumptionRate(lPer100km, mode, decimals) {
-  if (!Number.isFinite(lPer100km)) return 'Infinity';
-  const unit = getUnitLabels(mode).consumption;
-  let value = lPer100km;
-  if (mode === 'imperial') value = lPer100km / LITERS_PER_GALLON * KM_PER_MILE;
-  return value.toFixed(decimals) + ' ' + unit;
-}
-
-function formatEfficiency(kmPerL, mode, decimals) {
-  if (!Number.isFinite(kmPerL)) return 'Infinity';
-  const unit = getUnitLabels(mode).efficiency;
-  let value = kmPerL;
-  if (mode === 'imperial') value = kmPerL / KM_PER_MILE * LITERS_PER_GALLON;
-  return value.toFixed(decimals) + ' ' + unit;
-}
-
-function formatFlow(lPerHour, mode, decimals) {
-  if (!Number.isFinite(lPerHour)) return 'Infinity';
-  const unit = getUnitLabels(mode).flow;
-  let value = lPerHour;
-  if (mode === 'imperial') value = lPerHour / LITERS_PER_GALLON;
-  return value.toFixed(decimals) + ' ' + unit;
-}
-
-function convertVolumeToUnit(liters, mode) {
-  return mode === 'imperial' ? liters / LITERS_PER_GALLON : liters;
-}
-
-function convertDistanceToUnit(meters, mode) {
-  return mode === 'imperial' ? meters / (KM_PER_MILE * 1000) : meters / 1000;
-}
-
-function convertVolumePerDistance(lPerKm, mode) {
-  return mode === 'imperial'
-    ? (lPerKm * KM_PER_MILE) / LITERS_PER_GALLON
-    : lPerKm;
-}
-
-function extractValueUnit(str) {
-  if (typeof str !== 'string') return { value: null, unit: '' };
-  var trimmed = str.trim();
-  if (trimmed === '') return { value: null, unit: '' };
-  var parts = trimmed.split(/\s+/);
-  var num = parseFloat(parts.shift());
-  return { value: Number.isFinite(num) ? num : null, unit: parts.join(' ') };
-}
-
-function calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric) {
-  var base = CO2_FACTORS_G_PER_L[fuelType] != null
-    ? CO2_FACTORS_G_PER_L[fuelType]
-    : CO2_FACTORS_G_PER_L.Gasoline;
-  if (base === 0) {
-    return base;
-  }
-  if (!isElectric) {
-    var temp =
-      typeof engineTempC === 'number' ? engineTempC : EMISSIONS_BASE_TEMP_C;
-    var delta = Math.abs(temp - EMISSIONS_BASE_TEMP_C);
-    base = base * (1 + delta / 100);
-    if (n2oActive) base *= 1.2;
-  }
-  return base;
-}
-
-function calculateCO2gPerKm(lPer100km, fuelType, engineTempC, n2oActive, isElectric) {
-  var factor = calculateCO2Factor(fuelType, engineTempC, n2oActive, isElectric);
-  if (!Number.isFinite(lPer100km)) return Infinity;
-  var max = isElectric ? MAX_ELECTRIC_CONSUMPTION : MAX_CONSUMPTION;
-  var capped = Math.min(lPer100km, max);
-  return (capped / 100) * factor;
-}
-
-function calculateNOxFactor(fuelType, engineTempC, n2oActive, isElectric) {
-  if (isElectric) return 0;
-  var base = NOX_FACTORS_G_PER_L[fuelType] != null
-    ? NOX_FACTORS_G_PER_L[fuelType]
-    : NOX_FACTORS_G_PER_L.Gasoline;
-  var temp = typeof engineTempC === 'number' ? engineTempC : 0;
-  var tempExcess = Math.max(0, temp - EMISSIONS_BASE_TEMP_C);
-  base = base * (1 + tempExcess / 100);
-  if (n2oActive) base *= 1.2;
-  return base;
-}
-
-function formatCO2(gPerKm, decimals, mode) {
-  if (!Number.isFinite(gPerKm)) return 'Infinity';
-  var unit = 'g/km';
-  var value = gPerKm;
-  if (mode === 'imperial') {
-    unit = 'g/mi';
-    value = gPerKm * KM_PER_MILE;
-  }
-  return value.toFixed(decimals) + ' ' + unit;
-}
-
-function formatMass(total_g) {
-  if (!Number.isFinite(total_g) || total_g <= 0) return '';
-  if (total_g >= 1000) {
-    return (total_g / 1000).toFixed(2) + ' kg';
-  }
-  return total_g.toFixed(0) + ' g';
-}
-
-function classifyCO2(gPerKm) {
-  if (!Number.isFinite(gPerKm)) return 'G';
-  if (gPerKm <= 120) return 'A';
-  if (gPerKm <= 140) return 'B';
-  if (gPerKm <= 155) return 'C';
-  if (gPerKm <= 170) return 'D';
-  if (gPerKm <= 190) return 'E';
-  if (gPerKm <= 225) return 'F';
-  return 'G';
-}
-
-function meetsEuCo2Limit(gPerKm) {
-  return Number.isFinite(gPerKm) && gPerKm <= 120;
-}
-
-function formatFuelTypeLabel(fuelType) {
-  if (typeof fuelType === 'string') {
-    var lower = fuelType.toLowerCase();
-    if (!lower) {
-      return 'None';
-    }
-    if (lower.indexOf('electric') !== -1) {
-      return 'Electricity';
-    }
-    if (lower === 'compressedgas') {
-      return 'LPG/CNG';
-    }
-    return lower.charAt(0).toUpperCase() + lower.slice(1);
-  }
-  return fuelType || 'None';
-}
-
-function resolveUnitModeForFuelType(fuelType, liquidMode) {
-  if (typeof fuelType === 'string') {
-    var lower = fuelType.toLowerCase();
-    if (lower.indexOf('electric') !== -1) {
-      return 'electric';
-    }
-    if (lower === 'food') {
-      return 'food';
-    }
-  }
-  return liquidMode;
-}
-
-function resolveFuelType(prevType, rawType) {
-  if (!rawType) return prevType || '';
-  return rawType;
-}
-
-function shouldResetOnFoot(prevType, currentType) {
-  if (!currentType) return false;
-  var lower = currentType.toLowerCase();
-  return lower === 'food' && prevType !== currentType;
-}
-
-if (typeof module !== 'undefined') {
-  module.exports = {
-    EPS_SPEED,
-    MIN_VALID_SPEED_MPS,
-    MIN_RPM_RUNNING,
-    MAX_CONSUMPTION,
-    MAX_ELECTRIC_CONSUMPTION,
-    MAX_EFFICIENCY,
-    calculateFuelFlow,
-    calculateInstantConsumption,
-    normalizeRpm,
-    smoothFuelFlow,
-    trimQueue,
-    calculateMedian,
-    calculateAverage,
-    calculateAverageConsumption,
-    calculateRange,
-    resolveAverageConsumption,
-    buildQueueGraphPoints,
-    resolveSpeed,
-    isEngineRunning,
-    getUnitLabels,
-    formatDistance,
-    formatVolume,
-    formatConsumptionRate,
-    formatEfficiency,
-    formatFlow,
-    convertVolumeToUnit,
-    convertDistanceToUnit,
-    convertVolumePerDistance,
-    calculateCO2Factor,
-    calculateCO2gPerKm,
-    calculateNOxFactor,
-    formatCO2,
-    classifyCO2,
-    meetsEuCo2Limit,
-    resolveUnitModeForFuelType,
-    resolveFuelType,
-    formatFuelTypeLabel,
-    simulateFood,
-    resetFoodSimulation,
-    FOOD_CAPACITY_KCAL,
-    FOOD_REST_KCAL_PER_H,
-    shouldResetOnFoot,
-    updateFoodHistories,
-    loadFuelEmissionsConfig,
-    ensureFuelEmissionType,
-    loadFuelPriceConfig,
-    CO2_FACTORS_G_PER_L
-  };
-}
-
-function loadFuelEmissionsConfig(callback) {
-  var defaults = JSON.parse(JSON.stringify(DEFAULT_FUEL_EMISSIONS));
-
-  function applyCfg(cfg) {
-    CO2_FACTORS_G_PER_L = {};
-    NOX_FACTORS_G_PER_L = {};
-    Object.keys(cfg).forEach(function (k) {
-      var vals = cfg[k] || {};
-      CO2_FACTORS_G_PER_L[k] = typeof vals.CO2 === 'number' ? vals.CO2 : 0;
-      NOX_FACTORS_G_PER_L[k] = typeof vals.NOx === 'number' ? vals.NOx : 0;
-    });
-  }
-
-  if (typeof require === 'function' && typeof process !== 'undefined') {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const baseDir =
-        process.env.KRTEKTM_BNG_USER_DIR ||
-        path.join(
-          process.platform === 'win32'
-            ? process.env.LOCALAPPDATA || ''
-            : path.join(process.env.HOME || '', '.local', 'share'),
-          'BeamNG.drive'
-        );
-      const versions = fs
-        .readdirSync(baseDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      const latest = versions[versions.length - 1];
-      if (!latest) {
-        applyCfg(defaults);
-        if (typeof callback === 'function') callback(defaults);
-        return defaults;
-      }
-      const settingsDir = path.join(
-        baseDir,
-        latest,
-        'settings',
-        'krtektm_fuelEconomy'
-      );
-      fs.mkdirSync(settingsDir, { recursive: true });
-      const userFile = path.join(settingsDir, 'fuelEmissions.json');
-      loadFuelEmissionsConfig.userFile = userFile;
-      let data = {};
-      if (fs.existsSync(userFile)) {
-        try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
-      }
-      const merged = JSON.parse(JSON.stringify(defaults));
-      Object.keys(data).forEach(function (k) {
-        if (!merged[k]) merged[k] = { CO2: 0, NOx: 0 };
-        if (typeof data[k].CO2 === 'number') merged[k].CO2 = data[k].CO2;
-        if (typeof data[k].NOx === 'number') merged[k].NOx = data[k].NOx;
-      });
-      const changed = JSON.stringify(merged) !== JSON.stringify(data);
-      if (changed)
-        fs.writeFileSync(userFile, JSON.stringify(merged, null, 2));
-      applyCfg(merged);
-      if (typeof callback === 'function') callback(merged);
-      return merged;
-    } catch (e) {
-      applyCfg(defaults);
-      if (typeof callback === 'function') callback(defaults);
-      return defaults;
-    }
-  }
-
-  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
-    try {
-      var defaultsJson = JSON.stringify(DEFAULT_FUEL_EMISSIONS);
-      var lua = [
-        '(function()',
-        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
-        "local dir=user..'settings/krtektm_fuelEconomy/'",
-        'FS:directoryCreate(dir)',
-        "local p=dir..'fuelEmissions.json'",
-        'local cfg=jsonReadFile(p) or {}',
-        'local defaults=jsonDecode(' + JSON.stringify(defaultsJson) + ')',
-        'local changed=false',
-        'for fuel,vals in pairs(defaults) do',
-        "  if type(cfg[fuel])~='table' then cfg[fuel]={CO2=vals.CO2,NOx=vals.NOx}; changed=true",
-        '  else',
-        '    if cfg[fuel].CO2==nil then cfg[fuel].CO2=vals.CO2; changed=true end',
-        '    if cfg[fuel].NOx==nil then cfg[fuel].NOx=vals.NOx; changed=true end',
-        '  end',
-        'end',
-        'if changed then jsonWriteFile(p,cfg) end',
-        'return jsonEncode(cfg)',
-        'end)()'
-      ].join('\n');
-      bngApi.engineLua(lua, function (res) {
-        var cfg = defaults;
-        try { cfg = JSON.parse(res); } catch (e) {}
-        applyCfg(cfg);
-        if (typeof callback === 'function') callback(cfg);
-      });
-    } catch (e) {
-      applyCfg(defaults);
-      if (typeof callback === 'function') callback(defaults);
-    }
-    return defaults;
-  }
-
-  applyCfg(defaults);
-  if (typeof callback === 'function') callback(defaults);
-  return defaults;
-}
-
-function ensureFuelEmissionType(name) {
-  if (!name || name === 'None') return;
-  if (CO2_FACTORS_G_PER_L[name] != null && NOX_FACTORS_G_PER_L[name] != null) return;
-  if (CO2_FACTORS_G_PER_L[name] == null) CO2_FACTORS_G_PER_L[name] = 0;
-  if (NOX_FACTORS_G_PER_L[name] == null) NOX_FACTORS_G_PER_L[name] = 0;
-  if (typeof require === 'function' && loadFuelEmissionsConfig.userFile) {
-    try {
-      const fs = require('fs');
-      const data = {};
-      Object.keys(CO2_FACTORS_G_PER_L).forEach(function (k) {
-        data[k] = {
-          CO2: CO2_FACTORS_G_PER_L[k],
-          NOx: NOX_FACTORS_G_PER_L[k]
-        };
-      });
-      fs.writeFileSync(
-        loadFuelEmissionsConfig.userFile,
-        JSON.stringify(data, null, 2)
-      );
-    } catch (e) {}
-  } else if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
-    var lua = [
-      "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
-      "local dir=user..'settings/krtektm_fuelEconomy/'",
-      'FS:directoryCreate(dir)',
-      "local p=dir..'fuelEmissions.json'",
-      'local cfg=jsonReadFile(p)',
-      'if not cfg then cfg={} end',
-      'if cfg[' + JSON.stringify(name) + ']==nil then cfg[' + JSON.stringify(name) + ']={CO2=0,NOx=0} jsonWriteFile(p,cfg) end'
-    ].join('\n');
-    try { bngApi.engineLua(lua); } catch (e) {}
-  }
-}
-
-function loadFuelPriceConfig(callback) {
-  var defaults = {
-    prices: { Gasoline: 0, Electricity: 0 },
-    currency: 'money'
-  };
-
-  if (typeof require === 'function' && typeof process !== 'undefined') {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const cfg = JSON.parse(
-        fs.readFileSync(path.join(__dirname, 'fuelPrice.json'), 'utf8')
-      );
-      defaults = cfg;
-
-      const baseDir =
-        process.env.KRTEKTM_BNG_USER_DIR ||
-        path.join(
-          process.platform === 'win32'
-            ? process.env.LOCALAPPDATA || ''
-            : path.join(process.env.HOME || '', '.local', 'share'),
-          'BeamNG.drive'
-        );
-
-      const versions = fs
-        .readdirSync(baseDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      const latest = versions[versions.length - 1];
-      if (!latest) {
-        if (typeof callback === 'function') callback(defaults);
-        return defaults;
-      }
-      const settingsDir = path.join(
-        baseDir,
-        latest,
-        'settings',
-        'krtektm_fuelEconomy'
-      );
-      fs.mkdirSync(settingsDir, { recursive: true });
-      const userFile = path.join(settingsDir, 'fuelPrice.json');
-      loadFuelPriceConfig.userFile = userFile;
-      if (!fs.existsSync(userFile)) {
-        fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
-        if (typeof callback === 'function') callback(defaults);
-        return defaults;
-      }
-      let data = {};
-      try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
-      var prices = {};
-      if (data.prices && typeof data.prices === 'object') {
-        Object.keys(data.prices).forEach(k => {
-          prices[k] = parseFloat(data.prices[k]) || 0;
-        });
-      } else {
-        if (typeof data.liquidFuelPrice !== 'undefined') prices.Gasoline = parseFloat(data.liquidFuelPrice) || 0;
-        if (typeof data.electricityPrice !== 'undefined') prices.Electricity = parseFloat(data.electricityPrice) || 0;
-      }
-      if (prices.Gasoline === undefined) prices.Gasoline = 0;
-      if (prices.Electricity === undefined) prices.Electricity = 0;
-      const cfgObj = {
-        prices,
-        currency: data.currency || 'money'
-      };
-      const changed = JSON.stringify(cfgObj) !== JSON.stringify(data);
-      if (changed) fs.writeFileSync(userFile, JSON.stringify(cfgObj, null, 2));
-      if (typeof callback === 'function') callback(cfgObj);
-      return cfgObj;
-    } catch (e) {
-      if (typeof callback === 'function') callback(defaults);
-      return defaults;
-    }
-  }
-
-  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
-    try {
-      const lua = [
-        '(function()',
-        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
-        "local dir=user..'settings/krtektm_fuelEconomy/'",
-        'FS:directoryCreate(dir)',
-        "local p=dir..'fuelPrice.json'",
-        'local cfg=jsonReadFile(p) or {}',
-        'local changed=false',
-        "if cfg.prices==nil then cfg.prices={Gasoline=0,Electricity=0}; changed=true end",
-        "if cfg.liquidFuelPrice~=nil then cfg.prices.Gasoline=cfg.liquidFuelPrice; cfg.liquidFuelPrice=nil; changed=true end",
-        "if cfg.electricityPrice~=nil then cfg.prices.Electricity=cfg.electricityPrice; cfg.electricityPrice=nil; changed=true end",
-        "if cfg.prices.Gasoline==nil then cfg.prices.Gasoline=0; changed=true end",
-        "if cfg.prices.Electricity==nil then cfg.prices.Electricity=0; changed=true end",
-        "if cfg.currency==nil then cfg.currency='money'; changed=true end",
-        'if changed then jsonWriteFile(p,cfg) end',
-        "return jsonEncode({prices=cfg.prices,currency=cfg.currency})",
-        'end)()'
-      ].join('\n');
-      bngApi.engineLua(lua, function (res) {
-        var cfg = defaults;
-        try { cfg = JSON.parse(res); } catch (e) { /* ignore */ }
-        if (typeof callback === 'function') callback(cfg);
-      });
-    } catch (e) {
-      if (typeof callback === 'function') callback(defaults);
-    }
-    return defaults;
-  }
-
-  if (typeof callback === 'function') callback(defaults);
-  return defaults;
-}
-
-function loadAvgConsumptionAlgorithm(callback) {
-  var algo = 'optimized';
-  if (typeof require === 'function' && typeof process !== 'undefined') {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const baseDir =
-        process.env.KRTEKTM_BNG_USER_DIR ||
-        path.join(
-          process.platform === 'win32'
-            ? process.env.LOCALAPPDATA || ''
-            : path.join(process.env.HOME || '', '.local', 'share'),
-          'BeamNG.drive'
-        );
-      const versions = fs
-        .readdirSync(baseDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      const latest = versions[versions.length - 1];
-      if (latest) {
-        const settingsDir = path.join(
-          baseDir,
-          latest,
-          'settings',
-          'krtektm_fuelEconomy'
-        );
-        fs.mkdirSync(settingsDir, { recursive: true });
-        const userFile = path.join(settingsDir, 'settings.json');
-        let data = {};
-        if (fs.existsSync(userFile)) {
-          try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
-        }
-        if (data.AvgConsumptionAlgorithm !== 'direct' && data.AvgConsumptionAlgorithm !== 'optimized') {
-          data.AvgConsumptionAlgorithm = 'optimized';
-          fs.writeFileSync(userFile, JSON.stringify(data, null, 2));
-        }
-        algo = data.AvgConsumptionAlgorithm;
-      }
-    } catch (e) { /* ignore */ }
-    if (typeof callback === 'function') callback(algo);
-    return algo;
-  }
-  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
-    try {
-      var lua = [
-        '(function()',
-        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
-        "local dir=user..'settings/krtektm_fuelEconomy/'",
-        'FS:directoryCreate(dir)',
-        "local p=dir..'settings.json'",
-        'local cfg=jsonReadFile(p) or {}',
-        "if cfg.AvgConsumptionAlgorithm==nil then cfg.AvgConsumptionAlgorithm='optimized'; jsonWriteFile(p,cfg,true) end",
-        "return cfg.AvgConsumptionAlgorithm or 'optimized'",
-        'end)()'
-      ].join('\n');
-      bngApi.engineLua(lua, function (res) {
-        var val = res === 'direct' ? 'direct' : 'optimized';
-        if (typeof callback === 'function') callback(val);
-      });
-    } catch (e) {
-      if (typeof callback === 'function') callback(algo);
-    }
-    return algo;
-  }
-  if (typeof callback === 'function') callback(algo);
-  return algo;
-}
-
-function saveAvgConsumptionAlgorithm(algo) {
-  algo = algo === 'direct' ? 'direct' : 'optimized';
-  if (typeof require === 'function' && typeof process !== 'undefined') {
-    try {
-      const fs = require('fs');
-      const path = require('path');
-      const baseDir =
-        process.env.KRTEKTM_BNG_USER_DIR ||
-        path.join(
-          process.platform === 'win32'
-            ? process.env.LOCALAPPDATA || ''
-            : path.join(process.env.HOME || '', '.local', 'share'),
-          'BeamNG.drive'
-        );
-      const versions = fs
-        .readdirSync(baseDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      const latest = versions[versions.length - 1];
-      if (latest) {
-        const settingsDir = path.join(
-          baseDir,
-          latest,
-          'settings',
-          'krtektm_fuelEconomy'
-        );
-        fs.mkdirSync(settingsDir, { recursive: true });
-        const userFile = path.join(settingsDir, 'settings.json');
-        let data = {};
-        if (fs.existsSync(userFile)) {
-          try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
-        }
-        if (data.AvgConsumptionAlgorithm !== algo) {
-          data.AvgConsumptionAlgorithm = algo;
-          fs.writeFileSync(userFile, JSON.stringify(data, null, 2));
-        }
-      }
-    } catch (e) { /* ignore */ }
-    return algo;
-  }
-  if (typeof bngApi !== 'undefined' && typeof bngApi.engineLua === 'function') {
-    try {
-      var lua = [
-        '(function()',
-        "local user=(core_paths and core_paths.getUserPath and core_paths.getUserPath()) or ''",
-        "local dir=user..'settings/krtektm_fuelEconomy/'",
-        'FS:directoryCreate(dir)',
-        "local p=dir..'settings.json'",
-        'local cfg=jsonReadFile(p) or {}',
-        "cfg.AvgConsumptionAlgorithm='" + (algo === 'direct' ? "direct" : "optimized") + "'",
-        'jsonWriteFile(p,cfg,true)',
-        'end)()'
-      ].join('\n');
-      bngApi.engineLua(lua);
-    } catch (e) { /* ignore */ }
-  }
-  return algo;
-}
-
-if (typeof module !== 'undefined') {
-  module.exports.loadAvgConsumptionAlgorithm = loadAvgConsumptionAlgorithm;
-  module.exports.saveAvgConsumptionAlgorithm = saveAvgConsumptionAlgorithm;
-}
+module.exports = {
+  EPS_SPEED,
+  MIN_VALID_SPEED_MPS,
+  MIN_RPM_RUNNING,
+  MAX_CONSUMPTION,
+  MAX_ELECTRIC_CONSUMPTION,
+  MAX_EFFICIENCY,
+  calculateFuelFlow,
+  normalizeRpm,
+  calculateInstantConsumption,
+  smoothFuelFlow,
+  trimQueue,
+  calculateMedian,
+  calculateAverage,
+  calculateAverageConsumption,
+  calculateRange,
+  resolveAverageConsumption,
+  buildQueueGraphPoints,
+  resolveSpeed,
+  isEngineRunning,
+  getUnitLabels,
+  formatDistance,
+  formatVolume,
+  formatConsumptionRate,
+  formatEfficiency,
+  formatFlow,
+  convertVolumeToUnit,
+  convertDistanceToUnit,
+  convertVolumePerDistance,
+  calculateCO2Factor,
+  calculateCO2gPerKm,
+  calculateNOxFactor,
+  formatCO2,
+  classifyCO2,
+  meetsEuCo2Limit,
+  resolveUnitModeForFuelType,
+  resolveFuelType,
+  formatFuelTypeLabel,
+  simulateFood,
+  resetFoodSimulation,
+  FOOD_CAPACITY_KCAL,
+  FOOD_REST_KCAL_PER_H,
+  EU_SPEED_WINDOW_MS,
+  shouldResetOnFoot,
+  updateFoodHistories,
+  loadFuelEmissionsConfig,
+  ensureFuelEmissionType,
+  loadFuelPriceConfig,
+  loadAvgConsumptionAlgorithm,
+  saveAvgConsumptionAlgorithm,
+  CO2_FACTORS_G_PER_L,
+  DEFAULT_CO2_FACTORS_G_PER_L,
+  DEFAULT_NOX_FACTORS_G_PER_L,
+  DEFAULT_FUEL_EMISSIONS,
+  KM_PER_MILE,
+  LITERS_PER_GALLON,
+  formatMass,
+  extractValueUnit
+};
 
 angular.module('beamng.apps')
 .directive('okFuelEconomy', [function () {
