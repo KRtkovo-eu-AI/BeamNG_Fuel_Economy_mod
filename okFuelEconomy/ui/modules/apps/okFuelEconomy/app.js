@@ -1124,25 +1124,34 @@ angular.module('beamng.apps')
 
       $scope.gamePaused = false;
 
+      function updateGamePausedState(paused) {
+        var normalized =
+          paused === true ||
+          paused === 1 ||
+          paused === '1' ||
+          paused === 'true';
+        var changed = $scope.gamePaused !== normalized;
+        $scope.gamePaused = normalized;
+        if (normalized) {
+          lastTime_ms = performance.now();
+        }
+        if (changed) {
+          sendWebData();
+        }
+        return changed;
+      }
+
       function pollGamePaused() {
         if (!bngApi || typeof bngApi.engineLua !== 'function') return;
         bngApi.engineLua(
           'extensions.okGameState and extensions.okGameState.getState and extensions.okGameState.getState().paused',
           function (res) {
-            var paused =
-              res === true || res === 1 || res === '1' || res === 'true';
             if (typeof $scope.$evalAsync === 'function') {
               $scope.$evalAsync(function () {
-                $scope.gamePaused = paused;
-                if (paused) {
-                  lastTime_ms = performance.now();
-                }
+                updateGamePausedState(res);
               });
             } else {
-              $scope.gamePaused = paused;
-              if (paused) {
-                lastTime_ms = performance.now();
-              }
+              updateGamePausedState(res);
             }
           }
         );
@@ -2401,12 +2410,15 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
+          var pausedChanged = false;
           if (streams.okGameState && typeof streams.okGameState.paused !== 'undefined') {
-            $scope.gamePaused = !!streams.okGameState.paused;
+            pausedChanged = updateGamePausedState(streams.okGameState.paused);
           }
           if ($scope.gamePaused) {
             lastTime_ms = performance.now();
-            sendWebData();
+            if (!pausedChanged) {
+              sendWebData();
+            }
             return;
           }
           if ($scope.fuelType === 'Food') {
