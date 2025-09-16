@@ -21,15 +21,18 @@ function setupControllerEnvironment(savedOrder, defaultOrder) {
 
   function createParent() {
     const children = [];
-    return {
+    const parent = {
       children,
+      mutationCount: 0,
       appendChild(node) {
         const idx = children.indexOf(node);
         if (idx !== -1) children.splice(idx, 1);
         children.push(node);
         node.parentElement = this;
+        parent.mutationCount += 1;
       }
     };
+    return parent;
   }
 
   function createRow(id) {
@@ -132,6 +135,7 @@ function setupControllerEnvironment(savedOrder, defaultOrder) {
     settingsList,
     settingMap,
     storedOrders,
+    getDataRowMutations: () => dataRows.mutationCount,
     getRowIds: () => dataRows.children.map(node => node.id),
     getSettingIds: () => settingsList.children.map(item => item.getAttribute('data-row')),
     removeRow,
@@ -182,6 +186,21 @@ describe('settings row order management', () => {
       env.addRowAtStart('row-range');
       env.triggerObserver();
       assert.deepStrictEqual(env.getRowIds(), savedOrder);
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it('avoids redundant reordering when the DOM already matches the desired order', () => {
+    const defaultOrder = ['row-distance', 'row-fuel', 'row-range'];
+    const env = setupControllerEnvironment(null, defaultOrder);
+    try {
+      env.removeRow('row-fuel');
+      env.triggerObserver();
+      const firstMutations = env.getDataRowMutations();
+      assert.ok(firstMutations > 0);
+      env.triggerObserver();
+      assert.strictEqual(env.getDataRowMutations(), firstMutations);
     } finally {
       env.cleanup();
     }

@@ -1273,17 +1273,33 @@ angular.module('beamng.apps')
 
         var tbody = document.getElementById('dataRows');
         if (tbody) {
-          applyingRowOrder = true;
-          try {
-            rowOrder.forEach(function (id) {
-              var rowEl = document.getElementById(id);
-              if (rowEl && rowEl.parentElement === tbody) {
-                tbody.appendChild(rowEl);
-              }
-            });
-          } finally {
-            applyingRowOrder = false;
+          var currentIds = Array.prototype.slice
+            .call(tbody.children)
+            .map(function (row) { return row && row.id; })
+            .filter(Boolean);
+          var desiredRows = [];
+          var desiredIds = [];
+          rowOrder.forEach(function (id) {
+            var rowEl = document.getElementById(id);
+            if (rowEl && rowEl.parentElement === tbody) {
+              desiredRows.push({ id: id, el: rowEl });
+              desiredIds.push(id);
+            }
+          });
+          var needsReorder =
+            currentIds.length !== desiredIds.length ||
+            desiredIds.some(function (id, idx) { return currentIds[idx] !== id; });
+          if (needsReorder) {
+            applyingRowOrder = true;
+            try {
+              desiredRows.forEach(function (entry) {
+                tbody.appendChild(entry.el);
+              });
+            } finally {
+              applyingRowOrder = false;
+            }
           }
+          changed = changed || needsReorder;
         }
 
         var settingsList = document.getElementById('settingsList');
@@ -1296,10 +1312,21 @@ angular.module('beamng.apps')
               : null;
             if (key) settingsMap[key] = item;
           });
-          rowOrder.forEach(function (id) {
-            var item = settingsMap[id];
-            if (item) settingsList.appendChild(item);
+          var desiredSettings = rowOrder
+            .map(function (id) { return settingsMap[id]; })
+            .filter(Boolean);
+          settingsChildren.forEach(function (item) {
+            if (desiredSettings.indexOf(item) === -1) desiredSettings.push(item);
           });
+          var needsSettingsReorder =
+            desiredSettings.length !== settingsChildren.length ||
+            desiredSettings.some(function (item, idx) { return settingsChildren[idx] !== item; });
+          if (needsSettingsReorder) {
+            desiredSettings.forEach(function (item) {
+              settingsList.appendChild(item);
+            });
+          }
+          changed = changed || needsSettingsReorder;
         }
 
         return changed;
