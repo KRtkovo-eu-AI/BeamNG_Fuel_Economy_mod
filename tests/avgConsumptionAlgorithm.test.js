@@ -57,6 +57,32 @@ describe('average consumption algorithm config', () => {
     if (prev === undefined) delete process.env.KRTEKTM_BNG_USER_DIR; else process.env.KRTEKTM_BNG_USER_DIR = prev;
   });
 
+  it('works with the BeamNG current user folder layout', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'algcur-'));
+    const base = path.join(tmp, 'BeamNG', 'BeamNG.drive');
+    const current = path.join(base, 'current');
+    fs.mkdirSync(current, { recursive: true });
+    const prev = process.env.KRTEKTM_BNG_USER_DIR;
+    process.env.KRTEKTM_BNG_USER_DIR = base;
+
+    const algo = loadAvgConsumptionAlgorithm();
+    assert.strictEqual(algo, 'optimized');
+    const settingsFile = path.join(
+      current,
+      'settings',
+      'krtektm_fuelEconomy',
+      'settings.json'
+    );
+    const data = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+    assert.strictEqual(data.AvgConsumptionAlgorithm, 'optimized');
+
+    saveAvgConsumptionAlgorithm('direct');
+    const updated = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+    assert.strictEqual(updated.AvgConsumptionAlgorithm, 'direct');
+
+    if (prev === undefined) delete process.env.KRTEKTM_BNG_USER_DIR; else process.env.KRTEKTM_BNG_USER_DIR = prev;
+  });
+
   it('computes average consumption directly', async () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };

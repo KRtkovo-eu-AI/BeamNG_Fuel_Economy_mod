@@ -44,4 +44,33 @@ describe('fuel emissions config', () => {
 
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
+
+  it('handles the BeamNG current user folder layout', async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'emcur-'));
+    const base = path.join(tmp, 'BeamNG', 'BeamNG.drive');
+    const current = path.join(base, 'current');
+    fs.mkdirSync(current, { recursive: true });
+    const prev = process.env.KRTEKTM_BNG_USER_DIR;
+    process.env.KRTEKTM_BNG_USER_DIR = base;
+
+    const cfg = loadFuelEmissionsConfig();
+    const expected = path.join(
+      current,
+      'settings',
+      'krtektm_fuelEconomy',
+      'fuelEmissions.json'
+    );
+    assert.strictEqual(loadFuelEmissionsConfig.userFile, expected);
+    assert.ok(fs.existsSync(expected));
+    const saved = JSON.parse(fs.readFileSync(expected, 'utf8'));
+    assert.deepStrictEqual(saved, cfg);
+
+    await new Promise(r => setTimeout(r, 20));
+    ensureFuelEmissionType('BeamFuel');
+    const updated = JSON.parse(fs.readFileSync(expected, 'utf8'));
+    assert.ok(updated.BeamFuel);
+
+    if (prev === undefined) delete process.env.KRTEKTM_BNG_USER_DIR;
+    else process.env.KRTEKTM_BNG_USER_DIR = prev;
+  });
 });

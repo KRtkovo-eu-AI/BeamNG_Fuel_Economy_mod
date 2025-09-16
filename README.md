@@ -46,10 +46,10 @@ Data are gathered via `StreamsManager` from the *electrics* and *engineInfo* cha
 
 ## Fuel price configuration
 
-Fuel cost calculations use values stored in `AppData/Local/BeamNG.drive/{version}/settings/krtektm_fuelEconomy/fuelPrice.json`. You can change them in two ways:
+Fuel cost calculations use values stored in `AppData/Local/BeamNG.drive/{version}/settings/krtektm_fuelEconomy/fuelPrice.json` (BeamNG 0.36 and earlier) or `AppData/Local/BeamNG/BeamNG.drive/current/settings/krtektm_fuelEconomy/fuelPrice.json` (BeamNG 0.37 and newer). You can change them in two ways:
 
 1. Use the in-game fuel price dialog to set the values directly. This UI writes to the same `fuelPrice.json` file.
-2. Manually edit `fuelPrice.json` yourself (for example `C:/Users/<your user>/AppData/Local/BeamNG.drive/<version>/settings/krtektm_fuelEconomy/fuelPrice.json` on Windows) and set the values inside the `prices` object (such as `Gasoline` and `Electricity`), optionally adding a `currency` label (e.g. `$`, `€`).
+2. Manually edit `fuelPrice.json` yourself (for example `C:/Users/<your user>/AppData/Local/BeamNG/BeamNG.drive/current/settings/krtektm_fuelEconomy/fuelPrice.json` on Windows 0.37+ or the `BeamNG.drive/<version>` path on older installs) and set the values inside the `prices` object (such as `Gasoline` and `Electricity`), optionally adding a `currency` label (e.g. `$`, `€`).
 
 Existing installations using the legacy `liquidFuelPrice` and `electricityPrice` fields are upgraded automatically when the app loads.
 

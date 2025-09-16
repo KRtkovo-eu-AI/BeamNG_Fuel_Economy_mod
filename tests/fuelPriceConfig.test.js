@@ -26,4 +26,38 @@ describe('fuel price config', () => {
     if (prev === undefined) delete process.env.KRTEKTM_BNG_USER_DIR;
     else process.env.KRTEKTM_BNG_USER_DIR = prev;
   });
+
+  it('loads config from the BeamNG current directory layout', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fpcur-'));
+    const base = path.join(tmp, 'BeamNG', 'BeamNG.drive');
+    const current = path.join(base, 'current');
+    fs.mkdirSync(current, { recursive: true });
+    const prev = process.env.KRTEKTM_BNG_USER_DIR;
+    process.env.KRTEKTM_BNG_USER_DIR = base;
+
+    const cfg1 = loadFuelPriceConfig();
+    const expected = path.join(
+      current,
+      'settings',
+      'krtektm_fuelEconomy',
+      'fuelPrice.json'
+    );
+    assert.strictEqual(loadFuelPriceConfig.userFile, expected);
+    assert.ok(fs.existsSync(expected));
+    assert.strictEqual(cfg1.currency, 'money');
+    assert.strictEqual(cfg1.prices.Gasoline, 0);
+    assert.strictEqual(cfg1.prices.Electricity, 0);
+
+    fs.writeFileSync(
+      expected,
+      JSON.stringify({ prices: { Gasoline: 3.5, Electricity: 1.2 }, currency: 'Kč' })
+    );
+    const cfg2 = loadFuelPriceConfig();
+    assert.strictEqual(cfg2.currency, 'Kč');
+    assert.strictEqual(cfg2.prices.Gasoline, 3.5);
+    assert.strictEqual(cfg2.prices.Electricity, 1.2);
+
+    if (prev === undefined) delete process.env.KRTEKTM_BNG_USER_DIR;
+    else process.env.KRTEKTM_BNG_USER_DIR = prev;
+  });
 });
