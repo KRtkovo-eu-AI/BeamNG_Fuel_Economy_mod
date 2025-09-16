@@ -1191,6 +1191,9 @@ angular.module('beamng.apps')
         StreamsManager.remove(streamsList);
         clearInterval(priceTimer);
         clearInterval(emissionsTimer);
+        if (rowObserver && typeof rowObserver.disconnect === 'function') {
+          rowObserver.disconnect();
+        }
       });
 
       // Settings for visible fields
@@ -1199,6 +1202,240 @@ angular.module('beamng.apps')
       var STYLE_KEY = 'okFuelEconomyUseCustomStyles';
       var PREFERRED_UNIT_KEY = 'okFuelEconomyPreferredUnit';
       var ROW_ORDER_KEY = 'okFeRowOrder';
+      var rowOrder = [];
+      var defaultRowOrder = [];
+      var rowAnchorMap = {};
+      var rowObserver = null;
+      var applyingRowOrder = false;
+      try {
+        var storedRowOrder = JSON.parse(localStorage.getItem(ROW_ORDER_KEY));
+        if (Array.isArray(storedRowOrder)) rowOrder = storedRowOrder.slice();
+      } catch (e) {
+        rowOrder = [];
+      }
+
+      function isWhitespaceNode(node) {
+        return node && node.nodeType === 3 && !(node.textContent || '').trim();
+      }
+
+      function findRowAnchors(rowEl) {
+        var anchors = { before: null, after: null };
+        if (!rowEl || !rowEl.parentNode) return anchors;
+        var prev = rowEl.previousSibling;
+        while (isWhitespaceNode(prev)) {
+          prev = prev.previousSibling;
+        }
+        if (prev && prev.nodeType === 8) {
+          anchors.before = prev;
+        }
+        var next = rowEl.nextSibling;
+        while (isWhitespaceNode(next)) {
+          next = next.nextSibling;
+        }
+        if (next && next.nodeType === 8) {
+          anchors.after = next;
+        }
+        return anchors;
+      }
+
+      function getRowAnchors(id, rowEl, parent) {
+        var anchors = rowAnchorMap[id];
+        var beforeOwner = anchors && anchors.before ? anchors.before.parentNode || anchors.before.parentElement : null;
+        var afterOwner = anchors && anchors.after ? anchors.after.parentNode || anchors.after.parentElement : null;
+        if (!anchors || (anchors.before && beforeOwner !== parent) || (anchors.after && afterOwner !== parent)) {
+          anchors = findRowAnchors(rowEl);
+          if (anchors.before || anchors.after) {
+            rowAnchorMap[id] = anchors;
+          }
+        }
+        return anchors || {};
+      }
+
+      function collectRowNodes(rowEl, parent) {
+        var nodes = [];
+        if (!rowEl || rowEl.parentNode !== parent) return nodes;
+        var id = rowEl.id;
+        var anchors = getRowAnchors(id, rowEl, parent);
+        var beforeOwner = anchors.before ? anchors.before.parentNode || anchors.before.parentElement : null;
+        if (anchors.before && beforeOwner === parent) {
+          nodes.push(anchors.before);
+          var lead = anchors.before.nextSibling;
+          while (lead && lead !== rowEl && isWhitespaceNode(lead)) {
+            nodes.push(lead);
+            lead = lead.nextSibling;
+          }
+        }
+        nodes.push(rowEl);
+        var afterOwner = anchors.after ? anchors.after.parentNode || anchors.after.parentElement : null;
+        if (anchors.after && afterOwner === parent) {
+          var trail = rowEl.nextSibling;
+          while (trail && trail !== anchors.after && isWhitespaceNode(trail)) {
+            nodes.push(trail);
+            trail = trail.nextSibling;
+          }
+          nodes.push(anchors.after);
+        }
+        return nodes;
+      }
+
+      function ensureDefaultOrder() {
+        if (defaultRowOrder.length || typeof document === 'undefined') return;
+        var settingsList = document.getElementById('settingsList');
+        if (settingsList && settingsList.children) {
+          defaultRowOrder = Array.prototype.slice
+            .call(settingsList.children)
+            .map(function (item) {
+              return item.getAttribute('data-row');
+            })
+            .filter(Boolean);
+        } else {
+          var tbody = document.getElementById('dataRows');
+          if (tbody && tbody.children) {
+            defaultRowOrder = Array.prototype.slice
+              .call(tbody.children)
+              .map(function (row) {
+                return row && row.id;
+              })
+              .filter(Boolean);
+          }
+        }
+        if (typeof document !== 'undefined') {
+          defaultRowOrder.forEach(function (id) {
+            if (!rowAnchorMap[id]) {
+              var rowEl = document.getElementById(id);
+              if (rowEl) {
+                var anchors = findRowAnchors(rowEl);
+                if (anchors.before || anchors.after) {
+                  rowAnchorMap[id] = anchors;
+                }
+              }
+            }
+          });
+        }
+      }
+
+      function mergeRowOrder(existing) {
+        ensureDefaultOrder();
+        var allowed = defaultRowOrder;
+        if (!allowed.length) {
+          return Array.isArray(existing) ? existing.slice() : [];
+        }
+        var merged = [];
+        if (Array.isArray(existing)) {
+          existing.forEach(function (id) {
+            if (id && allowed.indexOf(id) !== -1 && merged.indexOf(id) === -1) {
+              merged.push(id);
+            }
+          });
+        }
+        allowed.forEach(function (id) {
+          if (merged.indexOf(id) === -1) merged.push(id);
+        });
+        return merged;
+      }
+
+      function persistRowOrder() {
+        try {
+          localStorage.setItem(ROW_ORDER_KEY, JSON.stringify(rowOrder));
+        } catch (e) { /* ignore */ }
+        sendWebData();
+      }
+
+      function applyRowOrder() {
+        if (typeof document === 'undefined') return false;
+        var merged = mergeRowOrder(rowOrder);
+        var changed =
+          merged.length !== rowOrder.length ||
+          merged.some(function (id, idx) { return id !== rowOrder[idx]; });
+        rowOrder = merged;
+
+        var tbody = document.getElementById('dataRows');
+        if (tbody) {
+          var currentIds = Array.prototype.slice
+            .call(tbody.children)
+            .map(function (row) { return row && row.id; })
+            .filter(Boolean);
+          var desiredRows = [];
+          var desiredIds = [];
+          rowOrder.forEach(function (id) {
+            var rowEl = document.getElementById(id);
+            if (rowEl && rowEl.parentElement === tbody) {
+              var nodes = collectRowNodes(rowEl, tbody);
+              if (!nodes.length) nodes = [rowEl];
+              desiredRows.push({ id: id, nodes: nodes });
+              desiredIds.push(id);
+            }
+          });
+          var needsReorder =
+            currentIds.length !== desiredIds.length ||
+            desiredIds.some(function (id, idx) { return currentIds[idx] !== id; });
+          if (needsReorder) {
+            applyingRowOrder = true;
+            try {
+              desiredRows.forEach(function (entry) {
+                entry.nodes.forEach(function (node) {
+                  if (!node) return;
+                  var owner = node.parentNode || node.parentElement;
+                  if (owner === tbody) {
+                    tbody.appendChild(node);
+                  }
+                });
+              });
+            } finally {
+              applyingRowOrder = false;
+            }
+          }
+          changed = changed || needsReorder;
+        }
+
+        var settingsList = document.getElementById('settingsList');
+        if (settingsList && settingsList.children) {
+          var settingsChildren = Array.prototype.slice.call(settingsList.children);
+          var settingsMap = {};
+          settingsChildren.forEach(function (item) {
+            var key = item && typeof item.getAttribute === 'function'
+              ? item.getAttribute('data-row')
+              : null;
+            if (key) settingsMap[key] = item;
+          });
+          var desiredSettings = rowOrder
+            .map(function (id) { return settingsMap[id]; })
+            .filter(Boolean);
+          settingsChildren.forEach(function (item) {
+            if (desiredSettings.indexOf(item) === -1) desiredSettings.push(item);
+          });
+          var needsSettingsReorder =
+            desiredSettings.length !== settingsChildren.length ||
+            desiredSettings.some(function (item, idx) { return settingsChildren[idx] !== item; });
+          if (needsSettingsReorder) {
+            desiredSettings.forEach(function (item) {
+              settingsList.appendChild(item);
+            });
+          }
+          changed = changed || needsSettingsReorder;
+        }
+
+        return changed;
+      }
+
+      function setupRowObserver() {
+        if (
+          typeof document === 'undefined' ||
+          typeof MutationObserver !== 'function'
+        ) {
+          return;
+        }
+        var tbody = document.getElementById('dataRows');
+        if (!tbody) return;
+        if (rowObserver && typeof rowObserver.disconnect === 'function') {
+          rowObserver.disconnect();
+        }
+        rowObserver = new MutationObserver(function () {
+          if (applyingRowOrder) return;
+          applyRowOrder();
+        });
+        rowObserver.observe(tbody, { childList: true });
+      }
       $scope.useCustomStyles = localStorage.getItem(STYLE_KEY) !== 'false';
       $scope.toggleCustomStyles = function () {
         $scope.useCustomStyles = !$scope.useCustomStyles;
@@ -1545,59 +1782,27 @@ angular.module('beamng.apps')
         $scope.settingsOpen = false;
       };
 
-      function saveRowOrder() {
-        var tbody = document.getElementById('dataRows');
-        if (!tbody) return;
-        var order = Array.prototype.map.call(tbody.children, function (r) { return r.id; });
-        try { localStorage.setItem(ROW_ORDER_KEY, JSON.stringify(order)); } catch (e) {}
-        sendWebData();
-      }
-
       $scope.moveRow = function ($event, dir) {
         var item = $event.target.closest('.setting-item');
         if (!item) return;
         var rowId = item.getAttribute('data-row');
-        var tbody = document.getElementById('dataRows');
-        var settingsList = document.getElementById('settingsList');
-        var row = document.getElementById(rowId);
-        if (!row || !tbody || !settingsList) return;
-        if (dir < 0) {
-          var prevRow = row.previousElementSibling;
-          var prevItem = item.previousElementSibling;
-          if (prevRow && prevItem) {
-            tbody.insertBefore(row, prevRow);
-            settingsList.insertBefore(item, prevItem);
-          }
-        } else {
-          var nextRow = row.nextElementSibling;
-          var nextItem = item.nextElementSibling;
-          if (nextRow && nextItem) {
-            tbody.insertBefore(nextRow, row);
-            settingsList.insertBefore(nextItem, item);
-          }
-        }
-        saveRowOrder();
+        rowOrder = mergeRowOrder(rowOrder);
+        var idx = rowOrder.indexOf(rowId);
+        if (idx === -1) return;
+        var targetIndex = idx + (dir < 0 ? -1 : 1);
+        if (targetIndex < 0 || targetIndex >= rowOrder.length) return;
+        var moved = rowOrder.splice(idx, 1)[0];
+        rowOrder.splice(targetIndex, 0, moved);
+        applyRowOrder();
+        persistRowOrder();
       };
-
-        function loadRowOrder() {
-          if (typeof document === 'undefined') return;
-          var order;
-          try { order = JSON.parse(localStorage.getItem(ROW_ORDER_KEY)); } catch (e) { order = null; }
-          if (!Array.isArray(order)) return;
-          var tbody = document.getElementById('dataRows');
-          var settingsList = document.getElementById('settingsList');
-          if (!tbody || !settingsList) return;
-          var rows = {};
-          Array.prototype.forEach.call(tbody.children, function (r) { rows[r.id] = r; });
-          var settings = {};
-          Array.prototype.forEach.call(settingsList.children, function (s) { settings[s.getAttribute('data-row')] = s; });
-          order.forEach(function (id) {
-            if (rows[id]) tbody.appendChild(rows[id]);
-            if (settings[id]) settingsList.appendChild(settings[id]);
-          });
-        }
-
-        $timeout(loadRowOrder, 0);
+        $timeout(function () {
+          var changed = applyRowOrder();
+          setupRowObserver();
+          if (changed) {
+            persistRowOrder();
+          }
+        }, 0);
 
       // UI outputs
       $scope.data1 = ''; // distance measured
@@ -2088,8 +2293,8 @@ angular.module('beamng.apps')
 
       function sendWebData() {
         if ($scope.webEndpointRunning && bngApi && typeof bngApi.engineLua === 'function') {
-          var rowOrder;
-          try { rowOrder = JSON.parse(localStorage.getItem(ROW_ORDER_KEY)); } catch (e) { rowOrder = null; }
+          var mergedOrder = mergeRowOrder(rowOrder);
+          rowOrder = mergedOrder.slice();
           var payload = {
             distanceMeasured: extractValueUnit($scope.data1),
             distanceEcu: extractValueUnit($scope.data6),
@@ -2128,7 +2333,7 @@ angular.module('beamng.apps')
             gameIsPaused: $scope.gamePaused ? 1 : 0,
             settings: {
               visible: $scope.visible,
-              rowOrder: rowOrder,
+              rowOrder: mergedOrder.length ? mergedOrder : null,
               useCustomStyles: $scope.useCustomStyles,
               unitMode: $scope.unitMode
             }
