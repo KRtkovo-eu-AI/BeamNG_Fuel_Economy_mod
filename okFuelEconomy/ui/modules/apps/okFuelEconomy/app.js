@@ -1204,6 +1204,7 @@ angular.module('beamng.apps')
       var ROW_ORDER_KEY = 'okFeRowOrder';
       var rowOrder = [];
       var defaultRowOrder = [];
+      var rowAnchorMap = {};
       var rowObserver = null;
       var applyingRowOrder = false;
       try {
@@ -1211,6 +1212,70 @@ angular.module('beamng.apps')
         if (Array.isArray(storedRowOrder)) rowOrder = storedRowOrder.slice();
       } catch (e) {
         rowOrder = [];
+      }
+
+      function isWhitespaceNode(node) {
+        return node && node.nodeType === 3 && !(node.textContent || '').trim();
+      }
+
+      function findRowAnchors(rowEl) {
+        var anchors = { before: null, after: null };
+        if (!rowEl || !rowEl.parentNode) return anchors;
+        var prev = rowEl.previousSibling;
+        while (isWhitespaceNode(prev)) {
+          prev = prev.previousSibling;
+        }
+        if (prev && prev.nodeType === 8) {
+          anchors.before = prev;
+        }
+        var next = rowEl.nextSibling;
+        while (isWhitespaceNode(next)) {
+          next = next.nextSibling;
+        }
+        if (next && next.nodeType === 8) {
+          anchors.after = next;
+        }
+        return anchors;
+      }
+
+      function getRowAnchors(id, rowEl, parent) {
+        var anchors = rowAnchorMap[id];
+        var beforeOwner = anchors && anchors.before ? anchors.before.parentNode || anchors.before.parentElement : null;
+        var afterOwner = anchors && anchors.after ? anchors.after.parentNode || anchors.after.parentElement : null;
+        if (!anchors || (anchors.before && beforeOwner !== parent) || (anchors.after && afterOwner !== parent)) {
+          anchors = findRowAnchors(rowEl);
+          if (anchors.before || anchors.after) {
+            rowAnchorMap[id] = anchors;
+          }
+        }
+        return anchors || {};
+      }
+
+      function collectRowNodes(rowEl, parent) {
+        var nodes = [];
+        if (!rowEl || rowEl.parentNode !== parent) return nodes;
+        var id = rowEl.id;
+        var anchors = getRowAnchors(id, rowEl, parent);
+        var beforeOwner = anchors.before ? anchors.before.parentNode || anchors.before.parentElement : null;
+        if (anchors.before && beforeOwner === parent) {
+          nodes.push(anchors.before);
+          var lead = anchors.before.nextSibling;
+          while (lead && lead !== rowEl && isWhitespaceNode(lead)) {
+            nodes.push(lead);
+            lead = lead.nextSibling;
+          }
+        }
+        nodes.push(rowEl);
+        var afterOwner = anchors.after ? anchors.after.parentNode || anchors.after.parentElement : null;
+        if (anchors.after && afterOwner === parent) {
+          var trail = rowEl.nextSibling;
+          while (trail && trail !== anchors.after && isWhitespaceNode(trail)) {
+            nodes.push(trail);
+            trail = trail.nextSibling;
+          }
+          nodes.push(anchors.after);
+        }
+        return nodes;
       }
 
       function ensureDefaultOrder() {
@@ -1233,6 +1298,19 @@ angular.module('beamng.apps')
               })
               .filter(Boolean);
           }
+        }
+        if (typeof document !== 'undefined') {
+          defaultRowOrder.forEach(function (id) {
+            if (!rowAnchorMap[id]) {
+              var rowEl = document.getElementById(id);
+              if (rowEl) {
+                var anchors = findRowAnchors(rowEl);
+                if (anchors.before || anchors.after) {
+                  rowAnchorMap[id] = anchors;
+                }
+              }
+            }
+          });
         }
       }
 
@@ -1282,7 +1360,9 @@ angular.module('beamng.apps')
           rowOrder.forEach(function (id) {
             var rowEl = document.getElementById(id);
             if (rowEl && rowEl.parentElement === tbody) {
-              desiredRows.push({ id: id, el: rowEl });
+              var nodes = collectRowNodes(rowEl, tbody);
+              if (!nodes.length) nodes = [rowEl];
+              desiredRows.push({ id: id, nodes: nodes });
               desiredIds.push(id);
             }
           });
@@ -1293,7 +1373,13 @@ angular.module('beamng.apps')
             applyingRowOrder = true;
             try {
               desiredRows.forEach(function (entry) {
-                tbody.appendChild(entry.el);
+                entry.nodes.forEach(function (node) {
+                  if (!node) return;
+                  var owner = node.parentNode || node.parentElement;
+                  if (owner === tbody) {
+                    tbody.appendChild(node);
+                  }
+                });
               });
             } finally {
               applyingRowOrder = false;

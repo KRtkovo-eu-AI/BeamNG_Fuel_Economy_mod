@@ -1,7 +1,9 @@
 const assert = require('node:assert');
 const { describe, it } = require('node:test');
 
-function setupControllerEnvironment(savedOrder, defaultOrder) {
+function setupControllerEnvironment(savedOrder, defaultOrder, options) {
+  const opts = options || {};
+  const anchorSet = new Set(opts.ngIfAnchors || []);
   const savedGlobals = {};
   ['angular', 'StreamsManager', 'UiUnits', 'window', 'bngApi', 'localStorage', 'performance', 'document', 'MutationObserver']
     .forEach(key => {
@@ -19,30 +21,84 @@ function setupControllerEnvironment(savedOrder, defaultOrder) {
   global.bngApi = { engineLua: cmd => luaCalls.push(cmd) };
   global.performance = { now: (() => { let t = 0; return () => { t += 16; return t; }; })() };
 
+  function updateRelationships(parent) {
+    parent.children = [];
+    for (let i = 0; i < parent.childNodes.length; i += 1) {
+      const node = parent.childNodes[i];
+      node.parentElement = parent;
+      node.previousSibling = i > 0 ? parent.childNodes[i - 1] : null;
+      node.nextSibling = i < parent.childNodes.length - 1 ? parent.childNodes[i + 1] : null;
+      if (node.nodeType === 1) parent.children.push(node);
+    }
+  }
+
   function createParent() {
-    const children = [];
     const parent = {
-      children,
+      childNodes: [],
+      children: [],
       mutationCount: 0,
       appendChild(node) {
-        const idx = children.indexOf(node);
-        if (idx !== -1) children.splice(idx, 1);
-        children.push(node);
-        node.parentElement = this;
+        if (!node) return node;
+        if (node.parentElement) {
+          if (node.parentElement === this) {
+            const idx = this.childNodes.indexOf(node);
+            if (idx !== -1) this.childNodes.splice(idx, 1);
+          } else if (typeof node.parentElement.removeChild === 'function') {
+            node.parentElement.removeChild(node);
+          }
+        }
+        this.childNodes.push(node);
+        updateRelationships(this);
         parent.mutationCount += 1;
+        return node;
+      },
+      removeChild(node) {
+        const idx = this.childNodes.indexOf(node);
+        if (idx !== -1) {
+          this.childNodes.splice(idx, 1);
+          updateRelationships(this);
+          parent.mutationCount += 1;
+        }
+        if (node) {
+          node.parentElement = null;
+          node.previousSibling = null;
+          node.nextSibling = null;
+        }
+        return node;
       }
     };
     return parent;
   }
 
   function createRow(id) {
-    return { id, parentElement: null };
+    return {
+      id,
+      nodeType: 1,
+      parentElement: null,
+      previousSibling: null,
+      nextSibling: null
+    };
+  }
+
+  function createComment(label, anchorId, role) {
+    return {
+      nodeType: 8,
+      textContent: label || '',
+      anchorId: anchorId || null,
+      anchorRole: role || null,
+      parentElement: null,
+      previousSibling: null,
+      nextSibling: null
+    };
   }
 
   function createSetting(id) {
     return {
+      nodeType: 1,
       getAttribute(name) { return name === 'data-row' ? id : null; },
-      parentElement: null
+      parentElement: null,
+      previousSibling: null,
+      nextSibling: null
     };
   }
 
@@ -55,6 +111,10 @@ function setupControllerEnvironment(savedOrder, defaultOrder) {
   const settingMap = {};
 
   defaultOrder.forEach(id => {
+    if (anchorSet.has(id)) {
+      const startComment = createComment(`ngIf start for ${id}`, id, 'start');
+      dataRows.appendChild(startComment);
+    }
     const row = createRow(id);
     domMap[id] = row;
     dataRows.appendChild(row);
@@ -115,17 +175,51 @@ function setupControllerEnvironment(savedOrder, defaultOrder) {
   function removeRow(id) {
     const row = domMap[id];
     if (!row) return;
-    const idx = dataRows.children.indexOf(row);
-    if (idx !== -1) dataRows.children.splice(idx, 1);
+    const parent = row.parentElement;
+    if (parent && Array.isArray(parent.childNodes)) {
+      const nodes = parent.childNodes;
+      const rowIndex = nodes.indexOf(row);
+      if (rowIndex !== -1) {
+        let hasStart = false;
+        let hasEnd = false;
+        let startIndex = rowIndex;
+        for (let i = rowIndex - 1; i >= 0; i -= 1) {
+          const candidate = nodes[i];
+          if (candidate.nodeType === 8 && candidate.anchorId === id && candidate.anchorRole === 'start') {
+            hasStart = true;
+            startIndex = i;
+            break;
+          }
+        }
+        let endIndex = rowIndex;
+        for (let i = rowIndex + 1; i < nodes.length; i += 1) {
+          const candidate = nodes[i];
+          if (candidate.nodeType === 8 && candidate.anchorId === id && candidate.anchorRole === 'end') {
+            hasEnd = true;
+            endIndex = i;
+            break;
+          }
+        }
+        const sliceStart = hasStart ? startIndex : rowIndex;
+        const sliceEnd = hasEnd ? endIndex + 1 : rowIndex + 1;
+        const toRemove = nodes.slice(sliceStart, sliceEnd);
+        toRemove.forEach(node => parent.removeChild(node));
+      } else if (typeof parent.removeChild === 'function') {
+        parent.removeChild(row);
+      }
+    } else if (row.parentElement && typeof row.parentElement.removeChild === 'function') {
+      row.parentElement.removeChild(row);
+    }
     row.parentElement = null;
     delete domMap[id];
   }
 
   function addRowAtStart(id) {
     const row = createRow(id);
-    row.parentElement = dataRows;
-    dataRows.children.unshift(row);
     domMap[id] = row;
+    dataRows.childNodes.unshift(row);
+    updateRelationships(dataRows);
+    dataRows.mutationCount += 1;
     return row;
   }
 
@@ -137,6 +231,9 @@ function setupControllerEnvironment(savedOrder, defaultOrder) {
     storedOrders,
     getDataRowMutations: () => dataRows.mutationCount,
     getRowIds: () => dataRows.children.map(node => node.id),
+    getRowNodeSummary: () =>
+      dataRows.childNodes.map(node =>
+        node.nodeType === 1 ? node.id : `#comment:${node.textContent}`),
     getSettingIds: () => settingsList.children.map(item => item.getAttribute('data-row')),
     removeRow,
     addRowAtStart,
@@ -201,6 +298,42 @@ describe('settings row order management', () => {
       assert.ok(firstMutations > 0);
       env.triggerObserver();
       assert.strictEqual(env.getDataRowMutations(), firstMutations);
+    } finally {
+      env.cleanup();
+    }
+  });
+
+  it('only hides the targeted instant efficiency history row', () => {
+    const defaultOrder = [
+      'row-instantGraph',
+      'row-instantKmLGraph',
+      'row-instantCO2',
+      'row-avgL100km'
+    ];
+    const savedOrder = [
+      'row-instantKmLGraph',
+      'row-instantGraph',
+      'row-instantCO2',
+      'row-avgL100km'
+    ];
+    const env = setupControllerEnvironment(savedOrder, defaultOrder, {
+      ngIfAnchors: ['row-instantKmLGraph']
+    });
+    try {
+      const nodeSummary = env.getRowNodeSummary();
+      const startIdx = nodeSummary.indexOf('#comment:ngIf start for row-instantKmLGraph');
+      const rowIdx = nodeSummary.indexOf('row-instantKmLGraph');
+      assert.ok(startIdx !== -1 && rowIdx !== -1);
+      assert.strictEqual(rowIdx, startIdx + 1);
+
+      env.removeRow('row-instantKmLGraph');
+      env.triggerObserver();
+
+      assert.deepStrictEqual(env.getRowIds(), [
+        'row-instantGraph',
+        'row-instantCO2',
+        'row-avgL100km'
+      ]);
     } finally {
       env.cleanup();
     }
