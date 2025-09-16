@@ -95,6 +95,23 @@ test('payload marks paused state', () => {
   assert.strictEqual(payload.gameIsPaused, 1);
 });
 
+test('web endpoint reflects pause toggles', () => {
+  const { calls, $scope } = setup();
+  calls.length = 0;
+  $scope.on_streamsUpdate(null, { okGameState: { paused: true } });
+  let call = calls.find((c) => c.startsWith('extensions.okWebServer.setData('));
+  assert.ok(call);
+  let payload = JSON.parse(JSON.parse(call.match(/setData\((.*)\)/)[1]));
+  assert.strictEqual(payload.gameIsPaused, 1);
+
+  calls.length = 0;
+  $scope.on_streamsUpdate(null, { okGameState: { paused: false } });
+  call = calls.find((c) => c.startsWith('extensions.okWebServer.setData('));
+  assert.ok(call);
+  payload = JSON.parse(JSON.parse(call.match(/setData\((.*)\)/)[1]));
+  assert.strictEqual(payload.gameIsPaused, 0);
+});
+
 test('migrates legacy trip visibility flags', () => {
   const store = { okFuelEconomyVisible: JSON.stringify({ webEndpoint: true, tripFuelUsed: true, tripTotalCost: true, tripAvgCost: true }) };
   const { $scope } = setup(store);

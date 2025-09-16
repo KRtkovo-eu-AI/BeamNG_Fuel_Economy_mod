@@ -95,6 +95,138 @@ var DEFAULT_FUEL_EMISSIONS = Object.keys(DEFAULT_CO2_FACTORS_G_PER_L).reduce(
   {}
 );
 
+function resolveUserConfigPaths(fs, pathModule, fileName) {
+  if (!fs || !pathModule) return null;
+  if (typeof process === 'undefined') return null;
+
+  function isLikelyVersionDir(dirPath) {
+    var base = pathModule.basename(dirPath || '');
+    if (base === 'current') return true;
+    if (/^\d/.test(base)) return true;
+    try {
+      var stat = fs.statSync(pathModule.join(dirPath, 'settings'));
+      if (stat && stat.isDirectory && stat.isDirectory()) return true;
+    } catch (e) {
+      // ignore missing settings directories
+    }
+    return false;
+  }
+
+  function gatherVersionDirs(baseDir) {
+    var result = [];
+    if (!baseDir) return result;
+    try {
+      var stat = fs.statSync(baseDir);
+      if (!stat || !stat.isDirectory || !stat.isDirectory()) return result;
+    } catch (e) {
+      return result;
+    }
+
+    if (isLikelyVersionDir(baseDir)) {
+      result.push(baseDir);
+      return result;
+    }
+
+    var entries;
+    try {
+      entries = fs.readdirSync(baseDir, { withFileTypes: true });
+    } catch (e) {
+      return result;
+    }
+
+    var names = [];
+    for (var i = 0; i < entries.length; i++) {
+      var entry = entries[i];
+      if (entry && entry.isDirectory && entry.isDirectory()) {
+        names.push(entry.name);
+      }
+    }
+    if (!names.length) return result;
+
+    names.sort(function (a, b) {
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+
+    var added = {};
+    function add(dir) {
+      if (!dir) return;
+      if (added[dir]) return;
+      added[dir] = true;
+      result.push(dir);
+    }
+
+    if (names.indexOf('current') !== -1) {
+      add(pathModule.join(baseDir, 'current'));
+    }
+
+    var versionNames = names.filter(function (name) {
+      return name !== 'current' && /^\d/.test(name);
+    });
+    versionNames.sort(function (a, b) {
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+    for (var j = versionNames.length - 1; j >= 0; j--) {
+      add(pathModule.join(baseDir, versionNames[j]));
+    }
+
+    var otherNames = names.filter(function (name) {
+      return name === 'current' ? false : !/^\d/.test(name);
+    });
+    otherNames.sort(function (a, b) {
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+    for (var k = otherNames.length - 1; k >= 0; k--) {
+      add(pathModule.join(baseDir, otherNames[k]));
+    }
+
+    return result;
+  }
+
+  var candidates = [];
+  var seen = {};
+  function enqueueCandidates(baseDir) {
+    var dirs = gatherVersionDirs(baseDir);
+    for (var i = 0; i < dirs.length; i++) {
+      var dir = dirs[i];
+      if (seen[dir]) continue;
+      seen[dir] = true;
+      candidates.push(dir);
+    }
+  }
+
+  var envDir = process.env && process.env.KRTEKTM_BNG_USER_DIR;
+  if (envDir) enqueueCandidates(envDir);
+
+  var userRoot;
+  if (process.platform === 'win32') {
+    userRoot = (process.env && process.env.LOCALAPPDATA) || '';
+  } else {
+    userRoot = pathModule.join(
+      (process.env && process.env.HOME) || '',
+      '.local',
+      'share',
+    );
+  }
+
+  enqueueCandidates(pathModule.join(userRoot, 'BeamNG.drive'));
+  enqueueCandidates(pathModule.join(userRoot, 'BeamNG', 'BeamNG.drive'));
+  enqueueCandidates(pathModule.join(userRoot, 'BeamNG', 'BeamNG.drive', 'current'));
+
+  if (!candidates.length) return null;
+
+  var versionDir = candidates[0];
+  var settingsDir = pathModule.join(
+    versionDir,
+    'settings',
+    'krtektm_fuelEconomy',
+  );
+  return {
+    versionDir: versionDir,
+    settingsDir: settingsDir,
+    filePath: pathModule.join(settingsDir, fileName),
+  };
+}
+
 var CO2_FACTORS_G_PER_L = Object.assign({}, DEFAULT_CO2_FACTORS_G_PER_L);
 var NOX_FACTORS_G_PER_L = Object.assign({}, DEFAULT_NOX_FACTORS_G_PER_L);
 
@@ -680,33 +812,15 @@ function loadFuelEmissionsConfig(callback) {
     try {
       const fs = require('fs');
       const path = require('path');
-      const baseDir =
-        process.env.KRTEKTM_BNG_USER_DIR ||
-        path.join(
-          process.platform === 'win32'
-            ? process.env.LOCALAPPDATA || ''
-            : path.join(process.env.HOME || '', '.local', 'share'),
-          'BeamNG.drive'
-        );
-      const versions = fs
-        .readdirSync(baseDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      const latest = versions[versions.length - 1];
-      if (!latest) {
+      const paths = resolveUserConfigPaths(fs, path, 'fuelEmissions.json');
+      if (!paths) {
         applyCfg(defaults);
         if (typeof callback === 'function') callback(defaults);
         return defaults;
       }
-      const settingsDir = path.join(
-        baseDir,
-        latest,
-        'settings',
-        'krtektm_fuelEconomy'
-      );
+      const settingsDir = paths.settingsDir;
       fs.mkdirSync(settingsDir, { recursive: true });
-      const userFile = path.join(settingsDir, 'fuelEmissions.json');
+      const userFile = paths.filePath;
       loadFuelEmissionsConfig.userFile = userFile;
       let data = {};
       if (fs.existsSync(userFile)) {
@@ -821,33 +935,14 @@ function loadFuelPriceConfig(callback) {
       );
       defaults = cfg;
 
-      const baseDir =
-        process.env.KRTEKTM_BNG_USER_DIR ||
-        path.join(
-          process.platform === 'win32'
-            ? process.env.LOCALAPPDATA || ''
-            : path.join(process.env.HOME || '', '.local', 'share'),
-          'BeamNG.drive'
-        );
-
-      const versions = fs
-        .readdirSync(baseDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      const latest = versions[versions.length - 1];
-      if (!latest) {
+      const paths = resolveUserConfigPaths(fs, path, 'fuelPrice.json');
+      if (!paths) {
         if (typeof callback === 'function') callback(defaults);
         return defaults;
       }
-      const settingsDir = path.join(
-        baseDir,
-        latest,
-        'settings',
-        'krtektm_fuelEconomy'
-      );
+      const settingsDir = paths.settingsDir;
       fs.mkdirSync(settingsDir, { recursive: true });
-      const userFile = path.join(settingsDir, 'fuelPrice.json');
+      const userFile = paths.filePath;
       loadFuelPriceConfig.userFile = userFile;
       if (!fs.existsSync(userFile)) {
         fs.copyFileSync(path.join(__dirname, 'fuelPrice.json'), userFile);
@@ -922,29 +1017,10 @@ function loadAvgConsumptionAlgorithm(callback) {
     try {
       const fs = require('fs');
       const path = require('path');
-      const baseDir =
-        process.env.KRTEKTM_BNG_USER_DIR ||
-        path.join(
-          process.platform === 'win32'
-            ? process.env.LOCALAPPDATA || ''
-            : path.join(process.env.HOME || '', '.local', 'share'),
-          'BeamNG.drive'
-        );
-      const versions = fs
-        .readdirSync(baseDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      const latest = versions[versions.length - 1];
-      if (latest) {
-        const settingsDir = path.join(
-          baseDir,
-          latest,
-          'settings',
-          'krtektm_fuelEconomy'
-        );
-        fs.mkdirSync(settingsDir, { recursive: true });
-        const userFile = path.join(settingsDir, 'settings.json');
+      const paths = resolveUserConfigPaths(fs, path, 'settings.json');
+      if (paths) {
+        fs.mkdirSync(paths.settingsDir, { recursive: true });
+        const userFile = paths.filePath;
         let data = {};
         if (fs.existsSync(userFile)) {
           try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
@@ -991,29 +1067,10 @@ function saveAvgConsumptionAlgorithm(algo) {
     try {
       const fs = require('fs');
       const path = require('path');
-      const baseDir =
-        process.env.KRTEKTM_BNG_USER_DIR ||
-        path.join(
-          process.platform === 'win32'
-            ? process.env.LOCALAPPDATA || ''
-            : path.join(process.env.HOME || '', '.local', 'share'),
-          'BeamNG.drive'
-        );
-      const versions = fs
-        .readdirSync(baseDir, { withFileTypes: true })
-        .filter(d => d.isDirectory())
-        .map(d => d.name)
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-      const latest = versions[versions.length - 1];
-      if (latest) {
-        const settingsDir = path.join(
-          baseDir,
-          latest,
-          'settings',
-          'krtektm_fuelEconomy'
-        );
-        fs.mkdirSync(settingsDir, { recursive: true });
-        const userFile = path.join(settingsDir, 'settings.json');
+      const paths = resolveUserConfigPaths(fs, path, 'settings.json');
+      if (paths) {
+        fs.mkdirSync(paths.settingsDir, { recursive: true });
+        const userFile = paths.filePath;
         let data = {};
         if (fs.existsSync(userFile)) {
           try { data = JSON.parse(fs.readFileSync(userFile, 'utf8')); } catch (e) {}
@@ -1067,25 +1124,34 @@ angular.module('beamng.apps')
 
       $scope.gamePaused = false;
 
+      function updateGamePausedState(paused) {
+        var normalized =
+          paused === true ||
+          paused === 1 ||
+          paused === '1' ||
+          paused === 'true';
+        var changed = $scope.gamePaused !== normalized;
+        $scope.gamePaused = normalized;
+        if (normalized) {
+          lastTime_ms = performance.now();
+        }
+        if (changed) {
+          sendWebData();
+        }
+        return changed;
+      }
+
       function pollGamePaused() {
         if (!bngApi || typeof bngApi.engineLua !== 'function') return;
         bngApi.engineLua(
           'extensions.okGameState and extensions.okGameState.getState and extensions.okGameState.getState().paused',
           function (res) {
-            var paused =
-              res === true || res === 1 || res === '1' || res === 'true';
             if (typeof $scope.$evalAsync === 'function') {
               $scope.$evalAsync(function () {
-                $scope.gamePaused = paused;
-                if (paused) {
-                  lastTime_ms = performance.now();
-                }
+                updateGamePausedState(res);
               });
             } else {
-              $scope.gamePaused = paused;
-              if (paused) {
-                lastTime_ms = performance.now();
-              }
+              updateGamePausedState(res);
             }
           }
         );
@@ -2344,12 +2410,15 @@ angular.module('beamng.apps')
 
       $scope.$on('streamsUpdate', function (event, streams) {
         $scope.$evalAsync(function () {
+          var pausedChanged = false;
           if (streams.okGameState && typeof streams.okGameState.paused !== 'undefined') {
-            $scope.gamePaused = !!streams.okGameState.paused;
+            pausedChanged = updateGamePausedState(streams.okGameState.paused);
           }
           if ($scope.gamePaused) {
             lastTime_ms = performance.now();
-            sendWebData();
+            if (!pausedChanged) {
+              sendWebData();
+            }
             return;
           }
           if ($scope.fuelType === 'Food') {
