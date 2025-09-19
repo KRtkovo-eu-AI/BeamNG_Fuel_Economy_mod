@@ -48,14 +48,24 @@ function parseStyle(expr) {
 describe('UI template styling', () => {
   it('toggles custom styling correctly', () => {
     const attr = getNgAttrStyle('<div class="bngApp"');
-    const { base, custom } = parseStyle(attr);
-    const styleTrue = base + custom;
+    const expr = attr.slice(3, -3);
+    const evaluate = (isMinimized, useCustomStyles) =>
+      new Function('isMinimized', 'useCustomStyles', `return ${expr};`)(isMinimized, useCustomStyles);
 
-    assert.ok(base.includes('position:relative;'));
-    assert.ok(!base.includes('background-color'));
-    assert.ok(styleTrue.includes('background-color:rgba(10,15,20,0.75);'));
-    assert.ok(styleTrue.includes('background-image:linear-gradient'));
-    assert.ok(!styleTrue.includes("url('app.png')"));
+    const defaultExpanded = evaluate(false, false);
+    const defaultMinimized = evaluate(true, false);
+    const customExpanded = evaluate(false, true);
+
+    assert.ok(defaultExpanded.includes('width:100%'));
+    assert.ok(defaultExpanded.includes('height:100%'));
+    assert.ok(defaultExpanded.includes('overflow:auto;'));
+    assert.ok(defaultExpanded.includes('position:relative;'));
+    assert.ok(!defaultExpanded.includes('background-color:rgba(10,15,20,0.75);'));
+    assert.ok(defaultMinimized.includes('height:auto;'));
+    assert.ok(defaultMinimized.includes('overflow:hidden;'));
+    assert.ok(customExpanded.includes('background-color:rgba(10,15,20,0.75);'));
+    assert.ok(customExpanded.includes('background-image:linear-gradient'));
+    assert.ok(!customExpanded.includes("url('app.png')"));
   });
 
   it('renders fuel cost bindings without inline script', () => {

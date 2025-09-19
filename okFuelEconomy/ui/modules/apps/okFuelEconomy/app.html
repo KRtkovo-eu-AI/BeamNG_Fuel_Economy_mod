@@ -1,17 +1,17 @@
 <div class="bngApp"
-     ng-attr-style="{{ (isMinimized ? 'width:100%; height:auto; overflow:visible; ' : 'width:100%; height:100%; overflow:auto; ') + 'position:relative;' + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:16px 16px,16px 16px; color:#aeeaff; font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
+     ng-attr-style="{{ 'width:100%; position:relative; ' + (isMinimized ? 'height:auto; overflow:hidden; ' : 'height:100%; overflow:auto; ') + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:16px 16px,16px 16px; color:#aeeaff; font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
      layout="column">
   <div ng-if="isMinimized"
        ng-click="restoreFromMinimize()"
-       ng-attr-style="{{ 'cursor:pointer; display:inline-block; margin:4px; padding:6px 10px; border-radius:6px; border:1px solid; font-weight:600; text-align:center;' + (useCustomStyles ? ' color:#aeeaff; border-color:#5fdcff; background:rgba(0,200,255,0.12); text-shadow:0 0 4px rgba(0,255,255,0.5);' : ' color:#fff; border-color:#888; background:rgba(0,0,0,0.35);') }}">
+       ng-attr-style="{{ 'cursor:pointer; display:inline-flex; align-items:center; justify-content:center; margin:4px 0 6px; padding:3px 8px; border-radius:6px; border:1px solid; font-weight:600; font-size:0.75em; letter-spacing:0.2px; text-align:center; line-height:1.2; min-width:0;' + (useCustomStyles ? ' color:#aeeaff; border-color:#5fdcff; background:rgba(0,200,255,0.08); text-shadow:0 0 4px rgba(0,255,255,0.45); box-shadow:0 0 6px rgba(0,200,255,0.18);' : ' color:#fff; border-color:#666; background:rgba(0,0,0,0.45);') }}">
     Fuel Economy (minimized)
   </div>
 
   <div ng-show="!isMinimized">
-  <strong ng-if="visible.heading"
-          ng-attr-style="{{ useCustomStyles ? 'display:block; margin:2px 0 4px; padding-left: 2px; font-size:1em; font-weight:600; color:#3fd6ff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '' }}">
-    Fuel Economy{{ gamePaused ? ' (game paused)' : '' }}: {{ vehicleNameStr }}
-  </strong>
+    <strong ng-if="visible.heading"
+            ng-attr-style="{{ useCustomStyles ? 'display:block; margin:2px 0 4px; padding-left: 2px; font-size:1em; font-weight:600; color:#3fd6ff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '' }}">
+      Fuel Economy{{ gamePaused ? ' (game paused)' : '' }}: {{ vehicleNameStr }}
+    </strong>
 
   <table ng-attr-style="{{ useCustomStyles ? 'width:100%; border-collapse:collapse; font-size:0.85em;' : '' }}">
     <tbody id="dataRows">
@@ -702,7 +702,7 @@
         ng-click="minimize($event)"
         ng-attr-style="{{ 'position:absolute; top:2px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}"
         ng-if="!isMinimized">
-    minimize
+    expand_more
   </span>
   <!-- Reset icon (global) -->
   <span class="material-icons"
