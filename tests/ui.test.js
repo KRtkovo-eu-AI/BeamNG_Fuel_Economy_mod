@@ -1005,18 +1005,21 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
-  it('positions reset, style toggle and settings icons consistently', () => {
+  it('positions minimize, reset, style toggle and settings icons consistently', () => {
+    const minimizeAttr = getNgAttrStyle('ng-click="minimize($event)"');
     const resetAttr = getNgAttrStyle('ng-click="reset($event)"');
     const toggleAttr = getNgAttrStyle('ng-click="toggleCustomStyles()"');
     const settingsAttr = getNgAttrStyle('ng-click="settingsOpen=!settingsOpen"');
+    const m = parseStyle(minimizeAttr);
     const r = parseStyle(resetAttr);
     const t = parseStyle(toggleAttr);
     const s = parseStyle(settingsAttr);
 
-    assert.ok(r.base.includes('position:absolute; top:2px; right:4px;'));
-    assert.ok(t.base.includes('position:absolute; top:24px; right:4px;'));
-    assert.ok(s.base.includes('position:absolute; top:46px; right:4px;'));
-    [r, t, s].forEach(obj => {
+    assert.ok(m.base.includes('position:absolute; top:2px; right:4px;'));
+    assert.ok(r.base.includes('position:absolute; top:24px; right:4px;'));
+    assert.ok(t.base.includes('position:absolute; top:46px; right:4px;'));
+    assert.ok(s.base.includes('position:absolute; top:68px; right:4px;'));
+    [m, r, t, s].forEach(obj => {
       assert.ok(obj.base.includes('cursor:pointer;'));
       assert.ok(obj.base.includes('font-size:18px;'));
       assert.ok(obj.custom.includes('color:#5fdcff;'));

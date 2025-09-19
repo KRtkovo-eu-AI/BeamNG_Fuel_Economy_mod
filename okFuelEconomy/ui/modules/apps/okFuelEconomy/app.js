@@ -1507,6 +1507,17 @@ angular.module('beamng.apps')
         $scope.useCustomStyles = !$scope.useCustomStyles;
         try { localStorage.setItem(STYLE_KEY, $scope.useCustomStyles ? "true" : "false"); } catch (e) {}
       };
+      $scope.isMinimized = false;
+      $scope.minimize = function ($event) {
+        if ($event && typeof $event.stopPropagation === 'function') {
+          $event.stopPropagation();
+        }
+        $scope.isMinimized = true;
+        $scope.settingsOpen = false;
+      };
+      $scope.restoreFromMinimize = function () {
+        $scope.isMinimized = false;
+      };
       $scope.settingsOpen = false;
       $scope.openFuelPriceEditor = function ($event) {
         $event.preventDefault();
