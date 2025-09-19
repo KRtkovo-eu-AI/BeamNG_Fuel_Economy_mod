@@ -1,10 +1,17 @@
 <div class="bngApp"
-     ng-attr-style="{{ 'width:100%; height:100%; overflow:auto; position:relative;' + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:16px 16px,16px 16px; color:#aeeaff; font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
+     ng-attr-style="{{ 'width:100%; position:relative; ' + (isMinimized ? 'height:auto; overflow:hidden; ' : 'height:100%; overflow:auto; ') + (useCustomStyles ? ' padding:4px; border-radius:10px; background-color:rgba(10,15,20,0.75); background-image:linear-gradient(rgba(0,200,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,200,255,0.05) 1px, transparent 1px); background-size:16px 16px,16px 16px; color:#aeeaff; font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif; letter-spacing:0.3px; box-shadow: inset 0 0 10px rgba(0,200,255,0.25);' : '') }}"
      layout="column">
-  <strong ng-if="visible.heading"
-          ng-attr-style="{{ useCustomStyles ? 'display:block; margin:2px 0 4px; padding-left: 2px; font-size:1em; font-weight:600; color:#3fd6ff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '' }}">
-    Fuel Economy{{ gamePaused ? ' (game paused)' : '' }}: {{ vehicleNameStr }}
-  </strong>
+  <div ng-if="isMinimized"
+       ng-click="restoreFromMinimize()"
+       ng-attr-style="{{ 'cursor:pointer; display:inline-flex; align-items:center; justify-content:center; margin:4px 0 6px; padding:3px 8px; border-radius:6px; border:1px solid; font-weight:600; font-size:0.75em; letter-spacing:0.2px; text-align:center; line-height:1.2; min-width:0;' + (useCustomStyles ? ' color:#aeeaff; border-color:#5fdcff; background:rgba(0,200,255,0.08); text-shadow:0 0 4px rgba(0,255,255,0.45); box-shadow:0 0 6px rgba(0,200,255,0.18);' : ' color:#fff; border-color:#666; background:rgba(0,0,0,0.45);') }}">
+    Fuel Economy (minimized)
+  </div>
+
+  <div ng-show="!isMinimized">
+    <strong ng-if="visible.heading"
+            ng-attr-style="{{ useCustomStyles ? 'display:block; margin:2px 0 4px; padding-left: 2px; font-size:1em; font-weight:600; color:#3fd6ff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '' }}">
+      Fuel Economy{{ gamePaused ? ' (game paused)' : '' }}: {{ vehicleNameStr }}
+    </strong>
 
   <table ng-attr-style="{{ useCustomStyles ? 'width:100%; border-collapse:collapse; font-size:0.85em;' : '' }}">
     <tbody id="dataRows">
@@ -690,28 +697,35 @@
     </tbody>
   </table>
 
+  <!-- Minimize icon -->
+  <span class="material-icons"
+        ng-click="minimize($event)"
+        ng-attr-style="{{ 'position:absolute; top:2px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}"
+        ng-if="!isMinimized">
+    expand_more
+  </span>
   <!-- Reset icon (global) -->
   <span class="material-icons"
         ng-click="reset($event)"
-        ng-attr-style="{{ 'position:absolute; top:2px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
+        ng-attr-style="{{ 'position:absolute; top:24px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
     autorenew
   </span>
   <!-- Style toggle icon -->
   <span class="material-icons"
         ng-click="toggleCustomStyles()"
-        ng-attr-style="{{ 'position:absolute; top:24px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
+        ng-attr-style="{{ 'position:absolute; top:46px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
     palette
   </span>
   <!-- Settings icon -->
   <span class="material-icons"
         ng-click="settingsOpen=!settingsOpen"
-        ng-attr-style="{{ 'position:absolute; top:46px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
+        ng-attr-style="{{ 'position:absolute; top:68px; right:4px; cursor:pointer; font-size:18px;' + (useCustomStyles ? ' color:#5fdcff; text-shadow:0 0 5px rgba(0,255,255,0.6);' : '') }}">
     settings
   </span>
 
   <!-- Settings dialog -->
   <div ng-show="settingsOpen"
-       ng-attr-style="{{ 'position:absolute; top:68px; right:4px; z-index:10; background:rgba(0,0,0,0.85); padding:8px; border-radius:6px;' + (useCustomStyles ? ' color:#aeeaff; border:1px solid #5fdcff;' : ' color:#fff; border:1px solid #ccc; background:#333;') }}">
+       ng-attr-style="{{ 'position:absolute; top:90px; right:4px; z-index:10; background:rgba(0,0,0,0.85); padding:8px; border-radius:6px;' + (useCustomStyles ? ' color:#aeeaff; border:1px solid #5fdcff;' : ' color:#fff; border:1px solid #ccc; background:#333;') }}">
     <p id="fuelPriceNotice"
        ng-attr-style="{{ 'margin:4px 0;' + (useCustomStyles ? ' color:#aeeaff;' : '') }}">
       <a href=""
@@ -1021,6 +1035,8 @@
             ng-attr-style="{{ 'margin-top:4px; font-size:0.8em; padding:2px 6px; cursor:pointer;' + (useCustomStyles ? ' color:#aeeaff; background:rgba(0,200,255,0.15); border:1px solid #5fdcff;' : 'color: #ff7722; border: 1px solid #ff7722;') }}">
       <span class="material-icons" ng-attr-style="{{ 'font-size:inherit; vertical-align:middle; margin-right:2px;' + (useCustomStyles ? '' : '') }}">save</span>Save
     </button><br><br>
-      <p ng-attr-style="{{ useCustomStyles ? 'margin-top:4px; color:#aeeaff; font-size: 11px; font-style: italic;' : '' }}">Fuel Economy v1.0.13</p>
+      <p ng-attr-style="{{ useCustomStyles ? 'margin-top:4px; color:#aeeaff; font-size: 11px; font-style: italic;' : '' }}">Fuel Economy v1.0.14</p>
     </div>
   </div>
+
+</div>

@@ -48,14 +48,24 @@ function parseStyle(expr) {
 describe('UI template styling', () => {
   it('toggles custom styling correctly', () => {
     const attr = getNgAttrStyle('<div class="bngApp"');
-    const { base, custom } = parseStyle(attr);
-    const styleTrue = base + custom;
+    const expr = attr.slice(3, -3);
+    const evaluate = (isMinimized, useCustomStyles) =>
+      new Function('isMinimized', 'useCustomStyles', `return ${expr};`)(isMinimized, useCustomStyles);
 
-    assert.ok(base.includes('position:relative;'));
-    assert.ok(!base.includes('background-color'));
-    assert.ok(styleTrue.includes('background-color:rgba(10,15,20,0.75);'));
-    assert.ok(styleTrue.includes('background-image:linear-gradient'));
-    assert.ok(!styleTrue.includes("url('app.png')"));
+    const defaultExpanded = evaluate(false, false);
+    const defaultMinimized = evaluate(true, false);
+    const customExpanded = evaluate(false, true);
+
+    assert.ok(defaultExpanded.includes('width:100%'));
+    assert.ok(defaultExpanded.includes('height:100%'));
+    assert.ok(defaultExpanded.includes('overflow:auto;'));
+    assert.ok(defaultExpanded.includes('position:relative;'));
+    assert.ok(!defaultExpanded.includes('background-color:rgba(10,15,20,0.75);'));
+    assert.ok(defaultMinimized.includes('height:auto;'));
+    assert.ok(defaultMinimized.includes('overflow:hidden;'));
+    assert.ok(customExpanded.includes('background-color:rgba(10,15,20,0.75);'));
+    assert.ok(customExpanded.includes('background-image:linear-gradient'));
+    assert.ok(!customExpanded.includes("url('app.png')"));
   });
 
   it('renders fuel cost bindings without inline script', () => {
@@ -1005,18 +1015,21 @@ describe('UI template styling', () => {
     delete process.env.KRTEKTM_BNG_USER_DIR;
   });
 
-  it('positions reset, style toggle and settings icons consistently', () => {
+  it('positions minimize, reset, style toggle and settings icons consistently', () => {
+    const minimizeAttr = getNgAttrStyle('ng-click="minimize($event)"');
     const resetAttr = getNgAttrStyle('ng-click="reset($event)"');
     const toggleAttr = getNgAttrStyle('ng-click="toggleCustomStyles()"');
     const settingsAttr = getNgAttrStyle('ng-click="settingsOpen=!settingsOpen"');
+    const m = parseStyle(minimizeAttr);
     const r = parseStyle(resetAttr);
     const t = parseStyle(toggleAttr);
     const s = parseStyle(settingsAttr);
 
-    assert.ok(r.base.includes('position:absolute; top:2px; right:4px;'));
-    assert.ok(t.base.includes('position:absolute; top:24px; right:4px;'));
-    assert.ok(s.base.includes('position:absolute; top:46px; right:4px;'));
-    [r, t, s].forEach(obj => {
+    assert.ok(m.base.includes('position:absolute; top:2px; right:4px;'));
+    assert.ok(r.base.includes('position:absolute; top:24px; right:4px;'));
+    assert.ok(t.base.includes('position:absolute; top:46px; right:4px;'));
+    assert.ok(s.base.includes('position:absolute; top:68px; right:4px;'));
+    [m, r, t, s].forEach(obj => {
       assert.ok(obj.base.includes('cursor:pointer;'));
       assert.ok(obj.base.includes('font-size:18px;'));
       assert.ok(obj.custom.includes('color:#5fdcff;'));
