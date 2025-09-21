@@ -1268,11 +1268,18 @@ angular.module('beamng.apps')
       var STYLE_KEY = 'okFuelEconomyUseCustomStyles';
       var PREFERRED_UNIT_KEY = 'okFuelEconomyPreferredUnit';
       var ROW_ORDER_KEY = 'okFeRowOrder';
+      var MINIMIZED_KEY = 'okFuelEconomyMinimized';
       var rowOrder = [];
       var defaultRowOrder = [];
       var rowAnchorMap = {};
       var rowObserver = null;
       var applyingRowOrder = false;
+      var storedMinimized = false;
+      try {
+        storedMinimized = localStorage.getItem(MINIMIZED_KEY) === 'true';
+      } catch (e) {
+        storedMinimized = false;
+      }
       try {
         var storedRowOrder = JSON.parse(localStorage.getItem(ROW_ORDER_KEY));
         if (Array.isArray(storedRowOrder)) rowOrder = storedRowOrder.slice();
@@ -1507,16 +1514,20 @@ angular.module('beamng.apps')
         $scope.useCustomStyles = !$scope.useCustomStyles;
         try { localStorage.setItem(STYLE_KEY, $scope.useCustomStyles ? "true" : "false"); } catch (e) {}
       };
-      $scope.isMinimized = false;
+      $scope.isMinimized = storedMinimized;
       $scope.minimize = function ($event) {
         if ($event && typeof $event.stopPropagation === 'function') {
           $event.stopPropagation();
         }
         $scope.isMinimized = true;
+        storedMinimized = true;
+        try { localStorage.setItem(MINIMIZED_KEY, 'true'); } catch (e) {}
         $scope.settingsOpen = false;
       };
       $scope.restoreFromMinimize = function () {
         $scope.isMinimized = false;
+        storedMinimized = false;
+        try { localStorage.setItem(MINIMIZED_KEY, 'false'); } catch (e) {}
       };
       $scope.settingsOpen = false;
       $scope.openFuelPriceEditor = function ($event) {
