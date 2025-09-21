@@ -1253,12 +1253,21 @@ angular.module('beamng.apps')
         }, pollMs);
       if (emissionsTimer.unref) emissionsTimer.unref();
 
+      var removeMinimizeListeners = function () {};
+
       $scope.$on('$destroy', function () {
         StreamsManager.remove(streamsList);
         clearInterval(priceTimer);
         clearInterval(emissionsTimer);
         if (rowObserver && typeof rowObserver.disconnect === 'function') {
           rowObserver.disconnect();
+        }
+        if (typeof removeMinimizeListeners === 'function') {
+          try {
+            removeMinimizeListeners();
+          } catch (e) {
+            /* ignore */
+          }
         }
       });
 
@@ -1268,11 +1277,85 @@ angular.module('beamng.apps')
       var STYLE_KEY = 'okFuelEconomyUseCustomStyles';
       var PREFERRED_UNIT_KEY = 'okFuelEconomyPreferredUnit';
       var ROW_ORDER_KEY = 'okFeRowOrder';
+      var MINIMIZED_KEY = 'okFuelEconomyMinimized';
       var rowOrder = [];
       var defaultRowOrder = [];
       var rowAnchorMap = {};
       var rowObserver = null;
       var applyingRowOrder = false;
+      var minimizeStateCache =
+        typeof window !== 'undefined' && window
+          ? window.__okFuelEconomyMinimizeState ||
+            (window.__okFuelEconomyMinimizeState = {})
+          : null;
+      var storedMinimized = false;
+
+      function readStoredMinimized() {
+        var raw = null;
+        try {
+          raw = localStorage.getItem(MINIMIZED_KEY);
+        } catch (e) {
+          raw = null;
+        }
+        if (raw === 'true') return true;
+        if (raw === 'false') return false;
+        if (
+          minimizeStateCache &&
+          typeof minimizeStateCache.minimized === 'boolean'
+        ) {
+          return minimizeStateCache.minimized;
+        }
+        return storedMinimized;
+      }
+
+      function applyMinimizedState(minimized, options) {
+        var normalized = !!minimized;
+        if ($scope.isMinimized !== normalized) {
+          var apply = function () {
+            $scope.isMinimized = normalized;
+          };
+          if (typeof $scope.$evalAsync === 'function') {
+            try {
+              $scope.$evalAsync(apply);
+            } catch (e) {
+              apply();
+            }
+          } else {
+            apply();
+          }
+        }
+        storedMinimized = normalized;
+        if (minimizeStateCache && typeof minimizeStateCache === 'object') {
+          minimizeStateCache.minimized = normalized;
+        }
+        if (!options || options.persist !== false) {
+          try {
+            localStorage.setItem(
+              MINIMIZED_KEY,
+              normalized ? 'true' : 'false'
+            );
+          } catch (e) {
+            /* ignore */
+          }
+        }
+      }
+
+      function syncMinimizedFromPreference() {
+        var pref = readStoredMinimized();
+        if (pref !== storedMinimized || $scope.isMinimized !== pref) {
+          applyMinimizedState(pref, { persist: false });
+        }
+      }
+
+      storedMinimized = readStoredMinimized();
+      if (
+        minimizeStateCache &&
+        typeof minimizeStateCache === 'object' &&
+        typeof minimizeStateCache.minimized !== 'boolean'
+      ) {
+        minimizeStateCache.minimized = storedMinimized;
+      }
+      $scope.isMinimized = storedMinimized;
       try {
         var storedRowOrder = JSON.parse(localStorage.getItem(ROW_ORDER_KEY));
         if (Array.isArray(storedRowOrder)) rowOrder = storedRowOrder.slice();
@@ -1507,17 +1590,47 @@ angular.module('beamng.apps')
         $scope.useCustomStyles = !$scope.useCustomStyles;
         try { localStorage.setItem(STYLE_KEY, $scope.useCustomStyles ? "true" : "false"); } catch (e) {}
       };
-      $scope.isMinimized = false;
       $scope.minimize = function ($event) {
         if ($event && typeof $event.stopPropagation === 'function') {
           $event.stopPropagation();
         }
-        $scope.isMinimized = true;
+        applyMinimizedState(true);
         $scope.settingsOpen = false;
       };
       $scope.restoreFromMinimize = function () {
-        $scope.isMinimized = false;
+        applyMinimizedState(false);
       };
+      if (
+        (typeof document !== 'undefined' &&
+          typeof document.addEventListener === 'function') ||
+        (typeof window !== 'undefined' &&
+          typeof window.addEventListener === 'function')
+      ) {
+        var minimizeSyncHandler = function () {
+          syncMinimizedFromPreference();
+        };
+        if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+          document.addEventListener('visibilitychange', minimizeSyncHandler);
+        }
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+          window.addEventListener('pageshow', minimizeSyncHandler);
+          window.addEventListener('focus', minimizeSyncHandler);
+        }
+        removeMinimizeListeners = function () {
+          if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+            document.removeEventListener('visibilitychange', minimizeSyncHandler);
+          }
+          if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+            window.removeEventListener('pageshow', minimizeSyncHandler);
+            window.removeEventListener('focus', minimizeSyncHandler);
+          }
+        };
+      }
+      if (typeof $timeout === 'function') {
+        $timeout(syncMinimizedFromPreference, 0);
+      } else {
+        syncMinimizedFromPreference();
+      }
       $scope.settingsOpen = false;
       $scope.openFuelPriceEditor = function ($event) {
         $event.preventDefault();

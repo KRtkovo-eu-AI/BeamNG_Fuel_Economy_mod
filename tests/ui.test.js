@@ -1108,6 +1108,138 @@ describe('UI template styling', () => {
 });
 
 describe('controller integration', () => {
+  it('remembers minimized widget state across visibility toggles and reloads', () => {
+    let directiveDef;
+    const modulePath = '../okFuelEconomy/ui/modules/apps/okFuelEconomy/app.js';
+    const store = {};
+    const makeHandlerStore = () => {
+      const handlers = {};
+      return {
+        add(event, handler) {
+          (handlers[event] || (handlers[event] = [])).push(handler);
+        },
+        remove(event, handler) {
+          const arr = handlers[event];
+          if (!arr) return;
+          const idx = arr.indexOf(handler);
+          if (idx !== -1) arr.splice(idx, 1);
+        },
+        get(event) {
+          return handlers[event] || [];
+        },
+        reset() {
+          Object.keys(handlers).forEach(key => {
+            handlers[key].length = 0;
+          });
+        }
+      };
+    };
+    const docHandlers = makeHandlerStore();
+    const winHandlers = makeHandlerStore();
+    const minimizeCache = {};
+    const windowTarget = {
+      __okFuelEconomyMinimizeState: minimizeCache,
+      addEventListener: (event, handler) => {
+        winHandlers.add(event, handler);
+      },
+      removeEventListener: (event, handler) => {
+        winHandlers.remove(event, handler);
+      }
+    };
+    const documentTarget = {
+      addEventListener: (event, handler) => {
+        docHandlers.add(event, handler);
+      },
+      removeEventListener: (event, handler) => {
+        docHandlers.remove(event, handler);
+      },
+      getElementById: () => null
+    };
+    const resetGlobals = () => {
+      global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
+      global.StreamsManager = { add: () => {}, remove: () => {} };
+      global.UiUnits = { buildString: () => '' };
+      global.bngApi = { engineLua: () => {} };
+      global.localStorage = {
+        getItem: key => (key in store ? store[key] : null),
+        setItem: (key, value) => {
+          store[key] = value;
+        }
+      };
+      global.performance = { now: () => 0 };
+      windowTarget.document = documentTarget;
+      global.window = windowTarget;
+      global.document = documentTarget;
+    };
+    const loadController = () => {
+      resetGlobals();
+      directiveDef = undefined;
+      delete require.cache[require.resolve(modulePath)];
+      require(modulePath);
+      const controllerFn = directiveDef.controller[directiveDef.controller.length - 1];
+      const destroyHandlers = [];
+      const scope = {
+        $on: (name, handler) => {
+          if (name === '$destroy') destroyHandlers.push(handler);
+          return () => {};
+        },
+        $evalAsync: fn => fn()
+      };
+      controllerFn({ debug: () => {} }, scope);
+      return {
+        scope,
+        destroy() {
+          destroyHandlers.slice().forEach(fn => fn());
+        }
+      };
+    };
+
+    const first = loadController();
+    assert.strictEqual(first.scope.isMinimized, false);
+    assert.ok(docHandlers.get('visibilitychange').length > 0);
+    assert.ok(winHandlers.get('pageshow').length > 0);
+    assert.ok(winHandlers.get('focus').length > 0);
+
+    first.scope.minimize({ stopPropagation() {} });
+    assert.strictEqual(first.scope.isMinimized, true);
+    assert.strictEqual(store.okFuelEconomyMinimized, 'true');
+    assert.strictEqual(minimizeCache.minimized, true);
+
+    first.scope.isMinimized = false;
+    docHandlers.get('visibilitychange').forEach(handler => handler());
+    assert.strictEqual(first.scope.isMinimized, true);
+
+    first.destroy();
+    assert.strictEqual(docHandlers.get('visibilitychange').length, 0);
+    assert.strictEqual(winHandlers.get('pageshow').length, 0);
+    assert.strictEqual(winHandlers.get('focus').length, 0);
+
+    const second = loadController();
+    assert.strictEqual(second.scope.isMinimized, true);
+
+    second.scope.restoreFromMinimize();
+    assert.strictEqual(second.scope.isMinimized, false);
+    assert.strictEqual(store.okFuelEconomyMinimized, 'false');
+    assert.strictEqual(minimizeCache.minimized, false);
+
+    docHandlers.get('visibilitychange').forEach(handler => handler());
+    winHandlers.get('pageshow').forEach(handler => handler());
+    winHandlers.get('focus').forEach(handler => handler());
+    assert.strictEqual(second.scope.isMinimized, false);
+
+    second.destroy();
+    docHandlers.reset();
+    winHandlers.reset();
+    delete require.cache[require.resolve(modulePath)];
+    delete global.window;
+    delete global.document;
+    delete global.angular;
+    delete global.StreamsManager;
+    delete global.UiUnits;
+    delete global.bngApi;
+    delete global.localStorage;
+    delete global.performance;
+  });
   it('updates heading pause flag from stream', () => {
     let directiveDef;
     global.angular = { module: () => ({ directive: (name, arr) => { directiveDef = arr[0](); } }) };
